@@ -1,0 +1,16 @@
+venv/
+build/
+*.charm
+.tox/
+.coverage
+__pycache__/
+*.py[cod]
+.idea
+.vscode/
+*.egg-info/
+cos-tool-*
+src/prometheus_alert_rules/consolidated_rules/**
+tests/scenario/src/prometheus_alert_rules/consolidated_rules/**
+.terraform*
+*.tfstate*
+

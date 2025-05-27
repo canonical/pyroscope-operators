@@ -1,0 +1,63 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: pyroscope-coordinator-k8s
+type: charm
+
+assumes:
+  - k8s-api
+  - juju >= 3.6.0
+
+description: |
+  Pyroscope is a distributed profiling backend by Grafana.
+
+summary: |
+  Pyroscope is a distributed profiling backend by Grafana.
+
+containers:
+
+
+resources:
+
+
+links:
+  documentation: https://discourse.charmhub.io/t/pyroscope-coordinator-k8s-docs-index/15419
+  website: https://charmhub.io/pyroscope-coordinator-k8s
+  source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/coordinator
+  issues: https://github.com/canonical/pyroscope-k8s-operator/issues
+
+provides:
+
+
+requires:
+
+
+storage:
+  data:
+    type: filesystem
+    location: /pyroscope-data
+
+actions:
+
+
+peers:
+  peers:
+    interface: pyroscope_peers
+    description: |
+      peer relation for internal coordination
+
+platforms:
+  ubuntu@24.04:amd64:
+
+parts:
+  charm:
+    source: .
+    plugin: uv
+    build-packages: [git] # handy for git+ dependencies during development
+    build-snaps: [astral-uv]
+    override-build: |
+      craftctl default
+      git describe --always > $CRAFT_PART_INSTALL/version
+
+config:
+  options:
+
