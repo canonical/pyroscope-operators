@@ -14,10 +14,20 @@ summary: |
   Pyroscope is a distributed profiling backend by Grafana.
 
 containers:
-
+  nginx:
+    resource: nginx-image
+  nginx-prometheus-exporter:
+    resource: nginx-prometheus-exporter-image
 
 resources:
-
+  nginx-image:
+    type: oci-image
+    description: OCI image for nginx
+    upstream-source: ubuntu/nginx:1.24-24.04_beta
+  nginx-prometheus-exporter-image:
+    type: oci-image
+    description: OCI image for nginx-prometheus-exporter
+    upstream-source: nginx/nginx-prometheus-exporter:1.1.0
 
 links:
   documentation: https://discourse.charmhub.io/t/pyroscope-coordinator-k8s-docs-index/15419
@@ -26,17 +36,68 @@ links:
   issues: https://github.com/canonical/pyroscope-k8s-operator/issues
 
 provides:
-
+  pyroscope-cluster:
+    interface: pyroscope_cluster
+    description: |
+      Connect any number of pyroscope-worker-k8s charms to cluster the Pyroscope components off to different nodes.
+      The charm needs this integration to work.
+  grafana-dashboard:
+    optional: true
+    interface: grafana_dashboard
+    description: |
+      Forwards the built-in grafana dashboard(s) for monitoring Pyroscope.
+  metrics-endpoint:
+    optional: true
+    interface: prometheus_scrape
+    description: |
+      Exposes the Prometheus metrics endpoint providing telemetry about the
+      Pyroscope instance.
+  send-datasource:
+    optional: true
+    interface: grafana_datasource_exchange
+    description: |
+      Integration to share with other COS components this charm's datasources, and receive theirs.
 
 requires:
-
+  s3:
+    interface: s3
+    limit: 1
+    description: |
+      Obtains access to the s3 bucket for data storage. The charm needs this integration to work.
+  charm-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Integration to send charm traces to a tracing backend.
+    limit: 1
+  workload-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Integration to enable Pyroscope to send its workload traces to a tracing backend.
+    limit: 1
+  logging:
+    optional: true
+    interface: loki_push_api
+    description: |
+      Integration with Loki to push Pyroscope logs to the observability stack.
+  certificates:
+    optional: true
+    interface: tls-certificates
+    limit: 1
+    description: |
+      Certificate and key files for securing Pyroscope internal and external
+      communications with TLS.
+  catalogue:
+    optional: true
+    interface: catalogue
+    description: |
+      Integration to help users discover Pyroscope's UI.
 
 storage:
   data:
     type: filesystem
     location: /pyroscope-data
-
-actions:
 
 
 peers:
@@ -54,10 +115,6 @@ parts:
     plugin: uv
     build-packages: [git] # handy for git+ dependencies during development
     build-snaps: [astral-uv]
-    override-build: |
-      craftctl default
-      git describe --always > $CRAFT_PART_INSTALL/version
-
-config:
-  options:
+    # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
+    # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
 

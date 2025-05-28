@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Pyroscope workload configuration and client."""
+
+from typing import Dict, Optional, Set, Tuple
+from coordinated_workers.coordinator import Coordinator
+import yaml
+import pyroscope_config
+
+class Pyroscope:
+    """Class representing the Pyroscope client workload configuration."""
+    # this is the single source of truth for which ports are opened and configured
+    # in the distributed Pyroscope deployment
+    memberlist_port = 7946
+    http_server_port = 4040
+    # default grpc listen port is 9095, but that conflicts with promtail.
+    grpc_server_port = 9096
+          
+
+    def config(
+        self,
+        coordinator: Coordinator,
+    ) -> str:
+        """Generate the Pyroscope configuration."""
+        addrs = coordinator.cluster.gather_addresses()
+        addrs_by_role = coordinator.cluster.gather_addresses_by_role()
+        config = pyroscope_config.PyroscopeConfig(
+            server= self._build_server_config(),
+            ingester=self._build_ingester_config(addrs_by_role),
+            store_gateway=self._build_store_gateway_config(addrs_by_role),
+            memberlist=self._build_memberlist_config(addrs),
+            s3_storage_backend=self._build_s3_storage_config(coordinator._s3_config)
+        )
+        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
+
+    def _build_server_config(self):
+        return pyroscope_config.Server(
+            http_listen_port=self.http_server_port,
+            grpc_listen_port=self.grpc_server_port,
+        )
+
+    def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
+        ingester_addresses = roles_addresses.get(pyroscope_config.PyroscopeRole.ingester)
+        return pyroscope_config.Ingester(
+            lifecycler=pyroscope_config.Lifecycler(
+                ring=pyroscope_config.Ring(
+                    replication_factor= 3 if ingester_addresses and len(ingester_addresses) >= 3 else 1,
+                    kvstore=pyroscope_config.Kvstore(
+                        store="memberlist",
+                    )
+                )
+            )
+        )
+    
+    def _build_store_gateway_config(self, roles_addresses: Dict[str, Set[str]]):
+        store_gw_addresses = roles_addresses.get(pyroscope_config.PyroscopeRole.store_gateway)
+        return pyroscope_config.StoreGateway(
+            sharding_ring=pyroscope_config.ShardingRing(
+                replication_factor= 3 if store_gw_addresses and len(store_gw_addresses) >= 3 else 1,
+            )
+        )
+
+    def _build_memberlist_config(self, worker_peers: Optional[Tuple[str, ...]]):
+        return pyroscope_config.Memberlist(
+            bind_port=self.memberlist_port,
+            join_members=([f"{peer}:{self.memberlist_port}" for peer in worker_peers] if worker_peers else []),
+        )
+
+    def _build_s3_storage_config(self, s3_config: dict):
+        return pyroscope_config.S3Storage(
+            **s3_config
+        )
