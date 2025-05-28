@@ -140,13 +140,16 @@ def test_s3_storage_config(context, state_with_s3_and_workers):
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
         expected_config = {
-            "access_key": "key",
-            "bucket": "pyroscope",
-            "endpoint": "1.2.3.4:9000",
-            "secret_key": "soverysecret",
-            "insecure": True,
+            "backend": "s3",
+            "s3": {
+                "access_key_id": "key",
+                "bucket_name": "pyroscope",
+                "endpoint": "1.2.3.4:9000",
+                "secret_access_key": "soverysecret",
+                "insecure": True,
+            }
         }
-        # THEN s3_storage_backend config portion is generated
-        assert "s3_storage_backend" in actual_config_dict
+        # THEN storage config portion is generated
+        assert "storage" in actual_config_dict
         # AND this config contains the s3 config as upstream defines it
-        assert actual_config_dict["s3_storage_backend"] == expected_config
+        assert actual_config_dict["storage"] == expected_config

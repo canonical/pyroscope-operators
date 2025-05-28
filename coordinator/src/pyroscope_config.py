@@ -6,7 +6,7 @@
 from enum import StrEnum, unique
 from typing import List, Optional
 from coordinated_workers.coordinator import ClusterRolesConfig
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 
 @unique
 class PyroscopeRole(StrEnum):
@@ -86,8 +86,8 @@ class Kvstore(BaseModel):
 class Ring(BaseModel):
     """Ring schema."""
 
-    kvstore: Optional[Kvstore] = None
-    replication_factor: int
+    kvstore: Kvstore
+    replication_factor: Optional[int] = None
     
 
 class Lifecycler(BaseModel):
@@ -97,6 +97,10 @@ class Lifecycler(BaseModel):
 class ShardingRing(BaseModel):
     """ShardingRing schema."""
     replication_factor: int
+
+class ShardingRingCompactor(BaseModel):
+    """Compactor ShardingRing schema."""
+    kvstore: Kvstore
 
 class Server(BaseModel):
     """Server schema."""
@@ -119,21 +123,37 @@ class Memberlist(BaseModel):
 
 class S3Storage(BaseModel):
     """S3 Storage schema"""
-    model_config = ConfigDict(populate_by_name=True)
-    """Pydantic config."""
-    # Use aliases to override keys in `coordinator::_s3_config`
-    # to align with upstream Pyroscope's configuration keys: `bucket`, `access_key`, `secret_key`.
-    bucket_name: str = Field(alias="bucket")
+    bucket_name: str
     endpoint: str
+    access_key_id: str
+    secret_access_key: str
     region: Optional[str] = None
-    access_key_id: str = Field(alias="access_key")
-    secret_access_key: str = Field(alias="secret_key")
     insecure: bool = False 
+
+class Storage(BaseModel):
+    """Storage schema"""
+    backend: str
+    s3: S3Storage
+
+class Distributor(BaseModel):
+    """Distributor schema."""
+    ring: Ring
+
+class Compactor(BaseModel):
+    """Distributor schema."""
+    sharding_ring: ShardingRingCompactor
+
+class DB(BaseModel):
+    """Pyroscope DB schema."""
+    data_path: str
 
 class PyroscopeConfig(BaseModel):
     """PyroscopeConfig config schema."""
     server: Server
+    distributor: Distributor
     ingester: Ingester
     store_gateway: StoreGateway
     memberlist: Memberlist
-    s3_storage_backend: S3Storage
+    storage: Storage
+    compactor: Compactor
+    pyroscopedb: DB

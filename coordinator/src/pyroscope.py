@@ -11,6 +11,7 @@ import pyroscope_config
 
 class Pyroscope:
     """Class representing the Pyroscope client workload configuration."""
+    _data_path = "/pyroscope-data"
     # this is the single source of truth for which ports are opened and configured
     # in the distributed Pyroscope deployment
     memberlist_port = 7946
@@ -28,10 +29,13 @@ class Pyroscope:
         addrs_by_role = coordinator.cluster.gather_addresses_by_role()
         config = pyroscope_config.PyroscopeConfig(
             server= self._build_server_config(),
+            distributor=self._build_distributor_config(),
             ingester=self._build_ingester_config(addrs_by_role),
             store_gateway=self._build_store_gateway_config(addrs_by_role),
             memberlist=self._build_memberlist_config(addrs),
-            s3_storage_backend=self._build_s3_storage_config(coordinator._s3_config)
+            storage=self._build_storage_config(coordinator._s3_config),
+            compactor=self._build_compactor_config(),
+            pyroscopedb=self._build_pyroscope_db(),
         )
         return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
 
@@ -68,7 +72,29 @@ class Pyroscope:
             join_members=([f"{peer}:{self.memberlist_port}" for peer in worker_peers] if worker_peers else []),
         )
 
-    def _build_s3_storage_config(self, s3_config: dict):
-        return pyroscope_config.S3Storage(
-            **s3_config
+    def _build_storage_config(self, s3_config: dict):
+        return pyroscope_config.Storage(
+            backend="s3",
+            s3 = pyroscope_config.S3Storage(**s3_config)
         )
+
+    def _build_compactor_config(self):
+        return pyroscope_config.Compactor(
+            sharding_ring=pyroscope_config.ShardingRingCompactor(
+                kvstore=pyroscope_config.Kvstore(
+                    store="memberlist"
+                )
+            )
+        )
+
+    def _build_pyroscope_db(self):
+        return pyroscope_config.DB(data_path=self._data_path)
+    
+    def _build_distributor_config(self):
+        return pyroscope_config.Distributor(
+            ring=pyroscope_config.Ring(
+                kvstore=pyroscope_config.Kvstore(
+                        store="memberlist",
+                    )
+                )
+            )
