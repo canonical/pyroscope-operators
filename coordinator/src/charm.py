@@ -6,11 +6,11 @@
 
 import logging
 import socket
-from typing import Optional
+from typing import Optional, Set, Tuple
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig
 from ops.charm import CharmBase
-from pyroscope_config import PYROSCOPE_ROLES_CONFIG
+from pyroscope_config import PYROSCOPE_ROLES_CONFIG, PyroscopeRole
 from pyroscope import Pyroscope
 
 
@@ -49,8 +49,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 server_ports_to_locations={},
             ),
             workers_config=self.pyroscope.config,
+            worker_ports=self._get_worker_ports,
             # FIXME: add the rest of the optional config
-            # worker_ports, resources_requests, resources_limit_options, container_name
+            # resources_requests, resources_limit_options, container_name
             # catalogue_item, workload_tracing_protocols
         )
 
@@ -118,6 +119,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
         # If we do not have an ingress, then use the K8s service.
         return self._internal_url
 
+
+    
     ##################
     # EVENT HANDLERS #
     ##################
@@ -133,7 +136,23 @@ class PyroscopeCoordinatorCharm(CharmBase):
         # we need to 'remember' to run this logic as soon as we become ready, which is hard and error-prone
         pass
 
+    def _get_worker_ports(self,  role: str) -> Tuple[int, ...]:
+        """Determine, from the role of a worker, which ports it should open."""
+        ports:Set[int]= {
+            Pyroscope.memberlist_port,
+            # we need http_server_port because the metrics server runs on it.
+            Pyroscope.http_server_port,
+        }
 
+        tempo_role = PyroscopeRole(role)
+        if tempo_role in (PyroscopeRole.all, 
+                    PyroscopeRole.ingester,
+                    PyroscopeRole.query_frontend,
+                    PyroscopeRole.query_scheduler,
+                    PyroscopeRole.querier):
+            # these components use a grpc client to communicate with each other
+            ports.add(Pyroscope.grpc_server_port)
+        return tuple(ports)
 
 if __name__ == "__main__":  # pragma: nocover
     from ops import main
