@@ -49,7 +49,7 @@ def test_pebble_ready_plan(ctx, pyroscope_container, roles):
         },
     }
 
-    # GIVEN a pyroscope-cluster with a dummy worker config
+    # GIVEN a pyroscope-cluster with a placeholder worker config
     state =set_roles(
             State(
                 containers=[pyroscope_container],

@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - track/**
+  push:
+    branches:
+      - main
+      - track/**
 
 jobs:
     pack-charms:
@@ -63,7 +67,7 @@ jobs:
                 echo "suites=$list" >> "$GITHUB_OUTPUT"
 
     solution-test:
-        name: Solution Tests (parallel) (${{ matrix.mode }} | ${{ matrix.suite }})
+        name: Solution Tests (${{ matrix.mode }} | ${{ matrix.suite }})
         runs-on: ubuntu-latest
         needs: [pack-charms, solution-matrix]
         strategy:
@@ -125,5 +129,4 @@ jobs:
                     echo "Unknown mode: ${{ matrix.mode }}"
                     exit 1
                 fi
-                
                 uvx tox -e solution -- -k "${{ matrix.suite }}"
