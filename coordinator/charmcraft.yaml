@@ -94,12 +94,6 @@ requires:
     description: |
       Integration to help users discover Pyroscope's UI.
 
-storage:
-  data:
-    type: filesystem
-    location: /pyroscope-data
-
-
 peers:
   peers:
     interface: pyroscope_peers

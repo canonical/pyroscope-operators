@@ -65,7 +65,6 @@ def test_server_config(context, state_with_s3_and_workers):
         actual_config_dict = yaml.safe_load(actual_config)
         expected_config = {
             "http_listen_port": 4040,
-            "grpc_listen_port": 9096
         }
         # THEN server config portion is generated
         assert "server" in actual_config_dict
