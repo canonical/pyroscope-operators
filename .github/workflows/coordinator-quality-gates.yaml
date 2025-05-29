@@ -19,3 +19,5 @@ jobs:
     secrets: inherit
     with:
       charm-path: coordinator
+    concurrency:
+      group: coordinator-quality-gates-${{ github.ref }}

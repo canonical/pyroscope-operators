@@ -6,10 +6,6 @@ on:
       - main
       - track/**
 
-concurrency:
-  group: worker-pull-request-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   pull-request-worker:
     name: PR
@@ -17,3 +13,5 @@ jobs:
     secrets: inherit
     with:
       charm-path: worker
+    concurrency:
+      group: coordinator-pull-request-${{ github.ref }}

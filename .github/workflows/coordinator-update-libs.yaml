@@ -6,10 +6,6 @@ on:
   schedule:
     - cron: "0 0,4,8,12,16,20 * * *"
 
-concurrency:
-  group: coordinator-update-libs-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   update-lib-coordinator:
     name: Check libraries
@@ -17,3 +13,5 @@ jobs:
     secrets: inherit
     with:
       charm-path: coordinator
+    concurrency:
+      group: coordinator-update-libs-${{ github.ref }}

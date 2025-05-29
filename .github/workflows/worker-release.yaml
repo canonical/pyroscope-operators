@@ -6,10 +6,6 @@ on:
       - main
       - track/**
 
-concurrency:
-  group: worker-release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   release-worker:
     uses: canonical/observability/.github/workflows/charm-release.yaml@v1
@@ -17,3 +13,5 @@ jobs:
     with:
       charm-path: worker
       git-tag-prefix: worker-
+    concurrency:
+      group: worker-release-${{ github.ref }}
