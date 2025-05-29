@@ -42,7 +42,6 @@ class PyroscopeWorkerCharm(CharmBase):
         pass
 
 
-
 if __name__ == "__main__":  # pragma: nocover
     from ops import main
 

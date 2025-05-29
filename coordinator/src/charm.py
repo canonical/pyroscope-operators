@@ -92,6 +92,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         """Return the URI scheme that should be used when communicating with this unit."""
         scheme = "http"
         # FIXME: add a check for are_certificates_on_disk
+
         return scheme
     
     @property
