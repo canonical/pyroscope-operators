@@ -1,4 +1,4 @@
-name: Auto-update Charm Libraries
+name: Auto-update worker Charm Libraries
 on:
   # Manual trigger
   workflow_dispatch:
@@ -7,12 +7,6 @@ on:
     - cron: "0 0,4,8,12,16,20 * * *"
 
 jobs:
-  update-lib-coordinator:
-    name: Check libraries
-    uses: canonical/observability/.github/workflows/charm-update-libs.yaml@v1
-    secrets: inherit
-    with:
-      charm-path: coordinator
   update-lib-worker:
     name: Check libraries
     uses: canonical/observability/.github/workflows/charm-update-libs.yaml@v1

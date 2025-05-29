@@ -1,4 +1,4 @@
-name: Pull Requests
+name: Worker Pull Requests
 
 on:
   pull_request:
@@ -7,12 +7,6 @@ on:
       - track/**
 
 jobs:
-  pull-request-coordinator:
-    name: PR
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
-    secrets: inherit
-    with:
-      charm-path: coordinator
   pull-request-worker:
     name: PR
     uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1

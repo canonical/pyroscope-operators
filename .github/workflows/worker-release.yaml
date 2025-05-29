@@ -1,0 +1,15 @@
+name: Release Worker Charm to Edge and Publish Libraries
+
+on:
+  push:
+    branches:
+      - main
+      - track/**
+
+jobs:
+  release-worker:
+    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
+    secrets: inherit
+    with:
+      charm-path: worker
+      git-tag-prefix: worker-

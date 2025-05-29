@@ -1,4 +1,4 @@
-name: Quality Gates
+name: Coordinator Quality Gates
 
 on:
   # Manual trigger
@@ -15,9 +15,3 @@ jobs:
     secrets: inherit
     with:
       charm-path: coordinator
-  quality-gates-worker:
-    name: Run quality gates
-    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1
-    secrets: inherit
-    with:
-      charm-path: worker
