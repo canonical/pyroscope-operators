@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: worker-update-libs-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   update-lib-worker:

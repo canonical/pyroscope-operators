@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: worker-pull-request-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   pull-request-worker:

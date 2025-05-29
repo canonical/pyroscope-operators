@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: worker-quality-gates-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   quality-gates-worker:
