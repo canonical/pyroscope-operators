@@ -14,4 +14,4 @@ jobs:
     with:
       charm-path: coordinator
     concurrency:
-      group: coordinator-update-libs-${{ github.ref }}
+      group: update-libs-${{ github.ref }}

@@ -14,4 +14,4 @@ jobs:
       charm-path: coordinator
       git-tag-prefix: coordinator-
     concurrency:
-      group: coordinator-release-${{ github.ref }}
+      group: release-${{ github.ref }}

@@ -14,4 +14,4 @@ jobs:
       charm-path: worker
       git-tag-prefix: worker-
     concurrency:
-      group: worker-release-${{ github.ref }}
+      group: release-${{ github.ref }}

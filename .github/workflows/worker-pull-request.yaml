@@ -14,4 +14,4 @@ jobs:
     with:
       charm-path: worker
     concurrency:
-      group: worker-pull-request-${{ github.ref }}
+      group: pull-request-${{ github.ref }}
