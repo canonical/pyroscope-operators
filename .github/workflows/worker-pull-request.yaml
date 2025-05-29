@@ -6,6 +6,10 @@ on:
       - main
       - track/**
 
+concurrency:
+  group: worker-pull-request-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pull-request-worker:
     name: PR

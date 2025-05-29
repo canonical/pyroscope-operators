@@ -8,6 +8,10 @@ on:
   # schedule:
   #   - cron: "0 0 * * Tue"
 
+concurrency:
+  group: worker-quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality-gates-worker:
     name: Run quality gates

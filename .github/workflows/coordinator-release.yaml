@@ -6,6 +6,10 @@ on:
       - main
       - track/**
 
+concurrency:
+  group: coordinator-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release-coordinator:
     uses: canonical/observability/.github/workflows/charm-release.yaml@v1
