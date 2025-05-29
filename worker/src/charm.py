@@ -5,8 +5,7 @@
 """Charmed Operator for Pyroscope; a lightweight object storage based profiling backend."""
 
 import logging
-
-import ops
+from ops.charm import CharmBase
 
 
 logger = logging.getLogger(__name__)
