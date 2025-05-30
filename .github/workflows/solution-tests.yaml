@@ -70,16 +70,18 @@ jobs:
             .gitignore
             .github/**
 
-      - name: Determine Test Matrix
+      - name: Determine test modes matrix
         id: set-matrix
         run: |
           modes=()
           if [[ "${{ steps.root-changed-files.outputs.any_modified }}" == "true" || \
               ( "${{ steps.coord-changed-files.outputs.any_modified }}" == "true" && "${{ steps.worker-changed-files.outputs.any_modified }}" == "true" ) ]]; then
             modes+=("local-both")
-          elif [[ "${{ steps.coord-changed-files.outputs.any_modified }}" == "true" ]]; then
+          fi
+          if [[ "${{ steps.coord-changed-files.outputs.any_modified }}" == "true" ]]; then
             modes+=("local-coordinator")
-          elif [[ "${{ steps.worker-changed-files.outputs.any_modified }}" == "true" ]]; then
+          fi
+          if [[ "${{ steps.worker-changed-files.outputs.any_modified }}" == "true" ]]; then
             modes+=("local-worker")
           fi
           # convert to JSON array
@@ -88,7 +90,7 @@ jobs:
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   pack-charms:
-      name: Pack the coordinator & worker charms
+      name: Pack The Coordinator & Worker Charms
       needs: [modes-matrix]
       if: ${{ needs.modes-matrix.outputs.modes != '[]' }}
       runs-on: ubuntu-latest
@@ -129,7 +131,7 @@ jobs:
             path: worker/*.charm
 
   solution-matrix:
-      name: Define Solution tests matrix
+      name: Define Solution Tests Matrix
       runs-on: ubuntu-latest
       needs: [pack-charms]
       outputs:
