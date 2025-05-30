@@ -8,9 +8,9 @@ from helpers import deploy_monolithic_cluster, PYROSCOPE_APP, S3_APP
 
 @pytest.mark.setup
 def test_deploy_pyroscope(juju: Juju, coordinator_charm):
-    url, channel, reosurces = coordinator_charm
+    url, channel, resources = coordinator_charm
     juju.deploy(
-        url, PYROSCOPE_APP, channel=channel, resources=reosurces, trust=True
+        url, PYROSCOPE_APP, channel=channel, resources=resources, trust=True
     )
 
     # coordinator will be blocked because of missing s3 and workers integration
