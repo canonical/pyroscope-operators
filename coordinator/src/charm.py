@@ -143,15 +143,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
             # we need http_server_port because the metrics server runs on it.
             Pyroscope.http_server_port,
         }
-
-        tempo_role = PyroscopeRole(role)
-        if tempo_role in (PyroscopeRole.all, 
-                    PyroscopeRole.ingester,
-                    PyroscopeRole.query_frontend,
-                    PyroscopeRole.query_scheduler,
-                    PyroscopeRole.querier):
-            # these components use a grpc client to communicate with each other
-            ports.add(Pyroscope.grpc_server_port)
         return tuple(ports)
 
 if __name__ == "__main__":  # pragma: nocover

@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 name: pyroscope-worker-k8s
 type: charm
+title: Pyroscope Charmed Operator worker node
 
 assumes:
   - k8s-api
@@ -14,10 +15,18 @@ summary: |
   Pyroscope is a distributed profiling backend by Grafana.
 
 containers:
-
+  pyroscope:
+    resource: pyroscope-image
+    mounts:
+      - storage: data
+        location: /pyroscope-data
 
 resources:
-
+  pyroscope-image:
+    type: oci-image
+    description: OCI image for Grafana Pyroscope
+    # FIXME: use pyroscope rock
+    upstream-source: grafana/pyroscope:1.13.4
 
 links:
   documentation: https://discourse.charmhub.io/t/pyroscope-worker-k8s-docs-index/15419
@@ -25,25 +34,15 @@ links:
   source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/worker
   issues: https://github.com/canonical/pyroscope-k8s-operator/issues
 
-provides:
-
-
 requires:
-
+  pyroscope-cluster:
+    interface: pyroscope_cluster
+    optional: false
+    limit: 1
 
 storage:
   data:
     type: filesystem
-    location: /pyroscope-data
-
-actions:
-
-
-peers:
-  peers:
-    interface: pyroscope_peers
-    description: |
-      peer relation for internal coordination
 
 platforms:
   ubuntu@24.04:amd64:
@@ -54,10 +53,101 @@ parts:
     plugin: uv
     build-packages: [git] # handy for git+ dependencies during development
     build-snaps: [astral-uv]
-    override-build: |
-      craftctl default
-      git describe --always > $CRAFT_PART_INSTALL/version
+    # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
+    # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
+
+    # override-build: |
+    #   craftctl default
+    #   git describe --always > $CRAFT_PART_INSTALL/version
 
 config:
   options:
+    role-all:
+      type: boolean
+      default: true
+      description: |
+        Configure the application to run with all roles enabled. This is the default configuration. 
+        This is a meta-role that configures the application to enable all other roles.
+             
+        If you want to configure this app to run with a role other than `all`, remember to set `all` to `false`.
+        
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
 
+    role-querier:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-query-frontend:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-query-scheduler:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-ingester:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-distributor:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+  
+
+    role-compactor:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-store-gateway:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.

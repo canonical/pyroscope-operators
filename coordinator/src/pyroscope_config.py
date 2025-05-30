@@ -107,7 +107,6 @@ class ShardingRingCompactor(BaseModel):
 class Server(BaseModel):
     """Server schema."""
     http_listen_port: int
-    grpc_listen_port: int
 
 
 class Ingester(BaseModel):

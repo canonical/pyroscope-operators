@@ -16,8 +16,6 @@ class Pyroscope:
     # in the distributed Pyroscope deployment
     memberlist_port = 7946
     http_server_port = 4040
-    # default grpc listen port is 9095, but that conflicts with promtail.
-    grpc_server_port = 9096
           
 
     def config(
@@ -42,7 +40,6 @@ class Pyroscope:
     def _build_server_config(self):
         return pyroscope_config.Server(
             http_listen_port=self.http_server_port,
-            grpc_listen_port=self.grpc_server_port,
         )
 
     def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
