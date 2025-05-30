@@ -7,8 +7,7 @@ requires-python = ">=3.12"
 
 dependencies = [
     "ops",
-    # FIXME: use coordinated-workers from Pypi
-    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@guard-container-stop"
+    "coordinated-workers"
 ]
 
 [project.optional-dependencies]

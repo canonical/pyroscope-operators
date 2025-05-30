@@ -100,7 +100,7 @@ wheels = [
 [[package]]
 name = "coordinated-workers"
 version = "0.0.2"
-source = { git = "https://github.com/canonical/cos-coordinated-workers?rev=guard-container-stop#487541c88e0beebbed5ca9730faf5c36a18ea36d" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cosl" },
     { name = "crossplane" },
@@ -109,6 +109,10 @@ dependencies = [
     { name = "lightkube" },
     { name = "ops" },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/56/70/fdc2cc77b3cac1b87124a9e78af8aed3d4015a187918a28d7129368bc064/coordinated_workers-0.0.2.tar.gz", hash = "sha256:0f7717a27e5e58bfe5b9bfca1883ea5c70a9ddfbad5ae09813696c1e4733d952", size = 155533, upload_time = "2025-05-30T09:06:04.36Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8c/73/e63826aeb4b839021a17ea9b16bb269aa4590ad3f4535263ae99ca5ada10/coordinated_workers-0.0.2-py3-none-any.whl", hash = "sha256:ed2381b1b4faf4db11f053de7def10dfd28ca3be626bd40ad11ce0a81fd6534d", size = 44303, upload_time = "2025-05-30T09:06:02.761Z" },
 ]
 
 [[package]]
@@ -530,7 +534,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "coordinated-workers", git = "https://github.com/canonical/cos-coordinated-workers?rev=guard-container-stop" },
+    { name = "coordinated-workers" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "ops" },
