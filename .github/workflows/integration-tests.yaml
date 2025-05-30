@@ -1,4 +1,4 @@
-name: Solution Tests
+name: Integration Tests
 
 on:
   pull_request:
@@ -69,6 +69,8 @@ jobs:
             icon.svg
             .gitignore
             .github/**
+            worker/**
+            coordinator/**
 
       - name: Determine test modes matrix
         id: set-matrix
@@ -130,8 +132,8 @@ jobs:
             name: worker-charms-tests
             path: worker/*.charm
 
-  solution-matrix:
-      name: Define Solution Tests Matrix
+  integration-matrix:
+      name: Define Integration Tests Matrix
       runs-on: ubuntu-latest
       needs: [pack-charms]
       outputs:
@@ -142,18 +144,18 @@ jobs:
         - name: Generate matrix list
           id: suites
           run: |
-              list="$(find tests/solution -name 'test_*.py' -printf '%f\n' | jq -r -ncR '[inputs]')"
+              list="$(find tests/integration -name 'test_*.py' -printf '%f\n' | jq -r -ncR '[inputs]')"
               echo "suites=$list"
               echo "suites=$list" >> "$GITHUB_OUTPUT"
 
-  solution-test:
-      name: Solution Tests (${{ matrix.mode }} | ${{ matrix.suite }})
+  integration-test:
+      name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }})
       runs-on: ubuntu-latest
-      needs: [modes-matrix, pack-charms, solution-matrix]
+      needs: [modes-matrix, pack-charms, integration-matrix]
       strategy:
           fail-fast: false
           matrix:
-              suite: ${{ fromJSON(needs.solution-matrix.outputs.suites) }}
+              suite: ${{ fromJSON(needs.integration-matrix.outputs.suites) }}
               # Run the solution-level integration tests in the following deployment modes.
               mode: ${{ fromJson(needs.modes-matrix.outputs.modes) }}
       env:
@@ -179,7 +181,7 @@ jobs:
             with:
               name: worker-charms-tests
               path: ./worker
-          - name: Run solution tests
+          - name: Run integration tests
             run: |
               coord_relative_path="$(find ./coordinator -maxdepth 1 -name '*.charm' | tail -n1)"
               worker_relative_path="$(find ./worker -maxdepth 1 -name '*.charm' | tail -n1)"
@@ -203,4 +205,4 @@ jobs:
                   echo "Unknown mode: ${{ matrix.mode }}"
                   exit 1
               fi
-              uvx tox -e solution -- -k "${{ matrix.suite }}"
+              uvx tox -e integration -- -k "${{ matrix.suite }}"

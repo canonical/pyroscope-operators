@@ -4,7 +4,7 @@ import logging
 
 from pytest import fixture
 
-from tests.solution.helpers import charm_and_channel_and_resources
+from tests.integration.helpers import charm_and_channel_and_resources
 
 
 logger = logging.getLogger(__name__)
