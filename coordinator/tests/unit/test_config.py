@@ -177,9 +177,9 @@ def test_base_url_config_without_ingress(context, state_with_s3_and_workers):
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
         expected_config = {}
-        # THEN storage config portion is generated
-        assert "storage" in actual_config_dict
-        # AND this config contains the s3 config as upstream defines it
+        # THEN api config portion is generated
+        assert "api" in actual_config_dict
+        # AND this config doesn't contain the base-url
         assert actual_config_dict["api"] == expected_config
 
 def test_base_url_config_with_ingress_on_subdomain(context, state_with_ingress_subdomain):
@@ -188,9 +188,9 @@ def test_base_url_config_with_ingress_on_subdomain(context, state_with_ingress_s
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
         expected_config = {}
-        # THEN storage config portion is generated
-        assert "storage" in actual_config_dict
-        # AND this config contains the s3 config as upstream defines it
+        # THEN api config portion is generated
+        assert "api" in actual_config_dict
+        # AND this config doesn't contain the base-url
         assert actual_config_dict["api"] == expected_config
 
 def test_base_url_config_with_ingress_on_subpath(context, state_with_ingress_subpath):
@@ -201,7 +201,7 @@ def test_base_url_config_with_ingress_on_subpath(context, state_with_ingress_sub
         expected_config = {
             "base-url": "/model-pyroscope-k8s"
         }
-        # THEN storage config portion is generated
-        assert "storage" in actual_config_dict
-        # AND this config contains the s3 config as upstream defines it
+        # THEN api config portion is generated
+        assert "api" in actual_config_dict
+        # AND this config contains the base-url used by pyroscope-UI to point at the right endpoints
         assert actual_config_dict["api"] == expected_config
