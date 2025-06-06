@@ -105,7 +105,7 @@ class Pyroscope:
             if base_url == "" or base_url == "/":
                 # we're behind ingress, but on a root path
                 return pyroscope_config.Api()
-            return pyroscope_config.Api(base_url=base_url)
+            return pyroscope_config.Api(base_url=base_url) # pyright: ignore[reportCallIssue]
         return pyroscope_config.Api()
 
     def _base_url(self, external_url):
