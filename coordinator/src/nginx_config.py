@@ -1,6 +1,6 @@
 # Copyright 2023 Canonical
 # See LICENSE file for licensing details.
-"""Nginx workload."""
+"""Coordinator Nginx workload configuration utils."""
 
 import logging
 from typing import Dict, List
