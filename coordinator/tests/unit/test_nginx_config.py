@@ -1,62 +1,35 @@
-from contextlib import contextmanager
-from unittest.mock import MagicMock, PropertyMock, patch
-
 import pytest
-from coordinated_workers.nginx import NginxConfig
 
-from nginx_config import (
-    NginxHelper,
-)
-
-
-@contextmanager
-def mock_ipv6(enable: bool):
-    with patch("coordinated_workers.nginx.is_ipv6_enabled", MagicMock(return_value=enable)):
-        yield
-
-
-@pytest.fixture(scope="module")
-def nginx_config():
-    def _nginx_config(tls=False, ipv6=True):
-        with mock_ipv6(ipv6):
-            with patch.object(NginxHelper, "_tls_available", new=PropertyMock(return_value=tls)):
-                nginx_helper = NginxHelper(MagicMock())
-                return NginxConfig(server_name="localhost",
-                                    upstream_configs=nginx_helper.upstreams(),
-                                    server_ports_to_locations=nginx_helper.server_ports_to_locations())
-    return _nginx_config
+import nginx_config
 
 
 @pytest.mark.parametrize(
-    "addresses_by_role",
+    "port",
     [
-        ({"ingester": ["address.one"]}),
-        ({"ingester": ["address.one", "address.two"]}),
-        ({"ingester": ["address.one", "address.two", "address.three"]}),
+        4040,
+        4209,
     ],
 )
-def test_upstreams_config(nginx_config, addresses_by_role):
-    upstreams_config = nginx_config(tls=False).get_config(addresses_by_role, False)
-    # assert read upstream block
-    addresses = [address for address_list in addresses_by_role.values() for address in address_list]
-    for role in addresses_by_role.keys():
-        assert f"upstream {role}" in upstreams_config
-    for addr in addresses:
-        assert f"server {addr}:{4040}" in upstreams_config
-    for addr in addresses:
-        assert f"server {addr}:{4040}" in upstreams_config
+def test_upstreams_contain_correct_port(port):
+    # GIVEN a port number
+
+    # WHEN upstreams configuration is generated
+    upstream_config = nginx_config.upstreams(port)
+
+    # THEN it contains the correct port
+    for upstream in upstream_config:
+        assert upstream.port == port
 
 @pytest.mark.parametrize("tls", (True, False))
-@pytest.mark.parametrize("ipv6", (True, False))
-def test_servers_config(ipv6, tls, nginx_config):
+def test_servers_config(tls):
+    # GIVEN information if tls is enabled
 
-    server_config = nginx_config(tls=tls, ipv6=ipv6).get_config(
-        {"ingester": ["address.one"]}, tls
-    )
-    ipv4_args = "443 ssl" if tls else f"{8080}"
-    assert f"listen {ipv4_args}" in  server_config
-    ipv6_args = "[::]:443 ssl" if tls else f"[::]:{8080}"
-    if ipv6:
-        assert f"listen {ipv6_args}" in server_config
-    else:
-        assert f"listen {ipv6_args}" not in server_config
+    # WHEN a mapping of server ports is generated
+    server_ports_to_locations = nginx_config.server_ports_to_locations(tls_available=tls)
+
+    # THEN the locations are mapped to the right port
+    assert server_ports_to_locations[nginx_config._nginx_tls_port if tls else nginx_config._nginx_port]
+
+    # AND THEN the other port isn't in the configuration
+    assert server_ports_to_locations.get(nginx_config._nginx_port if tls else nginx_config._nginx_tls_port) is None
+

@@ -11,11 +11,11 @@ from urllib.parse import urlparse
 
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import NginxConfig
+from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
 from ops.charm import CharmBase
 from ops.model import ModelError
 
-from nginx_config import NginxHelper
+import nginx_config
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
 
@@ -31,7 +31,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self._nginx_prometheus_exporter_container = self.unit.get_container(
             "nginx-prometheus-exporter"
         )
-        self._nginx_helper = NginxHelper(self._nginx_container)
         self.ingress = IngressPerAppRequirer(
             charm=self,
             port=urlparse(self._internal_url).port,
@@ -59,8 +58,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
             },
             nginx_config=NginxConfig(
                 server_name=self.hostname,
-                upstream_configs=self._nginx_helper.upstreams(),
-                server_ports_to_locations=self._nginx_helper.server_ports_to_locations(),
+                upstream_configs=nginx_config.upstreams(Pyroscope.http_server_port),
+                server_ports_to_locations=nginx_config.server_ports_to_locations(tls_available=self._are_certificates_on_disk),
                 enable_status_page=True,
             ),
             workers_config=self.pyroscope.config,
@@ -144,7 +143,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
         # If we do not have an ingress, then use the K8s service.
         return self._internal_url
 
-
+    @property
+    def _are_certificates_on_disk(self) -> bool:
+        return (
+            self._nginx_container.can_connect()
+            and self._nginx_container.exists(CERT_PATH)
+            and self._nginx_container.exists(KEY_PATH)
+            and self._nginx_container.exists(CA_CERT_PATH)
+        )
     
     ##################
     # EVENT HANDLERS #
