@@ -9,7 +9,7 @@ import socket
 from typing import Optional, Set, Tuple
 from urllib.parse import urlparse
 
-from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
+from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
 from ops.charm import CharmBase
@@ -75,8 +75,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
         ######################################
         # === EVENT HANDLER REGISTRATION === #
         ######################################
-        self.framework.observe(self.ingress.on.ready, self._on_ingress_ready)
-        self.framework.observe(self.ingress.on.revoked, self._on_ingress_revoked)
 
 
     ######################
@@ -155,16 +153,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
     ##################
     # EVENT HANDLERS #
     ##################
-
-    def _on_ingress_ready(self, event: IngressPerAppReadyEvent):
-        """Log the obtained ingress address.
-        """
-        logger.info("Ingress for app ready on '%s'", event.url)
-
-    def _on_ingress_revoked(self, _) -> None:
-        """Log the ingress address being revoked.
-        """
-        logger.info("Ingress for app revoked")
 
     ###################
     # UTILITY METHODS #
