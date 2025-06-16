@@ -1,4 +1,8 @@
 
+#!/usr/bin/env python3
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import jubilant
 import pytest
 from jubilant import Juju, all_blocked
