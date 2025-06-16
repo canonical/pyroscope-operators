@@ -97,7 +97,7 @@ def test_query_logs(juju: Juju):
             assert False, f"Request to Loki failed for app '{app}': {e}"
 
 @pytest.mark.teardown
-async def test_teardown(juju: Juju):
+def test_teardown(juju: Juju):
     for worker_name in ALL_WORKERS:
         juju.remove_application(worker_name)
     juju.remove_application(PYROSCOPE_APP)
