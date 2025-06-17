@@ -41,7 +41,15 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.tracing = Tracing(
             self,
             tracing_relation_name='charm-tracing',
-            ca_relation_name='receive-ca-cert',
+            # TODO: uncomment when adding TLS support
+            #  ca_relation_name='receive-ca-cert'
+            #  Then also add to charmcraft.yaml something like:
+            #    receive-ca-cert:
+            #     optional: true
+            #     interface: certificate_transfer
+            #     limit: 1
+            #     description: |
+            #       CA cert for encrypting traces emitted by this charm and its workload.
         )
         self.pyroscope = Pyroscope()
         self.coordinator = Coordinator(
