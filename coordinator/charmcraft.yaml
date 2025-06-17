@@ -88,6 +88,12 @@ requires:
     description: |
       Certificate and key files for securing Pyroscope internal and external
       communications with TLS.
+  receive-ca-cert:
+    optional: true
+    interface: certificate_transfer
+    limit: 1
+    description: |
+      CA cert for encrypting traces emitted by this charm and its workload.
   catalogue:
     optional: true
     interface: catalogue

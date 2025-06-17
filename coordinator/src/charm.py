@@ -9,11 +9,13 @@ import socket
 from typing import Optional, Set, Tuple
 from urllib.parse import urlparse
 
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
 from ops.charm import CharmBase
 from ops.model import ModelError
+from ops_tracing import Tracing
 
 import nginx_config
 from pyroscope import Pyroscope
@@ -37,12 +39,17 @@ class PyroscopeCoordinatorCharm(CharmBase):
             strip_prefix=True,
             scheme=lambda: urlparse(self._internal_url).scheme,
         )
+        self.tracing = Tracing(
+            self,
+            tracing_relation_name='charm-tracing',
+            ca_relation_name='receive-ca-cert',
+        )
         self.pyroscope = Pyroscope()
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
             external_url=self._most_external_url,
-            worker_metrics_port=self.pyroscope.http_server_port,
+            worker_metrics_port=Pyroscope.http_server_port,
             endpoints={
                 "certificates": "certificates",
                 "cluster": "pyroscope-cluster",
