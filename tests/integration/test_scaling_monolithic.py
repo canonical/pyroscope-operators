@@ -7,7 +7,7 @@ import jubilant
 import pytest
 from jubilant import Juju, all_blocked
 
-from helpers import deploy_monolithic_cluster, PYROSCOPE_APP, S3_APP
+from helpers import deploy_monolithic_cluster, PYROSCOPE_APP, S3_APP, get_unit_ip_address, emit_profile, get_profiles_patiently
 
 
 @pytest.mark.setup
@@ -23,7 +23,6 @@ def test_deploy_pyroscope(juju: Juju, coordinator_charm):
         timeout=1000
     )
 
-
 def test_scale_pyroscope_up_stays_blocked(juju: Juju):
     juju.cli("add-unit", PYROSCOPE_APP, "-n", "1")
     juju.wait(
@@ -36,6 +35,21 @@ def test_scale_pyroscope_up_stays_blocked(juju: Juju):
 def test_pyroscope_active_when_deploy_s3_and_workers(juju: Juju):
     deploy_monolithic_cluster(juju, coordinator_deployed_as=PYROSCOPE_APP)
 
+
+def test_ingest_profiles(juju: Juju):
+    # GIVEN a pyroscope cluster
+    # WHEN we emit a profile through Pyroscope's HTTP API server
+    address = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
+    # THEN we get a successful 2xx response
+    assert emit_profile(address)
+
+def test_query_profiles(juju: Juju):
+    # GIVEN a pyroscope cluster
+    # WHEN we query profiles through Pyroscope's HTTP API server
+    address = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
+    # THEN we get a successful 2xx response
+    # AND we a non-empty list of samples
+    assert get_profiles_patiently(address)
 
 @pytest.mark.teardown
 def test_pyroscope_blocks_if_s3_goes_away(juju: Juju):

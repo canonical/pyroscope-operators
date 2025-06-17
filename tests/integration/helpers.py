@@ -1,17 +1,20 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import requests
 import logging
+from tenacity import retry, stop_after_attempt, wait_fixed
 import yaml
 from pathlib import Path
 import os
 import subprocess
 from minio import Minio
 
-from typing import Literal, Sequence, Union
+from typing import Literal, Optional, Sequence, Union
 from pytest_jubilant import pack_charm
 from jubilant import Juju
 import jubilant
 from coordinator.src.pyroscope_config import PyroscopeRole
+from coordinator.src.nginx_config import _nginx_port
 
 # Application names used uniformly across the tests
 ACCESS_KEY = "accesskey"
@@ -24,6 +27,7 @@ PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
 ALL_ROLES = [role.value for role in PyroscopeRole.all_nonmeta()]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
+SAMPLE_PROFILE_DATA = "foo;bar 100"
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +174,50 @@ def get_ingress_proxied_hostname(juju: Juju):
             f"Ingressed hostname is not present in {TRAEFIK_APP} status message."
         )
     return status_msg.replace("Serving at", "").strip()
+
+def emit_profile(
+        address,
+        service_name: Optional[str] = "profilegen"
+    ):
+    """Emit profiling data to a Pyroscope backend using a simple `Text` format."""
+    endpoint = f"http://{address}:{_nginx_port}/ingest"
+    params = {
+        "name": service_name,
+    }
+    try:
+        response = requests.post(endpoint, params=params, data=SAMPLE_PROFILE_DATA)
+        assert response.ok, f"Expected 2xx, got {response.status_code}: {response.text}"
+        return response.ok
+    # network-related issues
+    except requests.exceptions.RequestException as e:
+        assert False, f"Unexpected error: {e}"
+
+def get_profiles(    
+    address,
+    service_name: Optional[str] = "profilegen" 
+):
+    """Query the Pyroscope backend for profiles with the service_name label."""
+    endpoint = f"http://{address}:{_nginx_port}/pyroscope/render"
+    params = {
+        "query": f'process_cpu:cpu:nanoseconds:cpu:nanoseconds{{service_name="{service_name}"}}',
+        "from": "now-1h"
+    }
+    try:
+        response = requests.get(endpoint, params=params)
+        assert response.ok, f"Expected 2xx, got {response.status_code}: {response.text}"
+        samples = response.json()["timeline"]["samples"]
+        assert any(samples), "No samples found"
+        return samples
+    # network-related issues
+    except requests.exceptions.RequestException as e:
+        assert False, f"Unexpected error: {e}"
+
+# retry up to 5 times, waiting 4 seconds between attempts
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(4))
+def get_profiles_patiently(
+    address,
+    service_name: Optional[str] = "profilegen" 
+):
+    logger.info(f"polling {address} for service {service_name!r} profiles...")
+    return get_profiles(address, service_name)
+
