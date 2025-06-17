@@ -1,5 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import requests
 import logging
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -164,16 +165,12 @@ def _deploy_and_configure_minio(juju: Juju):
     task = juju.run(S3_APP + "/0", "sync-s3-credentials", params=keys)
     assert task.status == "completed"
 
-def get_ingress_proxied_hostname(juju: Juju):
-    status = juju.status()
-    status_msg = status.apps[TRAEFIK_APP].app_status.message
+def get_ingress_proxied_endpoint(juju: Juju):
+    result = juju.run(f"{TRAEFIK_APP}/0", "show-proxied-endpoints")
+    endpoints = json.loads(result.results["proxied-endpoints"])
+    assert PYROSCOPE_APP in endpoints
+    return endpoints[PYROSCOPE_APP]["url"]
 
-    # hacky way to get ingress hostname, but it's the safest one.
-    if "Serving at" not in status_msg:
-        raise RuntimeError(
-            f"Ingressed hostname is not present in {TRAEFIK_APP} status message."
-        )
-    return status_msg.replace("Serving at", "").strip()
 
 def emit_profile(
         address,

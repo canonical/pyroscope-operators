@@ -13,7 +13,7 @@ from helpers import (
     WORKER_APP,
     deploy_monolithic_cluster,
     TRAEFIK_APP,
-    get_ingress_proxied_hostname,
+    get_ingress_proxied_endpoint,
     emit_profile,
     get_profiles_patiently,
 )
@@ -53,14 +53,14 @@ def test_relate_ingress(juju: Juju):
 def test_ingest_profiles(juju: Juju):
     # GIVEN a pyroscope cluster
     # WHEN we emit a profile through Pyroscope's ingressed URL
-    address = get_ingress_proxied_hostname(juju)
+    address = get_ingress_proxied_endpoint(juju)
     # THEN we get a successful 2xx response
     assert emit_profile(address)
 
 def test_query_profiles(juju: Juju):
     # GIVEN a pyroscope cluster
     # WHEN we query profiles through Pyroscope's ingressed URL
-    address = get_ingress_proxied_hostname(juju)
+    address = get_ingress_proxied_endpoint(juju)
     # THEN we get a successful 2xx response
     # AND we a non-empty list of samples
     assert get_profiles_patiently(address)
