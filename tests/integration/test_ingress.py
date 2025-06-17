@@ -53,17 +53,17 @@ def test_relate_ingress(juju: Juju):
 def test_ingest_profiles(juju: Juju):
     # GIVEN a pyroscope cluster
     # WHEN we emit a profile through Pyroscope's ingressed URL
-    address = get_ingress_proxied_endpoint(juju)
+    ingress_url = get_ingress_proxied_endpoint(juju)
     # THEN we get a successful 2xx response
-    assert emit_profile(address)
+    assert emit_profile(ingress_url)
 
 def test_query_profiles(juju: Juju):
     # GIVEN a pyroscope cluster
     # WHEN we query profiles through Pyroscope's ingressed URL
-    address = get_ingress_proxied_endpoint(juju)
+    ingress_url = get_ingress_proxied_endpoint(juju)
     # THEN we get a successful 2xx response
     # AND we a non-empty list of samples
-    assert get_profiles_patiently(address)
+    assert get_profiles_patiently(ingress_url)
 
 
 @pytest.mark.teardown

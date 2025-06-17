@@ -15,7 +15,6 @@ from pytest_jubilant import pack_charm
 from jubilant import Juju
 import jubilant
 from coordinator.src.pyroscope_config import PyroscopeRole
-from coordinator.src.nginx_config import _nginx_port
 
 # Application names used uniformly across the tests
 ACCESS_KEY = "accesskey"
@@ -173,11 +172,13 @@ def get_ingress_proxied_endpoint(juju: Juju):
 
 
 def emit_profile(
-        address,
+        address:str,
         service_name: Optional[str] = "profilegen"
     ):
     """Emit profiling data to a Pyroscope backend using a simple `Text` format."""
-    endpoint = f"http://{address}:{_nginx_port}/ingest"
+    scheme = "" if address.startswith("http") else "http://"
+    base_url = f"{scheme}{address}"
+    endpoint = f"{base_url}/ingest"
     params = {
         "name": service_name,
     }
@@ -194,7 +195,9 @@ def get_profiles(
     service_name: Optional[str] = "profilegen" 
 ):
     """Query the Pyroscope backend for profiles with the service_name label."""
-    endpoint = f"http://{address}:{_nginx_port}/pyroscope/render"
+    scheme = "" if address.startswith("http") else "http://"
+    base_url = f"{scheme}{address}"
+    endpoint = f"{base_url}/pyroscope/render"
     params = {
         "query": f'process_cpu:cpu:nanoseconds:cpu:nanoseconds{{service_name="{service_name}"}}',
         "from": "now-1h"
