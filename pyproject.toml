@@ -14,6 +14,7 @@ dev = [
     "minio",
     "requests",
     "coordinated-workers",
+    "tenacity",
 ]
 
 
