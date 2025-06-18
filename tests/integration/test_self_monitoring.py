@@ -49,7 +49,7 @@ def test_relate_self_monitoring_stack(juju: Juju):
         error=any_error,
         timeout=2000,
         delay=5,
-        successes=3,
+        successes=12,
     )
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
