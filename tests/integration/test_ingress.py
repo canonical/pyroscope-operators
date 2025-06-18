@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-from pathlib import Path
 
 import jubilant
 import pytest
