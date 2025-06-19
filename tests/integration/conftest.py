@@ -172,12 +172,12 @@ def _deploy_and_configure_minio(juju: Juju):
     task = juju.run(S3_APP + "/0", "sync-s3-credentials", params=keys)
     assert task.status == "completed"
 
-def _setup_tls(juju: Juju, monlithic: bool):
+def _setup_tls(juju: Juju, monolithic: bool):
     """Deploy a certificates provider app and relate it to an existing pyroscope cluster."""
     juju.deploy("self-signed-certificates", SSC_APP)
     juju.integrate(PYROSCOPE_APP + ":certificates", SSC_APP + ":certificates")
 
-    workers = ALL_WORKERS if not monlithic else (WORKER_APP, )
+    workers = ALL_WORKERS if not monolithic else (WORKER_APP, )
     juju.wait(
         lambda status: jubilant.all_active(status, PYROSCOPE_APP, *workers, SSC_APP),
         timeout=2000,
@@ -185,11 +185,11 @@ def _setup_tls(juju: Juju, monlithic: bool):
         successes=3,
     )
 
-def _teardown_tls(juju: Juju, monlithic: bool):
+def _teardown_tls(juju: Juju, monolithic: bool):
     """Remove a certificates provider app."""
     juju.remove_application(SSC_APP)
 
-    workers = ALL_WORKERS if not monlithic else (WORKER_APP, )
+    workers = ALL_WORKERS if not monolithic else (WORKER_APP, )
     juju.wait(
         lambda status: jubilant.all_active(status, PYROSCOPE_APP, *workers),
         timeout=2000,
@@ -197,10 +197,10 @@ def _teardown_tls(juju: Juju, monlithic: bool):
         successes=3,
     )
     
-def _remove_pyroscope_cluster(juju: Juju, monlithic: bool):
+def _remove_pyroscope_cluster(juju: Juju, monolithic: bool):
     """Remove a monolithic or distributed pyroscope cluster."""
     juju.remove_application(PYROSCOPE_APP)
-    workers = ALL_WORKERS if not monlithic else (WORKER_APP, )
+    workers = ALL_WORKERS if not monolithic else (WORKER_APP, )
     for worker in workers:
         juju.remove_application(worker)   
 

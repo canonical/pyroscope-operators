@@ -9,7 +9,7 @@ import pytest
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from conftest import ALL_WORKERS, PYROSCOPE_APP
+from conftest import ALL_WORKERS, PYROSCOPE_APP, WORKER_APP
 from helpers import get_unit_ip_address
 
 PROMETHEUS_APP="prometheus"
@@ -64,13 +64,15 @@ def test_self_monitoring_metrics_ingestion(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_self_monitoring_logs_ingestion(juju: Juju):
+def test_self_monitoring_logs_ingestion(juju: Juju, monolithic):
     # GIVEN a pyroscope cluster integrated with loki over logging
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query the logs for each worker
     # Use query_range for a longer default time interval
     url = f"http://{address}:3100/loki/api/v1/query_range"
-    for app in ALL_WORKERS:
+    workers = (WORKER_APP, ) if monolithic else ALL_WORKERS
+
+    for app in workers:
         query = f'{{juju_application="{app}"}}'
         params = {"query": query}
         # THEN we should get a successful response and at least one result
