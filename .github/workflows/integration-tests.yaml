@@ -222,4 +222,4 @@ jobs:
                   echo "Unknown mode: ${{ matrix.mode }}"
                   exit 1
               fi
-              uvx tox -e integration -- -k "${{ matrix.suite }}" "${{ matrix.params }}"
+              uvx tox -e integration -- -k "${{ matrix.suite }}" ${{ matrix.params }}
