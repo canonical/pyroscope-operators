@@ -164,7 +164,7 @@ jobs:
             echo "params=$list" >> "$GITHUB_OUTPUT"
 
   integration-test:
-      name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }})
+      name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }} | ${{ matrix.params }})
       runs-on: ubuntu-latest
       needs: [modes-matrix, pack-charms, integration-matrix]
       strategy:
