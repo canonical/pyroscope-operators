@@ -3,6 +3,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import pytest
 import jubilant
 from jubilant import Juju, all_blocked
 
@@ -44,7 +45,8 @@ def test_profiles_ingestion_fails(juju: Juju):
     # WHEN we emit a profile through Pyroscope's HTTP API server
     hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     # THEN we're unable to emit profiles
-    assert not emit_profile(f"{hostname}:{_nginx_port}")
+    with pytest.raises(AssertionError):
+        emit_profile(f"{hostname}:{_nginx_port}")
 
 def test_profiles_query_fails(juju: Juju):
     # GIVEN a pyroscope cluster with no s3 integrator and no workers
@@ -52,5 +54,6 @@ def test_profiles_query_fails(juju: Juju):
     hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     # THEN we fail to query any profile
     # AND we get an empty list of samples
-    assert not get_profiles_patiently(f"{hostname}:{_nginx_port}")
+    with pytest.raises(AssertionError):
+        get_profiles_patiently(f"{hostname}:{_nginx_port}")
 
