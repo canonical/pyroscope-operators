@@ -11,6 +11,7 @@ from typing import Literal, Sequence, Union
 from pytest_jubilant import pack_charm
 from jubilant import Juju
 import jubilant
+from coordinator.src.pyroscope_config import PyroscopeRole
 
 # Application names used uniformly across the tests
 ACCESS_KEY = "accesskey"
@@ -21,6 +22,8 @@ S3_APP = "s3-integrator"
 WORKER_APP = "pyroscope-worker"
 PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
+ALL_ROLES = [role.value for role in PyroscopeRole.all_nonmeta()]
+ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +62,26 @@ def charm_and_channel_and_resources(role: Literal["coordinator", "worker"], char
         return pth, None, _get_resources(pth.parent / role)
     raise subprocess.CalledProcessError
 
+def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], coordinator_deployed_as=None):
+    """Deploy a pyroscope distributed cluster."""
+    worker_charm_url, channel, resources = charm_and_channel_and_resources("worker", "WORKER_CHARM_PATH", "WORKER_CHARM_CHANNEL")
+
+    all_workers = []
+
+    for role in roles:
+        worker_name = f"{WORKER_APP}-{role}"
+        all_workers.append(worker_name)
+
+        juju.deploy(
+            worker_charm_url,
+            app=worker_name,
+            channel=channel,
+            trust=True,
+            config={"role-all": False, f"role-{role}": True},
+            resources=resources,
+        )
+
+    _deploy_cluster(juju, all_workers, coordinator_deployed_as=coordinator_deployed_as)
 
 def deploy_monolithic_cluster(juju: Juju, coordinator_deployed_as=None):
     """Deploy a pyroscope-monolithic cluster."""
