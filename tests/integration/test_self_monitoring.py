@@ -102,7 +102,7 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     response = requests.get(url)
     tags = response.json()['tagValues']
     # THEN we can find each pyroscope charm has sent some charm traces
-    for app in (PYROSCOPE_APP, ): # todo: add *ALL_WORKERS
+    for app in (PYROSCOPE_APP, *ALL_WORKERS):
         assert app in tags
 
 
