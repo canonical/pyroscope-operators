@@ -38,7 +38,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             strip_prefix=True,
             scheme=lambda: urlparse(self._internal_url).scheme,
         )
-        self.tracing = Tracing(
+        self.charm_tracing = Tracing(
             self,
             tracing_relation_name='charm-tracing',
             # TODO: uncomment when adding TLS support
