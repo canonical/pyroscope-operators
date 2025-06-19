@@ -51,7 +51,7 @@ def get_profiles(
         assert response.ok, f"Expected 2xx, got {response.status_code}: {response.text}"
         samples = response.json()["timeline"]["samples"]
         assert any(samples), "No samples found"
-        return samples
+        return any(samples)
     # network-related issues
     except requests.exceptions.RequestException as e:
         assert False, f"Unexpected error: {e}"
