@@ -4,7 +4,6 @@ import logging
 
 from jubilant import Juju
 from pytest import fixture
-import pytest
 
 from tests.integration.helpers import get_unit_ip_address
 from pathlib import Path

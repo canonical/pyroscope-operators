@@ -1,4 +1,2 @@
 --tls=true --monolithic=true
---tls=false --monolithic=true
---tls=true --monolithic=false
 --tls=false --monolithic=false

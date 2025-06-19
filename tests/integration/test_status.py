@@ -29,21 +29,11 @@ def test_scale_pyroscope_up_stays_blocked(juju: Juju):
         timeout=1000
     )
 
-def test_no_ingest_profiles(juju: Juju):
+def test_profiles_ingestion_fails(juju: Juju):
     # GIVEN a pyroscope cluster with no s3 integrator
     # WHEN we emit a profile through Pyroscope's HTTP API server
     hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
-    # THEN we're unable to emit profiles
-    assert not emit_profile(f"{hostname}:{_nginx_port}")
-
-def test_no_query_profiles(juju: Juju):
-    # GIVEN a pyroscope cluster with no s3 integrator
-    # WHEN we query profiles through Pyroscope's HTTP API server
-    hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
+    emit_profile(f"{hostname}:{_nginx_port}")
     # THEN we fail to query any profile
     # AND we get an empty list of samples
     assert not get_profiles_patiently(f"{hostname}:{_nginx_port}")
-
-
-
-
