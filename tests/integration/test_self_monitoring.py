@@ -9,7 +9,8 @@ import pytest
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from helpers import deploy_distributed_cluster, ALL_WORKERS, PYROSCOPE_APP, ALL_ROLES, get_unit_ip_address
+from conftest import ALL_WORKERS, PYROSCOPE_APP
+from helpers import get_unit_ip_address
 
 PROMETHEUS_APP="prometheus"
 LOKI_APP="loki"
@@ -17,15 +18,8 @@ LOKI_APP="loki"
 logger = logging.getLogger(__name__)
 
 @pytest.mark.setup
-def test_deploy_distributed_pyroscope(juju: Juju):
-    # GIVEN an empty model
-    # WHEN we deploy a pyroscope cluster with distributed workers
-    # THEN the coordinator, s3 integrator, and all workers are in active/idle state
-    deploy_distributed_cluster(juju, ALL_ROLES)
-
-@pytest.mark.setup
 def test_deploy_self_monitoring_stack(juju: Juju):
-    # GIVEN a model
+    # GIVEN a model with pyroscope cluster
     # WHEN we deploy a monitoring stack
     juju.deploy("prometheus-k8s", app=PROMETHEUS_APP, channel="edge", trust=True)
     juju.deploy("loki-k8s", app=LOKI_APP, channel="edge", trust=True)
@@ -101,9 +95,3 @@ def test_teardown_self_monitoring_stack(juju: Juju):
         delay=5,
         successes=3,
     )
-
-@pytest.mark.teardown
-def test_teardown_pyroscope(juju: Juju):
-    for worker_name in ALL_WORKERS:
-        juju.remove_application(worker_name)
-    juju.remove_application(PYROSCOPE_APP)
