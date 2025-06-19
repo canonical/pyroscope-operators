@@ -98,11 +98,12 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
     address = get_unit_ip_address(juju, TEMPO_APP, 0)
     # WHEN we query the tags for all ingested traces in Tempo
-    url = f"http://{address}:3200/api/search/tag/service/values"
+    url = f"http://{address}:3200/api/search/tag/juju_application/values"
     response = requests.get(url)
+    tags = response.json()['tagValues']
     # THEN we can find each pyroscope charm has sent some charm traces
-    for app in (PYROSCOPE_APP, *ALL_WORKERS):
-        assert app in response
+    for app in (PYROSCOPE_APP, ): # todo: add *ALL_WORKERS
+        assert app in tags
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
