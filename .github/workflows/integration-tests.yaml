@@ -138,6 +138,7 @@ jobs:
       needs: [pack-charms]
       outputs:
           suites: ${{ steps.suites.outputs.suites }}
+          params: ${{ steps.params.outputs.params }}
       steps:
         - name: Checkout
           uses: actions/checkout@v4
@@ -147,6 +148,20 @@ jobs:
               list="$(find tests/integration -name 'test_*.py' -printf '%f\n' | jq -r -ncR '[inputs]')"
               echo "suites=$list"
               echo "suites=$list" >> "$GITHUB_OUTPUT"
+        - name: Obtain param list
+          id: params
+          run: |            
+            # TODO: handle if not exists
+                      
+            # params.txt contains additional sets of pytest options, for example:
+            #  --tls=true --monolithic=true
+            #  --tls=false --monolithic=true
+            #  --tls=true --monolithic=false
+            #  --tls=false --monolithic=false
+            
+            echo "params=$(cat tests/integration/params.txt)"
+            echo "params=$params"
+            echo "params=$params" >> "$GITHUB_OUTPUT"
 
   integration-test:
       name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }})
@@ -156,8 +171,10 @@ jobs:
           fail-fast: false
           matrix:
               suite: ${{ fromJSON(needs.integration-matrix.outputs.suites) }}
+              params: ${{ fromJSON(needs.integration-matrix.outputs.params) }}
               # Run the solution-level integration tests in the following deployment modes.
               mode: ${{ fromJson(needs.modes-matrix.outputs.modes) }}
+              
       env:
           CONCIERGE_JUJU_CHANNEL: 3.6/stable
           CONCIERGE_MICROK8S_CHANNEL: 1.32-strict/stable
@@ -205,4 +222,4 @@ jobs:
                   echo "Unknown mode: ${{ matrix.mode }}"
                   exit 1
               fi
-              uvx tox -e integration -- -k "${{ matrix.suite }}"
+              uvx tox -e integration -- -k "${{ matrix.suite }}" "${{ matrix.params }}"
