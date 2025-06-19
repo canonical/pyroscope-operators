@@ -14,6 +14,7 @@ from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
 from ops.charm import CharmBase
 from ops.model import ModelError
+from ops_tracing import Tracing
 
 import nginx_config
 from pyroscope import Pyroscope
@@ -37,12 +38,25 @@ class PyroscopeCoordinatorCharm(CharmBase):
             strip_prefix=True,
             scheme=lambda: urlparse(self._internal_url).scheme,
         )
+        self.charm_tracing = Tracing(
+            self,
+            tracing_relation_name='charm-tracing',
+            # TODO: uncomment when adding TLS support
+            #  ca_relation_name='receive-ca-cert'
+            #  Then also add to charmcraft.yaml something like:
+            #    receive-ca-cert:
+            #     optional: true
+            #     interface: certificate_transfer
+            #     limit: 1
+            #     description: |
+            #       CA cert for encrypting traces emitted by this charm and its workload.
+        )
         self.pyroscope = Pyroscope()
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
             external_url=self._most_external_url,
-            worker_metrics_port=self.pyroscope.http_server_port,
+            worker_metrics_port=Pyroscope.http_server_port,
             endpoints={
                 "certificates": "certificates",
                 "cluster": "pyroscope-cluster",

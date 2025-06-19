@@ -1,14 +1,8 @@
 import json
 import pytest
-from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing_disabled
 from unittest.mock import MagicMock, patch
 from charm import PyroscopeCoordinatorCharm
 from ops.testing import Context, Relation, Container
-
-@pytest.fixture(autouse=True, scope="session")
-def disable_charm_tracing():
-    with charm_tracing_disabled():
-        yield
 
 @pytest.fixture()
 def coordinator():
