@@ -159,9 +159,9 @@ jobs:
             #  --tls=true --monolithic=false
             #  --tls=false --monolithic=false
             
-            echo "params=$(cat tests/integration/params.txt)"
-            echo "params=$params"
-            echo "params=$params" >> "$GITHUB_OUTPUT"
+            list="$(jq -R -s -c 'split("\n") | map(select(length > 0))' tests/integration/params.txt)"
+            echo "params=$list"
+            echo "params=$list" >> "$GITHUB_OUTPUT"
 
   integration-test:
       name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }})
