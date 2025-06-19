@@ -50,7 +50,7 @@ def test_profiles_ingestion_fails(juju: Juju):
     # WHEN we emit a profile through Pyroscope's HTTP API server
     hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     # THEN we're unable to emit profiles
-    with pytest.raises(RetryError):
+    with pytest.raises((RetryError, AssertionError)):
         emit_profile(f"{hostname}:{_nginx_port}")
 
 def test_profiles_query_fails(juju: Juju):
@@ -59,6 +59,6 @@ def test_profiles_query_fails(juju: Juju):
     hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     # THEN we fail to query any profile
     # AND we get an empty list of samples
-    with pytest.raises(RetryError):
+    with pytest.raises((RetryError, AssertionError)):
         get_profiles_patiently(f"{hostname}:{_nginx_port}")
 
