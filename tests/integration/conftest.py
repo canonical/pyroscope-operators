@@ -226,15 +226,15 @@ def monolithic(pytestconfig):
 
 @fixture(scope="module", autouse=True)
 # @contextmanager
-def pyroscope_deployment(juju, tls, monolithic):
+def pyroscope_deployment(pytestconfig, juju, tls, monolithic):
     # setup
-    if not pytest.config.getoption('--no-setup'):
+    if not pytestconfig.getoption('--no-setup'):
         _deploy_monolithic_cluster(juju) if monolithic else  _deploy_distributed_cluster(juju, ALL_ROLES) 
         if tls:
             _setup_tls(juju, monolithic)
     yield
     # teardown
-    if not pytest.config.getoption('--no-teardown'):
+    if not pytestconfig.getoption('--no-teardown'):
         if tls:
             _teardown_tls(juju, monolithic)
         _remove_pyroscope_cluster(juju, monolithic)
