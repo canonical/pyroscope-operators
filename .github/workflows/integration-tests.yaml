@@ -151,15 +151,17 @@ jobs:
         - name: Obtain param list
           id: params
           run: |            
-            # TODO: handle if not exists
-                      
             # params.txt contains additional sets of pytest options, for example:
             #  --tls=true --monolithic=true
             #  --tls=false --monolithic=true
             #  --tls=true --monolithic=false
             #  --tls=false --monolithic=false
-            
-            list="$(jq -R -s -c 'split("\n") | map(select(length > 0))' tests/integration/params.txt)"
+
+            if [ -f tests/integration/params.txt ]; then
+              list="$(jq -scR 'split("\n")' tests/integration/params.txt)"
+            else
+              list='[]'
+            fi
             echo "params=$list"
             echo "params=$list" >> "$GITHUB_OUTPUT"
 

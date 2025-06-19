@@ -11,7 +11,6 @@ from jubilant import Juju
 
 from conftest import (
     PYROSCOPE_APP,
-    WORKER_APP,
 )
 from helpers import (
     emit_profile,
@@ -35,7 +34,7 @@ def _get_ingress_proxied_endpoint(juju: Juju):
     return endpoints[PYROSCOPE_APP]["url"]
 
 @pytest.mark.setup
-def test_deploy_and_relate_ingress(juju: Juju):
+def test_deploy_and_relate_ingress(juju: Juju, workers):
     # GIVEN a Pyroscope cluster
     # WHEN deploying traefik
     juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="edge", trust=True)
@@ -44,7 +43,7 @@ def test_deploy_and_relate_ingress(juju: Juju):
 
     # THEN the coordinator, worker, and traefik are all in active/idle state
     juju.wait(
-        lambda status: jubilant.all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        lambda status: jubilant.all_active(status, TRAEFIK_APP, PYROSCOPE_APP, *workers),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -65,7 +64,7 @@ def test_query_profiles(juju: Juju):
     assert get_profiles_patiently(ingress_url)
 
 @pytest.mark.teardown
-def test_remove_ingress(juju: Juju):
+def test_remove_ingress(juju: Juju, workers):
     # GIVEN a model with traefik and the tempo cluster integrated
     # WHEN we remove the ingress relation
     juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP + ":ingress")
@@ -74,7 +73,7 @@ def test_remove_ingress(juju: Juju):
 
     # THEN the coordinator and worker are in active/idle state
     juju.wait(
-        lambda status: jubilant.all_active(status, PYROSCOPE_APP, WORKER_APP),
+        lambda status: jubilant.all_active(status, PYROSCOPE_APP, *workers),
         error=jubilant.any_error,
         timeout=2000,
     )

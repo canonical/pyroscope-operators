@@ -8,7 +8,7 @@ from tenacity import RetryError
 import jubilant
 from jubilant import Juju, all_blocked
 
-from conftest import PYROSCOPE_APP, S3_APP, ALL_WORKERS, WORKER_APP
+from conftest import PYROSCOPE_APP, S3_APP
 from helpers import get_unit_ip_address, emit_profile, get_profiles_patiently
 from coordinator.src.nginx_config import _nginx_port
 
@@ -31,10 +31,9 @@ def test_scale_pyroscope_up_stays_blocked(juju: Juju):
         timeout=1000
     )
 
-def test_pyroscope_block_if_worker_relations_depart(juju: Juju, monolithic):
+def test_pyroscope_block_if_worker_relations_depart(juju: Juju, workers):
     # GIVEN a pyroscope cluster with no s3 integrator
     # WHEN pyroscope-cluster relation is removed from all workers
-    workers = (WORKER_APP, ) if monolithic else ALL_WORKERS
     for worker in workers:
         juju.remove_relation(worker, PYROSCOPE_APP)
     # THEN pyroscope coordinator and all workers stay in blocked state

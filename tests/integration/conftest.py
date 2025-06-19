@@ -223,6 +223,10 @@ def tls(pytestconfig):
 def monolithic(pytestconfig):
     return pytestconfig.getoption("monolithic") == "true"
 
+@fixture(scope="session")
+def workers(monolithic):
+    return (WORKER_APP, ) if monolithic else ALL_WORKERS
+
 @fixture(scope="module", autouse=True)
 # @contextmanager
 def pyroscope_deployment(pytestconfig, juju, tls, monolithic):

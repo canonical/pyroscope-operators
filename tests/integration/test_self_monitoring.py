@@ -9,7 +9,7 @@ import pytest
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from conftest import ALL_WORKERS, PYROSCOPE_APP, WORKER_APP
+from conftest import PYROSCOPE_APP
 from helpers import get_unit_ip_address
 
 PROMETHEUS_APP="prometheus"
@@ -31,7 +31,7 @@ def test_deploy_self_monitoring_stack(juju: Juju):
     )
 
 @pytest.mark.setup
-def test_relate_self_monitoring_stack(juju: Juju):
+def test_relate_self_monitoring_stack(juju: Juju, workers):
     # GIVEN a model with a pyroscope cluster, and a monitoring stack
     # WHEN we integrate the pyroscope cluster over self-monitoring relations
     juju.integrate(PYROSCOPE_APP + ":metrics-endpoint", PROMETHEUS_APP + ":metrics-endpoint")
@@ -39,7 +39,7 @@ def test_relate_self_monitoring_stack(juju: Juju):
 
     # THEN the coordinator, all workers, and the monitoring stack are all in active/idle state
     juju.wait(
-        lambda status: all_active(status, PROMETHEUS_APP, LOKI_APP, PYROSCOPE_APP, *ALL_WORKERS),
+        lambda status: all_active(status, PROMETHEUS_APP, LOKI_APP, PYROSCOPE_APP, *workers),
         error=any_error,
         timeout=2000,
         delay=5,
@@ -47,12 +47,12 @@ def test_relate_self_monitoring_stack(juju: Juju):
     )
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_self_monitoring_metrics_ingestion(juju: Juju):
+def test_self_monitoring_metrics_ingestion(juju: Juju, workers):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
     # WHEN we query the metrics for the coordinator and each of the workers
     url = f"http://{address}:9090/api/v1/query"
-    for app in (PYROSCOPE_APP, *ALL_WORKERS):
+    for app in (PYROSCOPE_APP, *workers):
         params = {"query": f"up{{juju_application='{app}'}}"}
         # THEN we should get a successful response and at least one result
         try:
@@ -64,13 +64,12 @@ def test_self_monitoring_metrics_ingestion(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_self_monitoring_logs_ingestion(juju: Juju, monolithic):
+def test_self_monitoring_logs_ingestion(juju: Juju, workers):
     # GIVEN a pyroscope cluster integrated with loki over logging
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query the logs for each worker
     # Use query_range for a longer default time interval
     url = f"http://{address}:3100/loki/api/v1/query_range"
-    workers = (WORKER_APP, ) if monolithic else ALL_WORKERS
 
     for app in workers:
         query = f'{{juju_application="{app}"}}'
@@ -85,13 +84,13 @@ def test_self_monitoring_logs_ingestion(juju: Juju, monolithic):
             assert False, f"Request to Loki failed for app '{app}': {e}"
 
 @pytest.mark.teardown
-def test_teardown_self_monitoring_stack(juju: Juju):
+def test_teardown_self_monitoring_stack(juju: Juju, workers):
     # GIVEN a pyroscope cluster with self-monitoring relations
     # WHEN we remove the self-monitoring stack
     juju.remove_application(PROMETHEUS_APP)
     # THEN the coordinato and all workers in active/idle state
     juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
+        lambda status: all_active(status, PYROSCOPE_APP, *workers),
         error=any_error,
         timeout=2000,
         delay=5,
