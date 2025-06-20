@@ -37,12 +37,12 @@ def test_deploy_distributed_pyroscope(juju: Juju):
 def test_deploy_self_monitoring_stack(juju: Juju):
     # GIVEN a model
     # WHEN we deploy a monitoring stack
-    juju.deploy("prometheus-k8s", app=PROMETHEUS_APP, channel="edge", trust=True)
-    juju.deploy("loki-k8s", app=LOKI_APP, channel="edge", trust=True)
+    juju.deploy("prometheus-k8s", app=PROMETHEUS_APP, channel="1/stable", trust=True)
+    juju.deploy("loki-k8s", app=LOKI_APP, channel="1/stable", trust=True)
 
     # tracing
-    juju.deploy("tempo-coordinator-k8s", app=TEMPO_APP, channel="edge", trust=True)
-    juju.deploy("tempo-worker-k8s", app=TEMPO_WORKER_APP, channel="edge", trust=True)
+    juju.deploy("tempo-coordinator-k8s", app=TEMPO_APP, channel="1/stable", trust=True)
+    juju.deploy("tempo-worker-k8s", app=TEMPO_WORKER_APP, channel="1/stable", trust=True)
     juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
 
     # deploys the s3 integrator and creates the bucket on the s3 backend
