@@ -99,20 +99,16 @@ wheels = [
 
 [[package]]
 name = "coordinated-workers"
-version = "0.0.4"
-source = { registry = "https://pypi.org/simple" }
+version = "0.1.0"
+source = { git = "ssh://git@github.com/canonical/cos-coordinated-workers?rev=feat%2Fcharm-tracing-with-ops-tracing#4f8f99be4e72fead68486fcb1d098554fc64578f" }
 dependencies = [
     { name = "cosl" },
     { name = "crossplane" },
     { name = "cryptography" },
     { name = "jsonschema" },
     { name = "lightkube" },
-    { name = "ops" },
+    { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/33/9d/59dde6b693fd9a5443c6a2df11b8c34ae934f59c5a81fc5e4d3985b90dd3/coordinated_workers-0.0.4.tar.gz", hash = "sha256:bd87a2c073d35ea273646ea5ca9eeb1f681fff077042e4432d4a5835b5b87d6b", size = 156810, upload-time = "2025-06-05T16:39:02.437Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/52/582661bc16d809d1ffa0675da71bedd2a7c511dfcd92e9551f97ed88a23e/coordinated_workers-0.0.4-py3-none-any.whl", hash = "sha256:fc3867929407acd7eec07e5fa6d522a952a38f4b5e5cca06bd8e648e6c93817c", size = 44708, upload-time = "2025-06-05T16:39:00.907Z" },
 ]
 
 [[package]]
@@ -576,7 +572,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "coordinated-workers" },
+    { name = "coordinated-workers", git = "ssh://git@github.com/canonical/cos-coordinated-workers?rev=feat%2Fcharm-tracing-with-ops-tracing" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },

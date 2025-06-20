@@ -7,7 +7,8 @@ requires-python = ">=3.12"
 
 dependencies = [
     "ops[tracing]",
-    "coordinated-workers"
+    # TODO: unpin when merged
+    "coordinated-workers @ git+ssh://git@github.com/canonical/cos-coordinated-workers@feat/charm-tracing-with-ops-tracing"
 ]
 
 [project.optional-dependencies]
