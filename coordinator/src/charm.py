@@ -39,7 +39,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             strip_prefix=True,
             scheme=lambda: urlparse(self._internal_url).scheme,
         )
-        self.pyroscope = Pyroscope()
+        self.pyroscope = Pyroscope(self.app_hostname)
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
@@ -90,7 +90,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return socket.getfqdn()
 
     @property
-    def service_hostname(self) -> str:
+    def app_hostname(self) -> str:
         """The FQDN of the k8s service associated with this application.
 
         This service load balances traffic across all application units.
