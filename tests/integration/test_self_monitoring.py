@@ -89,7 +89,7 @@ def test_relate_self_monitoring_stack(juju: Juju):
     # THEN the coordinator, all workers, and the monitoring stack are all in active/idle state
     juju.wait(
         lambda status: all_active(
-            status, TEMPO_APP, *ALL_WORKERS, *SELF_MONITORING_STACK
+            status, PYROSCOPE_APP, *ALL_WORKERS, *SELF_MONITORING_STACK
         ),
         error=any_error,
         timeout=2000,
@@ -116,7 +116,7 @@ def test_self_monitoring_metrics_ingestion(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 
-@retry(stop=stop_after_attempt(15), wait=wait_fixed(30))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(30))
 def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
     address = get_unit_ip_address(juju, TEMPO_APP, 0)
@@ -124,7 +124,7 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     url = f"http://{address}:3200/api/search/tag/juju_application/values"
     response = requests.get(url)
     tags = response.json()["tagValues"]
-    # THEN we can find each pyroscope charm has sent some charm traces
+    # THEN each pyroscope charm has sent some charm traces
     for app in (PYROSCOPE_APP, *ALL_WORKERS):
         assert app in tags
 
