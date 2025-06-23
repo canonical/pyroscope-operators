@@ -27,7 +27,9 @@ def test_build_and_deploy(juju: Juju):
 
     # THEN the s3-integrator, coordinator, worker, and traefik are all in active/idle state
     juju.wait(
-        lambda status: jubilant.all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        lambda status: jubilant.all_active(
+            status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP
+        ),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -40,12 +42,12 @@ def test_relate_ingress(juju: Juju):
 
     # THEN the coordinator, worker, and traefik are all in active/idle state
     juju.wait(
-        lambda status: jubilant.all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        lambda status: jubilant.all_active(
+            status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP
+        ),
         error=jubilant.any_error,
         timeout=2000,
     )
-
-
 
 
 @pytest.mark.teardown

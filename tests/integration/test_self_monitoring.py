@@ -9,8 +9,14 @@ import requests
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from helpers import deploy_distributed_cluster, ALL_WORKERS, PYROSCOPE_APP, ALL_ROLES, get_unit_ip_address, \
-    deploy_s3
+from helpers import (
+    deploy_distributed_cluster,
+    ALL_WORKERS,
+    PYROSCOPE_APP,
+    ALL_ROLES,
+    get_unit_ip_address,
+    deploy_s3,
+)
 
 PROMETHEUS_APP = "prometheus"
 LOKI_APP = "loki"
@@ -22,8 +28,13 @@ TEMPO_S3_BUCKET = "tempo"
 logger = logging.getLogger(__name__)
 
 SELF_MONITORING_STACK = (
-PROMETHEUS_APP, LOKI_APP, TEMPO_WORKER_APP, TEMPO_APP, TEMPO_S3_APP
+    PROMETHEUS_APP,
+    LOKI_APP,
+    TEMPO_WORKER_APP,
+    TEMPO_APP,
+    TEMPO_S3_APP,
 )
+
 
 @pytest.mark.setup
 def test_deploy_distributed_pyroscope(juju: Juju):
@@ -37,12 +48,20 @@ def test_deploy_distributed_pyroscope(juju: Juju):
 def test_deploy_self_monitoring_stack(juju: Juju):
     # GIVEN a model
     # WHEN we deploy a monitoring stack
-    juju.deploy("prometheus-k8s", app=PROMETHEUS_APP, channel="1/stable", trust=True)
+    juju.deploy(
+        "prometheus-k8s",
+        app=PROMETHEUS_APP,
+        channel="1/stable",
+        trust=True,
+        revision=247,  # what's on 1/stable as of 23/06/2025
+    )
     juju.deploy("loki-k8s", app=LOKI_APP, channel="1/stable", trust=True)
 
     # tracing
     juju.deploy("tempo-coordinator-k8s", app=TEMPO_APP, channel="1/stable", trust=True)
-    juju.deploy("tempo-worker-k8s", app=TEMPO_WORKER_APP, channel="1/stable", trust=True)
+    juju.deploy(
+        "tempo-worker-k8s", app=TEMPO_WORKER_APP, channel="1/stable", trust=True
+    )
     juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
 
     # deploys the s3 integrator and creates the bucket on the s3 backend
@@ -61,13 +80,17 @@ def test_deploy_self_monitoring_stack(juju: Juju):
 def test_relate_self_monitoring_stack(juju: Juju):
     # GIVEN a model with a pyroscope cluster, and a monitoring stack
     # WHEN we integrate the pyroscope cluster over self-monitoring relations
-    juju.integrate(PYROSCOPE_APP + ":metrics-endpoint", PROMETHEUS_APP + ":metrics-endpoint")
+    juju.integrate(
+        PYROSCOPE_APP + ":metrics-endpoint", PROMETHEUS_APP + ":metrics-endpoint"
+    )
     juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
     juju.integrate(PYROSCOPE_APP + ":charm-tracing", TEMPO_APP + ":tracing")
 
     # THEN the coordinator, all workers, and the monitoring stack are all in active/idle state
     juju.wait(
-        lambda status: all_active(status, TEMPO_APP, *ALL_WORKERS, *SELF_MONITORING_STACK),
+        lambda status: all_active(
+            status, TEMPO_APP, *ALL_WORKERS, *SELF_MONITORING_STACK
+        ),
         error=any_error,
         timeout=2000,
         delay=5,
@@ -100,7 +123,7 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     # WHEN we query the tags for all ingested traces in Tempo
     url = f"http://{address}:3200/api/search/tag/juju_application/values"
     response = requests.get(url)
-    tags = response.json()['tagValues']
+    tags = response.json()["tagValues"]
     # THEN we can find each pyroscope charm has sent some charm traces
     for app in (PYROSCOPE_APP, *ALL_WORKERS):
         assert app in tags
