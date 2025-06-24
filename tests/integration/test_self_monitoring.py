@@ -80,8 +80,6 @@ def test_deploy_self_monitoring_stack(juju: Juju):
         successes=12,
     )
 
-    logger.info(f"current model status: \n {juju.cli("status")}")
-
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_self_monitoring_metrics_ingestion(juju: Juju):
@@ -111,6 +109,9 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     tags = response.json()["tagValues"]
     # THEN each pyroscope charm has sent some charm traces
     expected_apps = {PYROSCOPE_APP, *ALL_WORKERS}
+
+    logger.info(f"current model status: \n {juju.cli("status")}")
+
     for app in expected_apps:
         assert app in tags
 
