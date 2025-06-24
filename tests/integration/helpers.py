@@ -73,7 +73,7 @@ def charm_and_channel_and_resources(
 
 
 def deploy_distributed_cluster(
-    juju: Juju, roles: Sequence[str], coordinator_deployed_as=None
+    juju: Juju, roles: Sequence[str], coordinator_deployed_as=None, wait_for_idle=False
 ):
     """Deploy a pyroscope distributed cluster."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
@@ -95,10 +95,17 @@ def deploy_distributed_cluster(
             resources=resources,
         )
 
-    _deploy_cluster(juju, all_workers, coordinator_deployed_as=coordinator_deployed_as)
+    return _deploy_cluster(
+        juju,
+        all_workers,
+        coordinator_deployed_as=coordinator_deployed_as,
+        wait_for_idle=wait_for_idle,
+    )
 
 
-def deploy_monolithic_cluster(juju: Juju, coordinator_deployed_as=None):
+def deploy_monolithic_cluster(
+    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = False
+):
     """Deploy a pyroscope-monolithic cluster."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
         "worker", "WORKER_CHARM_PATH", "WORKER_CHARM_CHANNEL"
@@ -111,11 +118,19 @@ def deploy_monolithic_cluster(juju: Juju, coordinator_deployed_as=None):
         trust=True,
         resources=resources,
     )
-    _deploy_cluster(juju, [WORKER_APP], coordinator_deployed_as=coordinator_deployed_as)
+    return _deploy_cluster(
+        juju,
+        [WORKER_APP],
+        coordinator_deployed_as=coordinator_deployed_as,
+        wait_for_idle=wait_for_idle,
+    )
 
 
 def _deploy_cluster(
-    juju: Juju, workers: Sequence[str], coordinator_deployed_as: str = None
+    juju: Juju,
+    workers: Sequence[str],
+    coordinator_deployed_as: str = None,
+    wait_for_idle: bool = False,
 ):
     logger.info("deploying cluster")
 
@@ -144,13 +159,17 @@ def _deploy_cluster(
     deploy_s3(juju, bucket_name=BUCKET_NAME, s3_integrator_app=S3_APP)
     juju.integrate(coordinator_app + ":s3", S3_APP + ":s3-credentials")
 
-    logger.info("waiting for cluster to be active/idle...")
-    juju.wait(
-        lambda status: jubilant.all_active(status, coordinator_app, *workers, S3_APP),
-        timeout=2000,
-        delay=5,
-        successes=3,
-    )
+    if wait_for_idle:
+        logger.info("waiting for cluster to be active/idle...")
+        juju.wait(
+            lambda status: jubilant.all_active(
+                status, coordinator_app, *workers, S3_APP
+            ),
+            timeout=2000,
+            delay=5,
+            successes=3,
+        )
+    return [coordinator_app, *workers, S3_APP]
 
 
 def _get_resources(path: Union[str, Path]):

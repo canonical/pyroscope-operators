@@ -37,16 +37,12 @@ SELF_MONITORING_STACK = (
 
 
 @pytest.mark.setup
-def test_deploy_distributed_pyroscope(juju: Juju):
+def test_deploy_self_monitoring_stack(juju: Juju):
     # GIVEN an empty model
     # WHEN we deploy a pyroscope cluster with distributed workers
-    # THEN the coordinator, s3 integrator, and all workers are in active/idle state
-    deploy_distributed_cluster(juju, ALL_ROLES)
+    # don't allow it to block so we can deploy all asynchronously
+    pyro_apps = deploy_distributed_cluster(juju, ALL_ROLES, wait_for_idle=False)
 
-
-@pytest.mark.setup
-def test_deploy_self_monitoring_stack(juju: Juju):
-    # GIVEN a model
     # WHEN we deploy a monitoring stack
     juju.deploy(
         "prometheus-k8s",
@@ -68,9 +64,9 @@ def test_deploy_self_monitoring_stack(juju: Juju):
     deploy_s3(juju, bucket_name=TEMPO_S3_BUCKET, s3_integrator_app=TEMPO_S3_APP)
     juju.integrate(TEMPO_APP, TEMPO_S3_APP + ":s3-credentials")
 
-    # THEN the monitoring stack is in active/idle state
+    # THEN the pyroscope cluster and the self-monitoring stack get to active/idle
     juju.wait(
-        lambda status: all_active(status, *SELF_MONITORING_STACK),
+        lambda status: all_active(status, *SELF_MONITORING_STACK, *pyro_apps),
         error=any_error,
         timeout=3000,
     )
