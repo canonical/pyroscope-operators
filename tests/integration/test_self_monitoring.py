@@ -71,7 +71,6 @@ def test_deploy_self_monitoring_stack(juju: Juju):
     juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
     juju.integrate(PYROSCOPE_APP + ":charm-tracing", TEMPO_APP + ":tracing")
 
-
     # THEN the pyroscope cluster and the self-monitoring stack get to active/idle
     juju.wait(
         lambda status: all_active(status, *SELF_MONITORING_STACK, *pyro_apps),

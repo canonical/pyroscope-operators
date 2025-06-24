@@ -73,7 +73,10 @@ def charm_and_channel_and_resources(
 
 
 def deploy_distributed_cluster(
-    juju: Juju, roles: Sequence[str], coordinator_deployed_as=None, wait_for_idle:bool=True
+    juju: Juju,
+    roles: Sequence[str],
+    coordinator_deployed_as=None,
+    wait_for_idle: bool = True,
 ):
     """Deploy a pyroscope distributed cluster."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
