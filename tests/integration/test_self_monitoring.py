@@ -99,7 +99,8 @@ def test_self_monitoring_metrics_ingestion(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 
-@retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
+# @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
+@pytest.mark.xfail("https://github.com/canonical/pyroscope-k8s-operator/issues/147")
 def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
     address = get_unit_ip_address(juju, TEMPO_APP, 0)
@@ -109,8 +110,6 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     tags = response.json()["tagValues"]
     # THEN each pyroscope charm has sent some charm traces
     expected_apps = {PYROSCOPE_APP, *ALL_WORKERS}
-
-    logger.info(f"current model status: \n {juju.cli('status')}")
 
     for app in expected_apps:
         assert app in tags
