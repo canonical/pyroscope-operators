@@ -121,8 +121,7 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     response = requests.get(url)
     tags = response.json()["tagValues"]
     # THEN each pyroscope charm has sent some charm traces
-    for app in (PYROSCOPE_APP, *ALL_WORKERS):
-        assert app in tags
+    assert {PYROSCOPE_APP, *ALL_WORKERS}.issuperset(set(tags))
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
