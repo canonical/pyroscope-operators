@@ -110,7 +110,7 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     # THEN each pyroscope charm has sent some charm traces
     expected_apps = {PYROSCOPE_APP, *ALL_WORKERS}
 
-    logger.info(f"current model status: \n {juju.cli("status")}")
+    logger.info(f"current model status: \n {juju.cli('status')}")
 
     for app in expected_apps:
         assert app in tags
