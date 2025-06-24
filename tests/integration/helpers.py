@@ -73,7 +73,7 @@ def charm_and_channel_and_resources(
 
 
 def deploy_distributed_cluster(
-    juju: Juju, roles: Sequence[str], coordinator_deployed_as=None, wait_for_idle=False
+    juju: Juju, roles: Sequence[str], coordinator_deployed_as=None, wait_for_idle:bool=True
 ):
     """Deploy a pyroscope distributed cluster."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
@@ -104,7 +104,7 @@ def deploy_distributed_cluster(
 
 
 def deploy_monolithic_cluster(
-    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = False
+    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = True
 ):
     """Deploy a pyroscope-monolithic cluster."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
@@ -154,6 +154,7 @@ def _deploy_cluster(
             coordinator_app + ":pyroscope-cluster", worker + ":pyroscope-cluster"
         )
 
+    # we can't conditionally wait_for_idle for minio, because we need its IP soon to call deploy_s3
     _deploy_and_configure_minio(juju)
 
     deploy_s3(juju, bucket_name=BUCKET_NAME, s3_integrator_app=S3_APP)
@@ -169,7 +170,7 @@ def _deploy_cluster(
             delay=5,
             successes=3,
         )
-    return [coordinator_app, *workers, S3_APP]
+    return [coordinator_app, *workers, S3_APP, MINIO_APP]
 
 
 def _get_resources(path: Union[str, Path]):
@@ -182,6 +183,10 @@ def _get_resources(path: Union[str, Path]):
 
 
 def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
+    """Deploy and configure a s3 integrator.
+
+    Assumes there's a MINIO_APP deployed and ready.
+    """
     logger.info(f"deploying {s3_integrator_app=}")
     juju.deploy(
         "s3-integrator", s3_integrator_app, channel="2/edge", base="ubuntu@24.04"
@@ -219,7 +224,8 @@ def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
 
 
 def _deploy_and_configure_minio(juju: Juju):
-    juju.deploy(MINIO_APP, channel="edge", trust=True, config=S3_CREDENTIALS)
+    if MINIO_APP not in juju.status().apps:
+        juju.deploy(MINIO_APP, channel="edge", trust=True, config=S3_CREDENTIALS)
     juju.wait(
         lambda status: status.apps[MINIO_APP].is_active,
         error=jubilant.any_error,

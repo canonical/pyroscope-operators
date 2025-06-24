@@ -64,31 +64,19 @@ def test_deploy_self_monitoring_stack(juju: Juju):
     deploy_s3(juju, bucket_name=TEMPO_S3_BUCKET, s3_integrator_app=TEMPO_S3_APP)
     juju.integrate(TEMPO_APP, TEMPO_S3_APP + ":s3-credentials")
 
-    # THEN the pyroscope cluster and the self-monitoring stack get to active/idle
-    juju.wait(
-        lambda status: all_active(status, *SELF_MONITORING_STACK, *pyro_apps),
-        error=any_error,
-        timeout=3000,
-    )
-
-
-@pytest.mark.setup
-def test_relate_self_monitoring_stack(juju: Juju):
-    # GIVEN a model with a pyroscope cluster, and a monitoring stack
-    # WHEN we integrate the pyroscope cluster over self-monitoring relations
+    # AND WHEN we integrate the pyroscope stack with the self-monitoring units
     juju.integrate(
         PYROSCOPE_APP + ":metrics-endpoint", PROMETHEUS_APP + ":metrics-endpoint"
     )
     juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
     juju.integrate(PYROSCOPE_APP + ":charm-tracing", TEMPO_APP + ":tracing")
 
-    # THEN the coordinator, all workers, and the monitoring stack are all in active/idle state
+
+    # THEN the pyroscope cluster and the self-monitoring stack get to active/idle
     juju.wait(
-        lambda status: all_active(
-            status, PYROSCOPE_APP, *ALL_WORKERS, *SELF_MONITORING_STACK
-        ),
+        lambda status: all_active(status, *SELF_MONITORING_STACK, *pyro_apps),
         error=any_error,
-        timeout=2000,
+        timeout=3000,
         delay=5,
         successes=12,
     )
@@ -112,7 +100,7 @@ def test_self_monitoring_metrics_ingestion(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 
-@retry(stop=stop_after_attempt(30), wait=wait_fixed(30))
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(5))
 def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
     address = get_unit_ip_address(juju, TEMPO_APP, 0)
@@ -121,7 +109,9 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
     response = requests.get(url)
     tags = response.json()["tagValues"]
     # THEN each pyroscope charm has sent some charm traces
-    assert {PYROSCOPE_APP, *ALL_WORKERS}.issuperset(set(tags))
+    expected_apps = {PYROSCOPE_APP, *ALL_WORKERS}
+    for app in expected_apps:
+        assert app in tags
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
