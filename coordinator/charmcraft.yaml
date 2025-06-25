@@ -30,7 +30,7 @@ resources:
     upstream-source: nginx/nginx-prometheus-exporter:1.1.0
 
 links:
-  documentation: https://discourse.charmhub.io/t/pyroscope-coordinator-k8s-docs-index/15419
+  documentation: https://discourse.charmhub.io/t/18121
   website: https://charmhub.io/pyroscope-coordinator-k8s
   source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/coordinator
   issues: https://github.com/canonical/pyroscope-k8s-operator/issues
