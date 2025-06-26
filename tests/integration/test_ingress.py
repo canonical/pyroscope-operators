@@ -22,12 +22,14 @@ logger = logging.getLogger(__name__)
 def test_build_and_deploy(juju: Juju):
     # GIVEN an empty model
     # WHEN deploying the tempo cluster and traefik
-    juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="edge", trust=True)
+    juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="latest/stable", trust=True)
     deploy_monolithic_cluster(juju)
 
     # THEN the s3-integrator, coordinator, worker, and traefik are all in active/idle state
     juju.wait(
-        lambda status: jubilant.all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        lambda status: jubilant.all_active(
+            status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP
+        ),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -40,12 +42,12 @@ def test_relate_ingress(juju: Juju):
 
     # THEN the coordinator, worker, and traefik are all in active/idle state
     juju.wait(
-        lambda status: jubilant.all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        lambda status: jubilant.all_active(
+            status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP
+        ),
         error=jubilant.any_error,
         timeout=2000,
     )
-
-
 
 
 @pytest.mark.teardown
