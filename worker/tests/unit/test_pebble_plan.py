@@ -117,7 +117,7 @@ def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
                 "summary": "pyroscope worker process",
                 "command": "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target=all",
                 "startup": "enabled",
-                "env": {
+                "environment": {
                     "JAEGER_ENDPOINT": (f"{tempo_endpoint}/api/traces?format=jaeger.thrift"),
                     "JAEGER_SAMPLER_PARAM": "1",
                     "JAEGER_SAMPLER_TYPE": "const",
