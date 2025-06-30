@@ -38,8 +38,9 @@ def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
     return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
 
 
-def charm_and_channel_and_resources(role: Literal["coordinator", "worker"], charm_path_key: str,
-                                    charm_channel_key: str):
+def charm_and_channel_and_resources(
+    role: Literal["coordinator", "worker"], charm_path_key: str, charm_channel_key: str
+):
     """Pyrosocope coordinator or worker charm used for integration testing.
 
     Build once per session and reuse it in all integration tests to save some minutes/hours.
@@ -71,10 +72,16 @@ def charm_and_channel_and_resources(role: Literal["coordinator", "worker"], char
     raise subprocess.CalledProcessError
 
 
-def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], coordinator_deployed_as=None):
+def deploy_distributed_cluster(
+    juju: Juju,
+    roles: Sequence[str],
+    coordinator_deployed_as=None,
+    wait_for_idle: bool = True,
+):
     """Deploy a pyroscope distributed cluster."""
-    worker_charm_url, channel, resources = charm_and_channel_and_resources("worker", "WORKER_CHARM_PATH",
-                                                                           "WORKER_CHARM_CHANNEL")
+    worker_charm_url, channel, resources = charm_and_channel_and_resources(
+        "worker", "WORKER_CHARM_PATH", "WORKER_CHARM_CHANNEL"
+    )
 
     all_workers = []
 
@@ -91,13 +98,21 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], coordinator_dep
             resources=resources,
         )
 
-    _deploy_cluster(juju, all_workers, coordinator_deployed_as=coordinator_deployed_as)
+    return _deploy_cluster(
+        juju,
+        all_workers,
+        coordinator_deployed_as=coordinator_deployed_as,
+        wait_for_idle=wait_for_idle,
+    )
 
 
-def deploy_monolithic_cluster(juju: Juju, coordinator_deployed_as=None):
+def deploy_monolithic_cluster(
+    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = True
+):
     """Deploy a pyroscope-monolithic cluster."""
-    worker_charm_url, channel, resources = charm_and_channel_and_resources("worker", "WORKER_CHARM_PATH",
-                                                                           "WORKER_CHARM_CHANNEL")
+    worker_charm_url, channel, resources = charm_and_channel_and_resources(
+        "worker", "WORKER_CHARM_PATH", "WORKER_CHARM_CHANNEL"
+    )
 
     juju.deploy(
         worker_charm_url,
@@ -106,55 +121,85 @@ def deploy_monolithic_cluster(juju: Juju, coordinator_deployed_as=None):
         trust=True,
         resources=resources,
     )
-    _deploy_cluster(juju, [WORKER_APP], coordinator_deployed_as=coordinator_deployed_as)
+    return _deploy_cluster(
+        juju,
+        [WORKER_APP],
+        coordinator_deployed_as=coordinator_deployed_as,
+        wait_for_idle=wait_for_idle,
+    )
 
 
-def _deploy_cluster(juju: Juju, workers: Sequence[str], coordinator_deployed_as: str = None):
+def _deploy_cluster(
+    juju: Juju,
+    workers: Sequence[str],
+    coordinator_deployed_as: str = None,
+    wait_for_idle: bool = False,
+):
     logger.info("deploying cluster")
 
     if coordinator_deployed_as:
         coordinator_app = coordinator_deployed_as
     else:
-        coordinator_charm_url, channel, resources = charm_and_channel_and_resources("coordinator",
-                                                                                    "COORDINATOR_CHARM_PATH",
-                                                                                    "COORDINATOR_CHARM_CHANNEL")
+        coordinator_charm_url, channel, resources = charm_and_channel_and_resources(
+            "coordinator", "COORDINATOR_CHARM_PATH", "COORDINATOR_CHARM_CHANNEL"
+        )
         juju.deploy(
-            coordinator_charm_url, PYROSCOPE_APP, channel=channel, resources=resources, trust=True
+            coordinator_charm_url,
+            PYROSCOPE_APP,
+            channel=channel,
+            resources=resources,
+            trust=True,
         )
         coordinator_app = PYROSCOPE_APP
 
     for worker in workers:
-        juju.integrate(coordinator_app + ":pyroscope-cluster", worker + ":pyroscope-cluster")
+        juju.integrate(
+            coordinator_app + ":pyroscope-cluster", worker + ":pyroscope-cluster"
+        )
 
+    # we can't conditionally wait_for_idle for minio, because we need its IP soon to call deploy_s3
     _deploy_and_configure_minio(juju)
 
     deploy_s3(juju, bucket_name=BUCKET_NAME, s3_integrator_app=S3_APP)
     juju.integrate(coordinator_app + ":s3", S3_APP + ":s3-credentials")
 
-    logger.info("waiting for cluster to be active/idle...")
-    juju.wait(
-        lambda status: jubilant.all_active(status, coordinator_app, *workers, S3_APP),
-        timeout=2000,
-        delay=5,
-        successes=3,
-    )
+    if wait_for_idle:
+        logger.info("waiting for cluster to be active/idle...")
+        juju.wait(
+            lambda status: jubilant.all_active(
+                status, coordinator_app, *workers, S3_APP
+            ),
+            timeout=2000,
+            delay=5,
+            successes=3,
+        )
+    return [coordinator_app, *workers, S3_APP, MINIO_APP]
 
 
 def _get_resources(path: Union[str, Path]):
     meta = yaml.safe_load((Path(path) / "charmcraft.yaml").read_text())
     resources_meta = meta.get("resources", {})
-    return {res_name: res_meta["upstream-source"] for res_name, res_meta in resources_meta.items()}
+    return {
+        res_name: res_meta["upstream-source"]
+        for res_name, res_meta in resources_meta.items()
+    }
 
 
 def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
+    """Deploy and configure a s3 integrator.
+
+    Assumes there's a MINIO_APP deployed and ready.
+    """
     logger.info(f"deploying {s3_integrator_app=}")
-    juju.deploy("s3-integrator", s3_integrator_app, channel="2/edge", base="ubuntu@24.04")
+    juju.deploy(
+        "s3-integrator", s3_integrator_app, channel="2/edge", base="ubuntu@24.04"
+    )
 
     logger.info(f"provisioning {bucket_name=} on {s3_integrator_app=}")
     minio_addr = get_unit_ip_address(juju, MINIO_APP, 0)
     mc_client = Minio(
         f"{minio_addr}:9000",
-        **{key.replace('-', '_'): value for key, value in S3_CREDENTIALS.items()},
+        **{key.replace("-", "_"): value for key, value in S3_CREDENTIALS.items()},
         secure=False,
     )
     # create pyroscope bucket
@@ -163,25 +208,33 @@ def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
         mc_client.make_bucket(bucket_name)
 
     logger.info("configuring s3 integrator...")
-    secret_uri = juju.cli("add-secret", f"{s3_integrator_app}-creds", *(f"{key}={val}" for key, val in S3_CREDENTIALS.items()))
+    secret_uri = juju.cli(
+        "add-secret",
+        f"{s3_integrator_app}-creds",
+        *(f"{key}={val}" for key, val in S3_CREDENTIALS.items()),
+    )
     juju.cli("grant-secret", f"{s3_integrator_app}-creds", s3_integrator_app)
 
     # configure s3-integrator
-    juju.config(s3_integrator_app, {
-        "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
-        "bucket": bucket_name,
-        "credentials": secret_uri.strip()
-    })
+    juju.config(
+        s3_integrator_app,
+        {
+            "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
+            "bucket": bucket_name,
+            "credentials": secret_uri.strip(),
+        },
+    )
 
 
 def _deploy_and_configure_minio(juju: Juju):
-    juju.deploy(MINIO_APP, channel="edge", trust=True, config=S3_CREDENTIALS)
+    if MINIO_APP not in juju.status().apps:
+        juju.deploy(MINIO_APP, channel="edge", trust=True, config=S3_CREDENTIALS)
     juju.wait(
         lambda status: status.apps[MINIO_APP].is_active,
         error=jubilant.any_error,
         delay=5,
         successes=3,
-        timeout=2000
+        timeout=2000,
     )
 
 
