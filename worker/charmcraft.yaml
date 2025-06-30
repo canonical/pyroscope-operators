@@ -29,7 +29,7 @@ resources:
     upstream-source: grafana/pyroscope:1.13.4
 
 links:
-  documentation: https://discourse.charmhub.io/t/pyroscope-worker-k8s-docs-index/15419
+  documentation: https://discourse.charmhub.io/t/18122
   website: https://charmhub.io/pyroscope-worker-k8s
   source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/worker
   issues: https://github.com/canonical/pyroscope-k8s-operator/issues
