@@ -172,7 +172,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
             icon="flame",
             url=self._most_external_url,
             description=(
-                "Grafana Pyroscope is a distributed continuous profiling backend by Grafana Labs."
+                "Grafana Pyroscope is a distributed continuous profiling backend. "
+                "Allows you to collect, store, query, and visualize profiles from your distributed deployment."
             ),
         )
 
