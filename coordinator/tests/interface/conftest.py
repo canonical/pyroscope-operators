@@ -24,7 +24,7 @@ def global_config(interface_tester: InterfaceTester):
     interface_tester.configure(
         # override to use http instead of https, else it asks for ssh key password on every test.
         repo="http://github.com/canonical/charm-relation-interfaces",
-        branch="feat/pyroscope_cluster_interface"
+        branch="feat/pyroscope_cluster_interface",
     )
 
 
@@ -69,7 +69,11 @@ cluster_relation = Relation(
     remote_units_data={
         0: ClusterRequirerUnitData(
             address="http://example.com",
-            juju_topology={"application": "app", "unit": "unit", "charm_name": "charmname"},
+            juju_topology={
+                "application": "app",
+                "unit": "unit",
+                "charm_name": "charmname",
+            },
         ).dump()
     },
 )
