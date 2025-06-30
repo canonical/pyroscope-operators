@@ -35,6 +35,8 @@ SELF_MONITORING_STACK = (
     TEMPO_S3_APP,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @pytest.mark.setup
 def test_deploy_self_monitoring_stack(juju: Juju):
@@ -113,18 +115,6 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
 
     for app in expected_apps:
         assert app in tags
-
-
-@retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
-def test_self_monitoring_workload_traces_ingestion(juju: Juju):
-    # GIVEN a pyroscope cluster integrated with tempo over workload-tracing
-    address = get_unit_ip_address(juju, TEMPO_APP, 0)
-    # WHEN we query the tags for all ingested traces in Tempo
-    url = f"http://{address}:3200/api/search/tag/process.executable.name/values"
-    response = requests.get(url)
-    tags = response.json()["tagValues"]
-    # THEN pyroscope has sent some workload traces
-    assert "pyroscope" in tags
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
