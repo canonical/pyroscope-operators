@@ -2,12 +2,19 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import logging
 
 import pytest
 import requests
 from jubilant import Juju, all_active, any_error
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+)
 
 from helpers import (
     deploy_distributed_cluster,
@@ -16,6 +23,7 @@ from helpers import (
     ALL_ROLES,
     get_unit_ip_address,
     deploy_s3,
+    INTEGRATION_TESTERS_CHANNEL,
 )
 
 PROMETHEUS_APP = "prometheus"
@@ -23,60 +31,74 @@ LOKI_APP = "loki"
 TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker"
 TEMPO_S3_APP = "tempo-s3-bucket"
+CATALOGUE_APP = "catalogue"
 TEMPO_S3_BUCKET = "tempo"
-
-logger = logging.getLogger(__name__)
-
-SELF_MONITORING_STACK = (
+COS_COMPONENTS = (
     PROMETHEUS_APP,
     LOKI_APP,
     TEMPO_WORKER_APP,
     TEMPO_APP,
     TEMPO_S3_APP,
+    CATALOGUE_APP,
 )
 
 logger = logging.getLogger(__name__)
 
 
 @pytest.mark.setup
-def test_deploy_self_monitoring_stack(juju: Juju):
+def test_setup(juju: Juju):
     # GIVEN an empty model
     # WHEN we deploy a pyroscope cluster with distributed workers
     # don't allow it to block so we can deploy all asynchronously
     pyro_apps = deploy_distributed_cluster(juju, ALL_ROLES, wait_for_idle=False)
 
-    # WHEN we deploy a monitoring stack
+    # AND we deploy & integrate with loki
+    juju.deploy(
+        "loki-k8s", app=LOKI_APP, channel=INTEGRATION_TESTERS_CHANNEL, trust=True
+    )
+    juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
+
+    # AND prometheus
     juju.deploy(
         "prometheus-k8s",
         app=PROMETHEUS_APP,
-        channel="1/stable",
+        channel=INTEGRATION_TESTERS_CHANNEL,
         trust=True,
-        revision=247,  # what's on 1/stable as of 23/06/2025
     )
-    juju.deploy("loki-k8s", app=LOKI_APP, channel="1/stable", trust=True)
-
-    # tracing
-    juju.deploy("tempo-coordinator-k8s", app=TEMPO_APP, channel="1/stable", trust=True)
-    juju.deploy(
-        "tempo-worker-k8s", app=TEMPO_WORKER_APP, channel="1/stable", trust=True
-    )
-    juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
-
-    # deploys the s3 integrator and creates the bucket on the s3 backend
-    deploy_s3(juju, bucket_name=TEMPO_S3_BUCKET, s3_integrator_app=TEMPO_S3_APP)
-    juju.integrate(TEMPO_APP, TEMPO_S3_APP + ":s3-credentials")
-
-    # AND WHEN we integrate the pyroscope stack with the self-monitoring units
     juju.integrate(
         PYROSCOPE_APP + ":metrics-endpoint", PROMETHEUS_APP + ":metrics-endpoint"
     )
-    juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
+
+    # AND tempo
+    juju.deploy(
+        "tempo-coordinator-k8s",
+        app=TEMPO_APP,
+        channel=INTEGRATION_TESTERS_CHANNEL,
+        trust=True,
+    )
+    juju.deploy(
+        "tempo-worker-k8s",
+        app=TEMPO_WORKER_APP,
+        channel=INTEGRATION_TESTERS_CHANNEL,
+        trust=True,
+    )
+    juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
+    deploy_s3(juju, bucket_name=TEMPO_S3_BUCKET, s3_integrator_app=TEMPO_S3_APP)
+    juju.integrate(TEMPO_APP, TEMPO_S3_APP + ":s3-credentials")
     juju.integrate(PYROSCOPE_APP + ":charm-tracing", TEMPO_APP + ":tracing")
     juju.integrate(PYROSCOPE_APP + ":workload-tracing", TEMPO_APP + ":tracing")
 
-    # THEN the pyroscope cluster and the self-monitoring stack get to active/idle
+    # AND catalogue
+    juju.deploy(
+        "catalogue-k8s",
+        CATALOGUE_APP,
+        channel=INTEGRATION_TESTERS_CHANNEL,
+    )
+    juju.integrate(PYROSCOPE_APP, CATALOGUE_APP)
+
+    # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
-        lambda status: all_active(status, *SELF_MONITORING_STACK, *pyro_apps),
+        lambda status: all_active(status, *COS_COMPONENTS, *pyro_apps),
         error=any_error,
         timeout=3000,
         delay=5,
@@ -85,7 +107,7 @@ def test_deploy_self_monitoring_stack(juju: Juju):
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_self_monitoring_metrics_ingestion(juju: Juju):
+def test_metrics_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
     # WHEN we query the metrics for the coordinator and each of the workers
@@ -103,7 +125,7 @@ def test_self_monitoring_metrics_ingestion(juju: Juju):
 
 
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
-def test_self_monitoring_charm_traces_ingestion(juju: Juju):
+def test_charm_tracing_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
     address = get_unit_ip_address(juju, TEMPO_APP, 0)
     # WHEN we query the tags for all ingested traces in Tempo
@@ -118,7 +140,7 @@ def test_self_monitoring_charm_traces_ingestion(juju: Juju):
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_self_monitoring_logs_ingestion(juju: Juju):
+def test_logging_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki over logging
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query the logs for each worker
@@ -137,11 +159,30 @@ def test_self_monitoring_logs_ingestion(juju: Juju):
             assert False, f"Request to Loki failed for app '{app}': {e}"
 
 
+def test_catalogue_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with catalogue
+    catalogue_unit = f"{CATALOGUE_APP}/0"
+    # get Pyroscope's catalogue item URL
+    out = juju.cli(
+        "show-unit", catalogue_unit, "--endpoint", "catalogue", "--format", "json"
+    )
+    pyroscope_app_databag = json.loads(out)[catalogue_unit]["relation-info"][0][
+        "application-data"
+    ]
+    url = pyroscope_app_databag["url"]
+    # WHEN we query the Pyroscope catalogue item URL
+    # query the url from inside the container in case the url is a K8s fqdn
+    response = juju.ssh(f"{PYROSCOPE_APP}/0", f"curl {url}")
+    # THEN we receive a 200 OK response (0 exit status)
+    # AND we confirm the response is from the Pyroscope UI (via the page title)
+    assert "<title>Grafana Pyroscope</title>" in response
+
+
 @pytest.mark.teardown
-def test_teardown_self_monitoring_stack(juju: Juju):
-    # GIVEN a pyroscope cluster with self-monitoring relations
-    # WHEN we remove the self-monitoring stack
-    for app in SELF_MONITORING_STACK:
+def test_teardown(juju: Juju):
+    # GIVEN a pyroscope cluster with core cos relations
+    # WHEN we remove the cos components
+    for app in COS_COMPONENTS:
         juju.remove_application(app)
 
     # THEN the coordinator and all workers eventually reach active/idle state
