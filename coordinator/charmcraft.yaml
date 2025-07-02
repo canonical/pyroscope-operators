@@ -118,3 +118,17 @@ parts:
     # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
     # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
 
+config:
+  options:
+    cpu_limit:
+      description: |
+        K8s cpu resource limit, e.g. "1" or "500m". Default is unset (no limit). This value is used
+        for the "limits" portion of the resource requirements.
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
+    memory_limit:
+      description: |
+        K8s memory resource limit, e.g. "1Gi". Default is unset (no limit). This value is used
+        for the "limits" portion of the resource requirements.
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
