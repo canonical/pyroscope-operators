@@ -68,8 +68,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             workers_config=self.pyroscope.config,
             worker_ports=self._get_worker_ports,
             workload_tracing_protocols=["jaeger_thrift_http"],
+            container_name="charm",
+            resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
             # FIXME: add the rest of the optional config
-            # resources_requests, resources_limit_options, container_name
             # catalogue_item
         )
 

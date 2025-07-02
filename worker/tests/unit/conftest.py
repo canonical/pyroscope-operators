@@ -6,6 +6,7 @@ from ops.testing import Context, Exec, Container
 from functools import partial
 
 from charm import PyroscopeWorkerCharm
+from ops import ActiveStatus
 
 PYROSCOPE_VERSION_EXEC_OUTPUT = Exec(
     command_prefix=("/usr/bin/pyroscope", "-version"), stdout="1.13.4"
@@ -22,9 +23,28 @@ def _urlopen_patch(url: str, resp, tls: bool = False):
         raise RuntimeError("unknown path")
 
 
+@contextmanager
+def k8s_patch(status=ActiveStatus(), is_ready=True):
+    with patch("lightkube.core.client.GenericSyncClient"):
+        with patch.multiple(
+            "coordinated_workers.worker.KubernetesComputeResourcesPatch",
+            _namespace="test-namespace",
+            _patch=lambda _: None,
+            get_status=MagicMock(return_value=status),
+            is_ready=MagicMock(return_value=is_ready),
+        ) as patcher:
+            yield patcher
+
+
 @pytest.fixture
-def ctx():
-    return Context(charm_type=PyroscopeWorkerCharm)
+def worker_charm():
+    with k8s_patch():
+        yield PyroscopeWorkerCharm
+
+
+@pytest.fixture
+def ctx(worker_charm):
+    return Context(charm_type=worker_charm)
 
 
 @pytest.fixture
