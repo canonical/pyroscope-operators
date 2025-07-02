@@ -1,5 +1,6 @@
 import ops
 from ops.testing import PeerRelation, State
+from conftest import k8s_patch
 
 
 def test_monolithic_status_no_s3_no_workers(
@@ -84,3 +85,51 @@ def test_happy_status(
         ),
     )
     assert state_out.unit_status.name == "active"
+
+
+@k8s_patch(status=ops.BlockedStatus("`juju trust` this application"))
+def test_k8s_patch_failed(
+    context,
+    s3,
+    all_worker,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+):
+    state_out = context.run(
+        context.on.update_status(),
+        State(
+            relations=[
+                PeerRelation("peers", peers_data={1: {}, 2: {}}),
+                s3,
+                all_worker,
+            ],
+            containers=[nginx_container, nginx_prometheus_exporter_container],
+            unit_status=ops.ActiveStatus(),
+            leader=True,
+        ),
+    )
+    assert state_out.unit_status == ops.BlockedStatus("`juju trust` this application")
+
+
+@k8s_patch(status=ops.WaitingStatus("waiting"))
+def test_k8s_patch_waiting(
+    context,
+    s3,
+    all_worker,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+):
+    state_out = context.run(
+        context.on.update_status(),
+        State(
+            relations=[
+                PeerRelation("peers", peers_data={1: {}, 2: {}}),
+                s3,
+                all_worker,
+            ],
+            containers=[nginx_container, nginx_prometheus_exporter_container],
+            unit_status=ops.ActiveStatus(),
+            leader=True,
+        ),
+    )
+    assert state_out.unit_status == ops.WaitingStatus("waiting")

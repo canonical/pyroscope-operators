@@ -1,8 +1,23 @@
+from contextlib import contextmanager
 import json
 import pytest
 from unittest.mock import MagicMock, patch
 from charm import PyroscopeCoordinatorCharm
 from ops.testing import Context, Relation, Container
+from ops import ActiveStatus
+
+
+@contextmanager
+def k8s_patch(status=ActiveStatus(), is_ready=True):
+    with patch("lightkube.core.client.GenericSyncClient"):
+        with patch.multiple(
+            "coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
+            _namespace="test-namespace",
+            _patch=lambda _: None,
+            get_status=MagicMock(return_value=status),
+            is_ready=MagicMock(return_value=is_ready),
+        ) as patcher:
+            yield patcher
 
 
 @pytest.fixture()
@@ -13,7 +28,8 @@ def coordinator():
 @pytest.fixture
 def pyroscope_charm():
     with patch("socket.getfqdn", return_value="localhost"):
-        yield PyroscopeCoordinatorCharm
+        with k8s_patch():
+            yield PyroscopeCoordinatorCharm
 
 
 @pytest.fixture(scope="function")
