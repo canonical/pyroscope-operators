@@ -34,6 +34,14 @@ _locations_query_frontend: List[NginxLocationConfig] = [
     ),  # called by the frontend
 ]
 
+_locations_tenant_settings: List[NginxLocationConfig] = [
+    NginxLocationConfig(path="/settings.v1.SettingsService", backend="tenant-settings"),
+]
+
+_locations_ad_hoc_profiles: List[NginxLocationConfig] = [
+    NginxLocationConfig(path="/adhocprofiles.v1.AdHocProfileService", backend="ad-hoc-profiles")
+]
+
 _locations_worker: List[NginxLocationConfig] = [
     NginxLocationConfig(
         path="/", backend="worker", modifier="="
@@ -59,5 +67,7 @@ def server_ports_to_locations(
     return {
         _nginx_tls_port if tls_available else _nginx_port: _locations_write
         + _locations_query_frontend
+        + _locations_tenant_settings
+        + _locations_ad_hoc_profiles
         + _locations_worker
     }
