@@ -168,7 +168,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         """A catalogue application entry for this Pyroscope instance."""
         return CatalogueItem(
             # use app name in case there are multiple Pyroscope apps deployed.
-            name=self.app.name,
+            name=f"Pyroscope ({self.app.name})",
             icon="flame",
             url=self._most_external_url,
             description=(
