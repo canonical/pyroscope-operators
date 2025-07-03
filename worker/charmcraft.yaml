@@ -38,6 +38,10 @@ requires:
     interface: pyroscope_cluster
     optional: false
     limit: 1
+    description: |
+      Connect a single pyroscope-coordinator-k8s charm that will configure this node to work as 
+      part of a distributed Pyroscope cluster. The charm needs this integration to work.
+
 
 storage:
   data:
@@ -157,6 +161,7 @@ config:
         for the "limits" portion of the resource requirements.
         See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
       type: string
+
     memory_limit:
       description: |
         K8s memory resource limit, e.g. "1Gi". Default is unset (no limit). This value is used
