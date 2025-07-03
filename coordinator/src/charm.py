@@ -112,14 +112,12 @@ class PyroscopeCoordinatorCharm(CharmBase):
     @property
     def _scheme(self) -> str:
         """Return the URI scheme that should be used when communicating with this unit."""
-        scheme = "http"
-        # FIXME: add a check for are_certificates_on_disk
-        return scheme
+        return f"http{'s' if self._are_certificates_on_disk else ''}"
 
     @property
     def _internal_url(self) -> str:
         """Return the locally addressable, FQDN based service address."""
-        return f"{self._scheme}://{self.service_hostname}:{self._nginx_port}"
+        return f"{self._scheme}://{self.app_hostname}:{self._nginx_port}"
 
     @property
     def _external_url(self) -> Optional[str]:
