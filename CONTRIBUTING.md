@@ -6,9 +6,9 @@ This documents explains the processes and practices recommended for contributing
 this operator.
 
 - Generally, before developing enhancements to this charm, you should consider [opening an issue
-  ](https://github.com/jnsgruk/zinc-k8s-operator/issues) explaining your use case.
+  ](https://github.com/canonical/pyroscope-k8s-operator/issues) explaining your use case.
 - If you would like to chat with us about your use-cases or proposed implementation, you can reach
-  us at [Canonical Mattermost public channel](https://chat.charmhub.io/charmhub/channels/charm-dev)
+  us at the [Canonical Observability Matrix public channel](https://matrix.to/#/#cos:ubuntu.com)
   or [Discourse](https://discourse.charmhub.io/).
 - Familiarising yourself with the [Charmed Operator Framework](https://juju.is/docs/sdk) library
   will help you a lot when working on new features or bug fixes.
@@ -28,15 +28,27 @@ tox --notest -e unit
 source .tox/unit/bin/activate
 ```
 
+### Container images
+
+We are using the following images built by [oci-factory](https://github.com/canonical/oci-factory):
+- `ubuntu/pyroscope`
+  - [source](https://github.com/canonical/pyroscope-rock)
+  - [dockerhub](https://hub.docker.com/r/ubuntu/pyroscope)
+- `ubuntu/nginx`
+  - [source](https://github.com/canonical/nginx-rock)
+  - [dockerhub](https://hub.docker.com/r/ubuntu/nginx)
+- `nginx/nginx-prometheus-exporter`
+  - (upstream image) (WIP: https://github.com/canonical/nginx-prometheus-exporter-rock)
+  - [dockerhub](https://hub.docker.com/r/nginx/nginx-prometheus-exporter)
+
 ### Testing
 
 ```shell
-tox -e fmt           # update your code according to linting rules
-tox -e lint          # code style
-tox -e unit          # unit tests
-tox -e scenario      # scenario tests
-tox -e integration   # integration tests
-tox                  # runs 'lint', 'scenario' and 'unit' environments
+tox -e fmt           # update your code according to formatting rules
+tox -e lint          # lint the codebase
+tox -e unit          # run the unit testing suite
+tox -e integration   # run the integration testing suite
+tox                  # runs 'lint' and 'unit' environments
 ```
 
 ## Build charm
@@ -44,8 +56,13 @@ tox                  # runs 'lint', 'scenario' and 'unit' environments
 Build the charm in this git repository using:
 
 ```shell
-charmcraft pack
+cd ./worker; charmcraft pack
+cd ./coordinator; charmcraft pack
 ```
+
+This will create:
+- `coordinator/pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm`
+- `worker/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm`
 
 ### Deploy
 
@@ -55,6 +72,14 @@ juju add-model dev
 # Enable DEBUG logging
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
-juju deploy ./zinc-k8s_ubuntu-20.04-amd64.charm \
-    --resource zinc-image=public.ecr.aws/m5j1b6u0/zinc:v0.1.1 \
+juju deploy ./coordinator/pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm \
+    --resource nginx-image=ubuntu/nginx:1.24-24.04_beta \
+    --resource nginx-prometheus-exporter-image=nginx/nginx-prometheus-exporter:1.1.0 \
+    --trust pyroscope
+juju deploy ./worker/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm \
+    --resource pyroscope-image=ubuntu/pyroscope:1.14-24.04_edge \
+    --trust pyroscope-worker
+juju integrate pyroscope pyroscope-worker
 ```
+
+You'll also need an s3-compatible backend such as Ceph or Minio and an [s3-integrator charm](https://charmhub.io/s3-integrator). See [this doc](https://discourse.charmhub.io/t/cos-lite-docs-set-up-minio-for-s3-testing/15211) for more details.
