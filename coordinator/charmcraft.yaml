@@ -45,66 +45,68 @@ provides:
     optional: true
     interface: grafana_dashboard
     description: |
-      Forwards the built-in grafana dashboard(s) for monitoring Pyroscope.
+      Provide a grafana dashboard definition for monitoring Pyroscope.
   metrics-endpoint:
     optional: true
     interface: prometheus_scrape
     description: |
-      Exposes the Prometheus metrics endpoint providing telemetry about the
-      Pyroscope instance.
+      Provide one or more Prometheus metrics endpoints that can be scraped to obtain 
+      metrics of all Pyroscope worker processes.
   send-datasource:
     optional: true
     interface: grafana_datasource_exchange
     description: |
-      Integration to share with other COS components this charm's datasources, and receive theirs.
+      Provide this charm's datasource identification data and endpoints to another charm.
 
 requires:
   s3:
     interface: s3
     limit: 1
     description: |
-      Obtains access to the s3 bucket for data storage. The charm needs this integration to work.
+      Request an s3 bucket for profile data storage. The charm needs this integration to work.
   charm-tracing:
     optional: true
     interface: tracing
     description: |
-      Integration to send charm traces to a tracing backend.
+      Request a tracing endpoint through which Pyroscope will send its charm traces to a 
+      tracing backend.
     limit: 1
   workload-tracing:
     optional: true
     interface: tracing
     description: |
-      Integration to enable Pyroscope to send its workload traces to a tracing backend.
+      Request a tracing endpoint through which all Pyroscope workers will send their 
+      workload traces to a tracing backend.
     limit: 1
   logging:
     optional: true
     interface: loki_push_api
     description: |
-      Integration with Loki to push Pyroscope logs to the observability stack.
+      Request a loki-push-api endpoint for all worker's Pyroscope application logs.
   certificates:
     optional: true
     interface: tls-certificates
     limit: 1
     description: |
-      Certificate and key files for securing Pyroscope internal and external
+      Request a certificate and key files for securing Pyroscope internal and external
       communications with TLS.
   catalogue:
     optional: true
     interface: catalogue
     description: |
-      Integration to help users discover Pyroscope's UI.
+      Request an entry in a central application catalogue, to help users discover Pyroscope's UI.
   ingress:
     interface: ingress
     optional: true
     limit: 1
     description: |
-      Ingress-per-app, to load-balance across multiple units of the coordinator.
+      Request an ingress endpoint to load-balance across all coordinator units.
 
 peers:
   peers:
     interface: pyroscope_peers
     description: |
-      peer relation for internal coordination
+      Peer relation for internal coordination.
 
 platforms:
   ubuntu@24.04:amd64:
@@ -126,6 +128,7 @@ config:
         for the "limits" portion of the resource requirements.
         See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
       type: string
+
     memory_limit:
       description: |
         K8s memory resource limit, e.g. "1Gi". Default is unset (no limit). This value is used
