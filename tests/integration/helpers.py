@@ -29,6 +29,7 @@ S3_CREDENTIALS = {
     "access-key": ACCESS_KEY,
     "secret-key": SECRET_KEY,
 }
+INTEGRATION_TESTERS_CHANNEL = "2/edge"
 
 logger = logging.getLogger(__name__)
 
