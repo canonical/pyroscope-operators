@@ -11,8 +11,6 @@ from jubilant import Juju, all_active, any_error
 from tenacity import (
     retry,
     stop_after_attempt,
-    stop_after_delay,
-    wait_exponential,
     wait_fixed,
 )
 
@@ -190,7 +188,7 @@ def test_teardown(juju: Juju):
         lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
         error=any_error,
         timeout=2000,
-        delay=5,
+        delay=10,
         successes=3,
     )
 
