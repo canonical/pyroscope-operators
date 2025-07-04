@@ -169,6 +169,7 @@ class Memberlist(BaseModel):
     tls_cert_path: Optional[str] = None
     tls_key_path: Optional[str] = None
     tls_ca_path: Optional[str] = None
+    tls_server_name: Optional[str] = None
 
 
 class S3Storage(BaseModel):
@@ -214,13 +215,13 @@ class GrpcClient(BaseModel):
     tls_cert_path: Optional[str] = None
     tls_key_path: Optional[str] = None
     tls_ca_path: Optional[str] = None
+    tls_server_name: Optional[str] = None
 
 
 class Frontend(BaseModel):
     """Query frontend schema."""
 
     grpc_client_config: Optional[GrpcClient]
-    instance_addr: str
 
 
 class FrontendWorker(BaseModel):
