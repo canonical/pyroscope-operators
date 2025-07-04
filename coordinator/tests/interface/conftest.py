@@ -24,7 +24,6 @@ def global_config(interface_tester: InterfaceTester):
     interface_tester.configure(
         # override to use http instead of https, else it asks for ssh key password on every test.
         repo="http://github.com/canonical/charm-relation-interfaces",
-        branch="feat/pyroscope_cluster_interface",
     )
 
 
