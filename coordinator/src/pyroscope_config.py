@@ -30,6 +30,9 @@ class PyroscopeRole(StrEnum):
     distributor = "distributor"
     compactor = "compactor"
     store_gateway = "store-gateway"
+    tenant_settings = "tenant-settings"
+    ad_hoc_profiles = "ad-hoc-profiles"
+
 
     @staticmethod
     def all_nonmeta():
@@ -41,6 +44,8 @@ class PyroscopeRole(StrEnum):
             PyroscopeRole.distributor,
             PyroscopeRole.compactor,
             PyroscopeRole.store_gateway,
+            PyroscopeRole.tenant_settings,
+            PyroscopeRole.ad_hoc_profiles,
         }
 
 
@@ -57,6 +62,8 @@ MINIMAL_DEPLOYMENT = {
     PyroscopeRole.distributor: 1,
     PyroscopeRole.compactor: 1,
     PyroscopeRole.store_gateway: 1,
+    PyroscopeRole.tenant_settings: 1,
+    PyroscopeRole.ad_hoc_profiles: 1,
 }
 # The minimal set of roles that need to be allocated for the
 # deployment to be considered consistent (otherwise we set blocked).
@@ -69,6 +76,8 @@ RECOMMENDED_DEPLOYMENT = {
     PyroscopeRole.distributor.value: 2,
     PyroscopeRole.compactor.value: 3,
     PyroscopeRole.store_gateway.value: 3,
+    PyroscopeRole.tenant_settings: 1,
+    PyroscopeRole.ad_hoc_profiles: 1,
 }
 # The set of roles that need to be allocated for the
 # deployment to be considered robust according to Grafana Pyroscope's
