@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from interface_tester import InterfaceTester
+from ops import ActiveStatus
 from ops.testing import Exec
 from scenario.state import Container, State
 
@@ -38,6 +39,13 @@ def interface_test_config(interface_tester: InterfaceTester):
 
     # apply all necessary patches
     with ExitStack() as stack:
+        stack.enter_context(patch.multiple(
+            "coordinated_workers.worker.KubernetesComputeResourcesPatch",
+            _namespace="test-namespace",
+            _patch=lambda _: None,
+            get_status=MagicMock(return_value=ActiveStatus()),
+            is_ready=MagicMock(return_value=True),
+        ))
         stack.enter_context(patch("lightkube.core.client.GenericSyncClient"))
         stack.enter_context(
             patch(
