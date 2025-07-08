@@ -195,6 +195,7 @@ def test_catalogue_integration(juju: Juju):
 
 
 @pytest.mark.teardown
+@pytest.mark.xfail(reason="https://github.com/canonical/pyroscope-k8s-operator/issues/208")
 def test_teardown(juju: Juju):
     # GIVEN a pyroscope cluster with core cos relations
     # WHEN we remove the cos components
