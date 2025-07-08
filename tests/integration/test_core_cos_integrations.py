@@ -126,7 +126,7 @@ def test_metrics_integration(juju: Juju):
 def test_metrics_nginx_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
-    # WHEN we query the metrics for the coordinator and each of the workers
+    # WHEN we query for a metric from nginx-prometheus-exporter in the coordinator
     url = f"http://{address}:9090/api/v1/query"
     app=PYROSCOPE_APP
     params = {"query": f"nginx_up{{juju_application='{app}'}}"}
