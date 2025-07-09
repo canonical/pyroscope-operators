@@ -23,14 +23,16 @@ output "endpoints" {
     ingress            = "ingress",
     certificates       = "certificates",
     send-remote-write  = "send-remote-write",
-    receive_datasource = "receive-datasource"
+    receive_datasource = "receive-datasource",
     catalogue          = "catalogue",
+    workload_tracing   = "workload-tracing",
+    charm_tracing      = "charm-tracing",
+    s3                 = "s3",
 
     # Provides
-    pyroscope_cluster     = "pyroscope-cluster"
+    pyroscope_cluster = "pyroscope-cluster",
     grafana_dashboard = "grafana-dashboard",
     grafana_source    = "grafana-source",
     metrics_endpoint  = "metrics-endpoint",
-    tracing           = "tracing",
   }
 }

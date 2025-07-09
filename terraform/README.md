@@ -6,7 +6,6 @@ The solution consists of the following Terraform modules:
 - [pyroscope-coordinator-k8s](https://github.com/canonical/pyroscope-k8s-operator/tree/main/coordinator): ingress, cluster coordination, single integration facade.
 - [pyroscope-worker-k8s](https://github.com/canonical/pyroscope-k8s-operator/tree/main/worker): run one or more pyroscope application components.
 - [s3-integrator](https://github.com/canonical/s3-integrator): facade for S3 storage configurations.
-- [self-signed-certificates](https://github.com/canonical/self-signed-certificates-operator): certificates operator to secure traffic with TLS.
 
 This Terraform module deploys pyroscope in its [microservices mode](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/deployment-modes/#microservices-mode), which runs each one of the required roles in distinct processes. [See](https://discourse.charmhub.io/t/topic/15213) to understand more about pyroscope roles.
 
