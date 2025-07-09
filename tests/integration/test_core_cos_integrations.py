@@ -122,6 +122,24 @@ def test_metrics_integration(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
+def test_metrics_nginx_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
+    address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
+    # WHEN we query for a metric from nginx-prometheus-exporter in the coordinator
+    url = f"http://{address}:9090/api/v1/query"
+    app=PYROSCOPE_APP
+    params = {"query": f"nginx_up{{juju_application='{app}'}}"}
+    # THEN we should get a successful response and at least one result
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+        assert data["status"] == "success", f"Metrics query failed for app '{app}'"
+        assert len(data["data"]["result"]) > 0, f"No metrics found for app '{app}'"
+    except requests.exceptions.RequestException as e:
+        assert False, f"Request to Prometheus failed for app '{app}': {e}"
+
+
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
 def test_charm_tracing_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
@@ -177,6 +195,7 @@ def test_catalogue_integration(juju: Juju):
 
 
 @pytest.mark.teardown
+@pytest.mark.xfail(reason="https://github.com/canonical/pyroscope-k8s-operator/issues/208")
 def test_teardown(juju: Juju):
     # GIVEN a pyroscope cluster with core cos relations
     # WHEN we remove the cos components
