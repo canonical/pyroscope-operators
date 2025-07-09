@@ -176,3 +176,7 @@ cython_debug/
 
 # PyCharm
 .idea/
+
+# Terraform
+.terraform*
+*.tfstate*
