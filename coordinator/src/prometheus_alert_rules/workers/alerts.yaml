@@ -44,17 +44,17 @@ groups:
       summary: "Query frontend not connected to any schedulers ({{ $labels.instance }})"
       description: "Pyroscope frontend {{ $labels.instance }} is not connected to any schedulers."
   - alert: PyroscopeCompactorFailures
-    expr: sum by (instance, job)(increase(pyroscope_compactor_runs_failed_total{reason="error"}[5m])) > 0
-    for: 5m
+    expr: sum by (instance, job)(increase(pyroscope_compactor_runs_failed_total{reason="error"}[1h])) > 0
+    for: 1h
     labels:
       severity: warning
     annotations:
       summary: "Compactor run failed ({{ $labels.instance }})"
       description: |
-        One or more compactor runs failed in the last 5 minutes on instance {{ $labels.instance }}.
+        One or more compactor runs failed in the last 1 hour on instance {{ $labels.instance }}.
   - alert: PyroscopeBlockCleanupFailures
-    expr: sum by (instance, job)(increase(pyroscope_compactor_block_cleanup_failures_total[5m])) > 0
-    for: 5m
+    expr: sum by (instance, job)(increase(pyroscope_compactor_block_cleanup_failures_total[1h])) > 0
+    for: 1h
     labels:
       severity: warning
     annotations:
