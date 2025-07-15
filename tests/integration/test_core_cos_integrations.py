@@ -35,9 +35,9 @@ TEMPO_S3_BUCKET = "tempo"
 COS_COMPONENTS = (
     PROMETHEUS_APP,
     LOKI_APP,
-    # TEMPO_WORKER_APP,
-    # TEMPO_APP,
-    # TEMPO_S3_APP,
+    TEMPO_WORKER_APP,
+    TEMPO_APP,
+    TEMPO_S3_APP,
     CATALOGUE_APP,
     GRAFANA_APP,
 )
@@ -226,7 +226,6 @@ def test_alert_rules_integration(juju: Juju):
     # WHEN we query for alert rules
     url = f"http://{address}:9090/api/v1/rules"
     # THEN we should get a successful responseisting dashboard
-    assert "file:pyroscop
     try:
         response = requests.get(url)
         data = response.json()
