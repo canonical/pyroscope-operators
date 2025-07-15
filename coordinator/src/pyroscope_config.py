@@ -33,7 +33,6 @@ class PyroscopeRole(StrEnum):
     tenant_settings = "tenant-settings"
     ad_hoc_profiles = "ad-hoc-profiles"
 
-
     @staticmethod
     def all_nonmeta():
         return {
