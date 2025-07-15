@@ -1,0 +1,116 @@
+# TODO: revisit the alert rules when https://github.com/grafana/pyroscope/issues/3624 is addressed
+
+groups:
+- name: pyroscope_general_alerts
+  rules:
+  - alert: PyroscopeRingMemberUnhealthy
+    expr:  max by (job, instance)(pyroscope_ring_members{state="Unhealthy"}) > 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Ring members unhealthy ({{ $labels.instance }})
+      description: "At least one Pyroscope component is in an Unhealthy state on {{ $labels.instance }}."
+  - alert: PyroscopeStoreGatewayNotSyncing
+    expr: |
+      max by (job, instance) (increase(pyroscope_storegateway_bucket_sync_total[15m])) == 0
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Store-gateway not syncing ({{ $labels.instance }})"
+      description: No bucket syncs occurred on {{ $labels.instance }} in the last 15 minutes.
+  - alert: PyroscopeTCPConnectionsLimit
+    expr:  max by (job, instance)(100 * (pyroscope_tcp_connections / pyroscope_tcp_connections_limit) >= 80 and pyroscope_tcp_connections_limit > 0)
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "TCP connections nearing limit ({{ $labels.instance }})"
+      description: "Instance {{ $labels.instance }} is using over 80% of its allowed TCP connections."
+  - alert: PyroscopePanicsDetected
+    expr: increase(pyroscope_panic_total[1m]) > 0
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pyroscope panic detected ({{ $labels.instance }})"
+      description: "Instance {{ $labels.instance }} has recorded at least one panic in the last minute."
+  - alert: PyroscopeFrontendNotConnectedToScheduler
+    expr: min by (job, instance)(pyroscope_query_frontend_connected_schedulers) == 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Query frontend not connected to any schedulers ({{ $labels.instance }})"
+      description: "Pyroscope frontend {{ $labels.instance }} is not connected to any schedulers."
+  - alert: PyroscopeCompactorFailures
+    expr: sum by (instance, job)(increase(pyroscope_compactor_runs_failed_total{reason="error"}[5m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Compactor run failed ({{ $labels.instance }})"
+      description: |
+        One or more compactor runs failed in the last 5 minutes on instance {{ $labels.instance }}.
+  - alert: PyroscopeBlockCleanupFailures
+    expr: sum by (instance, job)(increase(pyroscope_compactor_block_cleanup_failures_total[5m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Compactor block cleanup failures ({{ $labels.instance }})
+      description: >
+        Failures occurred while attempting to clean up compactor blocks on instance {{ $labels.instance }}.
+  - alert: PyroscopeObjectStoreOperationFailures
+    expr: sum by (instance, job, bucket, operation)(increase(objstore_bucket_operation_failures_total[5m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Object store operation failures detected ({{ $labels.instance }})"
+      description: "Bucket '{{ $labels.bucket }}' operation '{{ $labels.operation }}' has failed {{ $value }} times in the last 5 minutes."
+      
+- name: pyroscope_read_alerts
+  rules:
+  - alert: PyroscopeHighReadRequestLatency
+    expr: |
+      histogram_quantile(0.99, sum by (method, route, le, job, instance) (rate(pyroscope_request_duration_seconds_bucket{route=~"pyroscope_render"}[5m]))) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High p99 read requests latency on {{ $labels.method }} {{ $labels.route }}"
+      description: |
+        The 99th percentile read requests duration is over 1s for route {{ $labels.route }} (method {{ $labels.method }}).
+  - alert: PyroscopeReadRequestErrors
+    expr: 100 * sum(rate(pyroscope_request_duration_seconds_count{route=~"pyroscope_render",status_code=~"5.."}[5m])) by (route,method,job,instance) / sum(rate(pyroscope_request_duration_seconds_count{route=~"pyroscope_render"}[5m])) by (route,method,job,instance)  > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High read request errors on {{ $labels.method }} {{ $labels.route }}
+      description: |
+        Instance {{ $labels.instance }} is experiencing {{ printf "%.2f" $value }}% read requests error rate for route {{ $labels.route }} (method {{ $labels.method }}).
+
+- name: pyroscope_write_alerts
+  rules:
+  - alert: PyroscopeHighWriteRequestLatency
+    expr: |
+      histogram_quantile(0.99, sum by (method, route, le, job, instance) (rate(pyroscope_request_duration_seconds_bucket{route=~"ingest|opentelemetry_proto_collector_profiles_v1development_profilesservice_export"}[5m]))) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High p99 write requests latency on {{ $labels.method }} {{ $labels.route }}"
+      description: |
+        The 99th percentile write requests duration is over 1s on instance {{ $labels.instance }} for route {{ $labels.route }} (method {{ $labels.method }}).
+  - alert: PyroscopeWriteRequestErrors
+    expr: 100 * sum(rate(pyroscope_request_duration_seconds_count{route=~"ingest|opentelemetry_proto_collector_profiles_v1development_profilesservice_export",status_code=~"5.."}[5m])) by (route,method,job,instance) / sum(rate(pyroscope_request_duration_seconds_count{route=~"ingest|opentelemetry_proto_collector_profiles_v1development_profilesservice_export"}[5m])) by (route,method,job,instance)  > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High write request errors on {{ $labels.method }} {{ $labels.route }}
+      description: |
+        Instance {{ $labels.instance }} is experiencing {{ printf "%.2f" $value }}% write requests error rate for route {{ $labels.route }} (method {{ $labels.method }}).
+
