@@ -19,7 +19,7 @@ nginx_port = 8080
 nginx_tls_port = 443
 
 _locations_write: List[NginxLocationConfig] = [
-    NginxLocationConfig(path="/ingest", backend="ingester", modifier="="),
+    NginxLocationConfig(path="/ingest", backend="distributor", modifier="="),
 ]
 
 _locations_query_frontend: List[NginxLocationConfig] = [
@@ -39,7 +39,9 @@ _locations_tenant_settings: List[NginxLocationConfig] = [
 ]
 
 _locations_ad_hoc_profiles: List[NginxLocationConfig] = [
-    NginxLocationConfig(path="/adhocprofiles.v1.AdHocProfileService", backend="ad-hoc-profiles")
+    NginxLocationConfig(
+        path="/adhocprofiles.v1.AdHocProfileService", backend="ad-hoc-profiles"
+    )
 ]
 
 _locations_worker: List[NginxLocationConfig] = [
