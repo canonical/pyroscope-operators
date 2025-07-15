@@ -5,9 +5,11 @@
 """Pyroscope workload configuration and client."""
 
 from typing import Dict, Optional, Set, Tuple
-from coordinated_workers.coordinator import Coordinator
 from urllib.parse import urlparse
+
 import yaml
+from coordinated_workers.coordinator import Coordinator
+
 import pyroscope_config
 
 
@@ -16,8 +18,9 @@ class Pyroscope:
 
     _data_path = "/pyroscope-data"
     # this is the single source of truth for which ports are opened and configured
-    # in the distributed Pyroscope deployment
+    # in the distributed Pyroscope deployment (on the worker nodes)
     memberlist_port = 7946
+    # this is an http server, but it can also somehow accept grpc traffic using some dark trick
     http_server_port = 4040
 
     def config(

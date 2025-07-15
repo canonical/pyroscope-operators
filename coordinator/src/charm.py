@@ -6,21 +6,31 @@
 
 import logging
 import socket
-from typing import Optional, Set, Tuple
-from urllib.parse import urlparse
-from charms.catalogue_k8s.v1.catalogue import CatalogueItem
+from typing import List, Optional, Set, Tuple
 
-from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
+import ops
+from charms.catalogue_k8s.v1.catalogue import CatalogueItem
+from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
+from coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH, NginxConfig
+from cosl.interfaces.utils import DatabagModel
 from ops.charm import CharmBase
-from ops.model import ModelError
 
 import nginx_config
+import traefik_config
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
 
 logger = logging.getLogger(__name__)
+
+PEERS_RELATION_ENDPOINT_NAME = "peers"
+
+
+class PeerData(DatabagModel):
+    """Databag model for the "peers" relation between coordinator units."""
+
+    fqdn: str
+    """FQDN hostname of this coordinator unit."""
 
 
 class PyroscopeCoordinatorCharm(CharmBase):
@@ -33,17 +43,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self._nginx_prometheus_exporter_container = self.unit.get_container(
             "nginx-prometheus-exporter"
         )
-        self.ingress = IngressPerAppRequirer(
-            charm=self,
-            port=urlparse(self._internal_url).port,
-            strip_prefix=True,
-            scheme=lambda: urlparse(self._internal_url).scheme,
-        )
+        self.ingress = TraefikRouteRequirer(
+            self, self.model.get_relation("ingress"), "ingress"
+        )  # type: ignore
         self.pyroscope = Pyroscope()
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
-            external_url=self._most_external_url,
+            external_url=self._most_external_http_url,
             worker_metrics_port=Pyroscope.http_server_port,
             endpoints={
                 "certificates": "certificates",
@@ -90,6 +97,20 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return socket.getfqdn()
 
     @property
+    def _external_http_url(self) -> Optional[str]:
+        """Return the external URL if the ingress is configured and ready, otherwise None."""
+        if (
+            self.ingress.is_ready()
+            and self.ingress.scheme
+            and self.ingress.external_host
+        ):
+            ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}"
+            logger.debug("This unit's ingress URL: %s", ingress_url)
+            return ingress_url
+
+        return None
+
+    @property
     def service_hostname(self) -> str:
         """The FQDN of the k8s service associated with this application.
 
@@ -117,33 +138,23 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return scheme
 
     @property
-    def _internal_url(self) -> str:
+    def _internal_http_url(self) -> str:
         """Return the locally addressable, FQDN based service address."""
-        return f"{self._scheme}://{self.service_hostname}:{self._nginx_port}"
+        return f"{self._scheme}://{self.service_hostname}:{self._http_server_port}"
 
     @property
-    def _external_url(self) -> Optional[str]:
-        """Return the external URL if the ingress is configured and ready, otherwise None."""
-        try:
-            if ingress_url := self.ingress.url:
-                return ingress_url
-        except ModelError as e:
-            logger.error("Failed obtaining external url: %s.", e)
-        return None
-
-    @property
-    def _most_external_url(self) -> str:
+    def _most_external_http_url(self) -> str:
         """Return the most external url known about by this charm.
 
         This will return the first of:
         - the external URL, if the ingress is configured and ready
         - the internal URL
         """
-        external_url = self._external_url
+        external_url = self._external_http_url
         if external_url:
             return external_url
         # If we do not have an ingress, then use the K8s service.
-        return self._internal_url
+        return self._internal_http_url
 
     @property
     def _are_certificates_on_disk(self) -> bool:
@@ -155,12 +166,12 @@ class PyroscopeCoordinatorCharm(CharmBase):
         )
 
     @property
-    def _nginx_port(self) -> int:
-        """The port that we should open on this pod."""
+    def _http_server_port(self) -> int:
+        """The http port that we should open on this pod."""
         return (
-            nginx_config.nginx_tls_port
+            nginx_config.https_server_port
             if self._are_certificates_on_disk
-            else nginx_config.nginx_port
+            else nginx_config.http_server_port
         )
 
     @property
@@ -170,7 +181,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             # use app name in case there are multiple Pyroscope apps deployed.
             name=f"Pyroscope ({self.app.name})",
             icon="flame",
-            url=self._most_external_url,
+            url=self._most_external_http_url,
             description=(
                 "Grafana Pyroscope is a distributed continuous profiling backend. "
                 "Allows you to collect, store, query, and visualize profiles from your distributed deployment."
@@ -191,7 +202,32 @@ class PyroscopeCoordinatorCharm(CharmBase):
         # reason is, if we miss these events because our coordinator cannot process events (inconsistent status),
         # we need to 'remember' to run this logic as soon as we become ready, which is hard and error-prone
         # open the necessary ports on this unit
-        self.unit.set_ports(self._nginx_port)
+        self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
+        self._reconcile_ingress()
+
+    def _reconcile_ingress(self):
+        if self.ingress.is_ready():
+            endpoints = [
+                traefik_config.Endpoint(
+                    name="http_server", protocol="http", port=self._http_server_port
+                ),
+                traefik_config.Endpoint(
+                    name="grpc_server",
+                    protocol="grpc",
+                    port=nginx_config.grpc_server_port,
+                ),
+            ]
+            self.ingress.submit_to_traefik(
+                traefik_config.ingress_config(
+                    endpoints,
+                    coordinator_fqdns=self._get_peer_fqdns(),
+                    model_name=self.model.name,
+                    app_name=self.app.name,
+                    ingressed=self.ingress.is_ready,
+                    tls=self._are_certificates_on_disk,
+                ),
+                static=traefik_config.static_ingress_config(endpoints),
+            )
 
     def _get_worker_ports(self, role: str) -> Tuple[int, ...]:
         """Determine, from the role of a worker, which ports it should open."""
@@ -201,6 +237,30 @@ class PyroscopeCoordinatorCharm(CharmBase):
             Pyroscope.http_server_port,
         }
         return tuple(ports)
+
+    # peer relation: scaled-up coordinator units fqdn collection
+    @property
+    def peers(self):
+        """Fetch the "peers" peer relation."""
+        return self.model.get_relation(PEERS_RELATION_ENDPOINT_NAME)
+
+    def _update_peer_data(self) -> None:
+        """Update peer unit data bucket with this unit's hostname."""
+        if self.peers and self.peers.data:
+            PeerData(fqdn=self.hostname).dump(self.peers.data[self.unit])
+
+    def _get_peer_data(self, unit: ops.Unit) -> Optional[PeerData]:
+        """Get peer data from a given unit data bucket."""
+        if not (self.peers and self.peers.data):
+            return None
+
+        return PeerData.load(self.peers.data.get(unit, {}))
+
+    def _get_peer_fqdns(self) -> List[str]:
+        """Obtain from peer data all peer unit fqdns."""
+        return [self._get_peer_data(peer).fqdn for peer in self.peers.units] + [
+            self.hostname
+        ]
 
 
 if __name__ == "__main__":  # pragma: nocover

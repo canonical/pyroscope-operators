@@ -5,6 +5,7 @@
 
 from enum import StrEnum, unique
 from typing import List, Optional
+
 from coordinated_workers.coordinator import ClusterRolesConfig
 from pydantic import BaseModel, Field
 
@@ -32,7 +33,6 @@ class PyroscopeRole(StrEnum):
     store_gateway = "store-gateway"
     tenant_settings = "tenant-settings"
     ad_hoc_profiles = "ad-hoc-profiles"
-
 
     @staticmethod
     def all_nonmeta():

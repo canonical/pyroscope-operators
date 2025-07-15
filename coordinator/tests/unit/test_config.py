@@ -1,11 +1,11 @@
 import json
-import pytest
 from dataclasses import replace
 
+import pytest
 import yaml
+from ops.testing import State
 
 from charm import PyroscopeCoordinatorCharm
-from ops.testing import State
 
 
 def get_worker_unit_data(unit_no):

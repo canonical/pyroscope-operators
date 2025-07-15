@@ -1,10 +1,12 @@
-from contextlib import contextmanager
 import json
-import pytest
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
-from charm import PyroscopeCoordinatorCharm
-from ops.testing import Context, Relation, Container
+
+import pytest
 from ops import ActiveStatus
+from ops.testing import Container, Context, Relation
+
+from charm import PyroscopeCoordinatorCharm
 
 
 @contextmanager
