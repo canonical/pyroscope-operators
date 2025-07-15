@@ -208,11 +208,11 @@ def test_alert_rules_integration(juju: Juju):
         # AND there are non-empty alert rule groups
         assert len(groups) > 0, "No alerts found"
         # AND for every pyroscope app, there is at least one alert rule
-        labels_apps = (
+        labels_apps = {
             rule["labels"].get("juju_application", "")
             for group in groups
             for rule in group.get("rules", [])
-        )
+        }
         for app in (PYROSCOPE_APP, *ALL_WORKERS):
             assert app in labels_apps, f"No alert rules found for app '{app}'"
     except requests.exceptions.RequestException as e:
