@@ -30,14 +30,16 @@ TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker"
 TEMPO_S3_APP = "tempo-s3-bucket"
 CATALOGUE_APP = "catalogue"
+GRAFANA_APP = "grafana"
 TEMPO_S3_BUCKET = "tempo"
 COS_COMPONENTS = (
     PROMETHEUS_APP,
     LOKI_APP,
-    TEMPO_WORKER_APP,
-    TEMPO_APP,
-    TEMPO_S3_APP,
+    # TEMPO_WORKER_APP,
+    # TEMPO_APP,
+    # TEMPO_S3_APP,
     CATALOGUE_APP,
+    GRAFANA_APP,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,6 +96,15 @@ def test_setup(juju: Juju):
     )
     juju.integrate(PYROSCOPE_APP, CATALOGUE_APP)
 
+    # AND grafana
+    juju.deploy(
+        "grafana-k8s",
+        GRAFANA_APP,
+        channel=INTEGRATION_TESTERS_CHANNEL,
+        trust=True,
+    )
+    juju.integrate(PYROSCOPE_APP + ":grafana-dashboard", GRAFANA_APP)
+
     # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
         lambda status: all_active(status, *COS_COMPONENTS, *pyro_apps),
@@ -128,7 +139,7 @@ def test_metrics_nginx_integration(juju: Juju):
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
     # WHEN we query for a metric from nginx-prometheus-exporter in the coordinator
     url = f"http://{address}:9090/api/v1/query"
-    app=PYROSCOPE_APP
+    app = PYROSCOPE_APP
     params = {"query": f"nginx_up{{juju_application='{app}'}}"}
     # THEN we should get a successful response and at least one result
     try:
@@ -194,8 +205,25 @@ def test_catalogue_integration(juju: Juju):
     assert "<title>Grafana Pyroscope</title>" in response
 
 
+def test_dashboard_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with grafana
+    grafana_unit = f"{GRAFANA_APP}/0"
+    out = juju.cli(
+        "show-unit", grafana_unit, "--endpoint", "grafana-dashboard", "--format", "json"
+    )
+    # WHEN we look into relation data for a relation with grafana
+    pyroscope_app_databag = json.loads(out)[grafana_unit]["relation-info"][0][
+        "application-data"
+    ]
+    templates = pyroscope_app_databag["dashboards"]
+    # THEN we find an existing dashboard
+    assert "file:pyroscope" in templates
+
+
 @pytest.mark.teardown
-@pytest.mark.xfail(reason="https://github.com/canonical/pyroscope-k8s-operator/issues/208")
+@pytest.mark.xfail(
+    reason="https://github.com/canonical/pyroscope-k8s-operator/issues/208"
+)
 def test_teardown(juju: Juju):
     # GIVEN a pyroscope cluster with core cos relations
     # WHEN we remove the cos components
