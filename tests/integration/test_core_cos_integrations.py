@@ -213,7 +213,7 @@ def test_alert_rules_integration(juju: Juju):
             for group in groups
             for rule in group.get("rules", [])
         )
-        for app in (PYROSCOPE_APP, ALL_WORKERS):
+        for app in (PYROSCOPE_APP, *ALL_WORKERS):
             assert app in labels_apps, f"No alert rules found for app '{app}'"
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Prometheus failed: {e}"
