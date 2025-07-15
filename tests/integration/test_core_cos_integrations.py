@@ -220,6 +220,32 @@ def test_dashboard_integration(juju: Juju):
     assert "file:pyroscope" in templates
 
 
+def test_alert_rules_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
+    address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
+    # WHEN we query for alert rules
+    url = f"http://{address}:9090/api/v1/rules"
+    # THEN we should get a successful responseisting dashboard
+    assert "file:pyroscop
+    try:
+        response = requests.get(url)
+        data = response.json()
+        assert data["status"] == "success", "Alerts query failed for"
+        groups = data["data"]["groups"]
+        # AND there are non-empty alert rule groups
+        assert len(groups) > 0, "No alerts found"
+        # AND for every pyroscope app, there is at least one alert rule
+        labels_apps = {
+            rule["labels"].get("juju_application", "")
+            for group in groups
+            for rule in group.get("rules", [])
+        }
+        for app in (PYROSCOPE_APP, *ALL_WORKERS):
+            assert app in labels_apps, f"No alert rules found for app '{app}'"
+    except requests.exceptions.RequestException as e:
+        assert False, f"Request to Prometheus failed: {e}"
+
+
 @pytest.mark.teardown
 @pytest.mark.xfail(
     reason="https://github.com/canonical/pyroscope-k8s-operator/issues/208"
