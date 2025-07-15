@@ -23,6 +23,9 @@ class Pyroscope:
     # this is an http server, but it can also somehow accept grpc traffic using some dark trick
     http_server_port = 4040
 
+    def __init__(self, external_url: str):
+        self._external_url = external_url
+
     def config(
         self,
         coordinator: Coordinator,
@@ -30,9 +33,8 @@ class Pyroscope:
         """Generate the Pyroscope configuration."""
         addrs = coordinator.cluster.gather_addresses()
         addrs_by_role = coordinator.cluster.gather_addresses_by_role()
-        external_url = coordinator._external_url
         config = pyroscope_config.PyroscopeConfig(
-            api=self._build_api_config(external_url),
+            api=self._build_api_config(self._external_url),
             server=self._build_server_config(),
             distributor=self._build_distributor_config(),
             ingester=self._build_ingester_config(addrs_by_role),

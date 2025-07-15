@@ -38,6 +38,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._ingress_prefix = f"{self.model.name}-{self.app.name}"
 
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
@@ -46,7 +47,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.ingress = TraefikRouteRequirer(
             self, self.model.get_relation("ingress"), "ingress"
         )  # type: ignore
-        self.pyroscope = Pyroscope()
+        self.pyroscope = Pyroscope(external_url=self._external_http_url)
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
@@ -104,7 +105,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             and self.ingress.scheme
             and self.ingress.external_host
         ):
-            ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}"
+            ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}/{self._ingress_prefix}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
 
@@ -203,16 +204,17 @@ class PyroscopeCoordinatorCharm(CharmBase):
         # we need to 'remember' to run this logic as soon as we become ready, which is hard and error-prone
         # open the necessary ports on this unit
         self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
+        self._update_peer_data()
         self._reconcile_ingress()
 
     def _reconcile_ingress(self):
         if self.ingress.is_ready():
             endpoints = [
                 traefik_config.Endpoint(
-                    name="http_server", protocol="http", port=self._http_server_port
+                    entrypoint_name="web", protocol="http", port=self._http_server_port
                 ),
                 traefik_config.Endpoint(
-                    name="grpc_server",
+                    entrypoint_name="pyroscope-grpc-server",
                     protocol="grpc",
                     port=nginx_config.grpc_server_port,
                 ),
@@ -223,8 +225,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
                     coordinator_fqdns=self._get_peer_fqdns(),
                     model_name=self.model.name,
                     app_name=self.app.name,
-                    ingressed=self.ingress.is_ready,
+                    ingressed=self.ingress.is_ready(),
                     tls=self._are_certificates_on_disk,
+                    prefix=self._ingress_prefix,
                 ),
                 static=traefik_config.static_ingress_config(endpoints),
             )

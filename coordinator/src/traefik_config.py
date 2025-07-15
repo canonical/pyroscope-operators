@@ -6,7 +6,7 @@ from typing import Dict, Iterable, List, Literal
 class Endpoint:
     """Represents an endpoint on the coordinator."""
 
-    name: str
+    entrypoint_name: str
     protocol: Literal["http", "grpc"]
     port: int
 
@@ -18,13 +18,21 @@ def ingress_config(
     app_name: str,
     ingressed: bool,
     tls: bool,
+    prefix: str,
 ) -> dict:
     """Build a raw ingress configuration for Traefik."""
     http_routers = {}
     http_services = {}
-    middlewares = {}
+
+    stripprefix_middleware_name = f"juju-{model_name}-{app_name}-middleware-noprefix"
+    middlewares = {
+        stripprefix_middleware_name: {
+            "stripPrefix": {"forceSlash": False, "prefixes": [prefix]}
+        }
+    }
+
     for endpoint in endpoints:
-        sanitized_endpoint_name = endpoint.name.replace("_", "-")
+        sanitized_endpoint_name = endpoint.entrypoint_name.replace("_", "-")
         redirect_middleware = (
             {
                 f"juju-{model_name}-{app_name}-middleware-{sanitized_endpoint_name}": {
@@ -40,17 +48,28 @@ def ingress_config(
         )
         middlewares.update(redirect_middleware)
 
-        http_routers[f"juju-{model_name}-{app_name}-{sanitized_endpoint_name}"] = {
-            "entryPoints": [sanitized_endpoint_name],
-            "service": f"juju-{model_name}-{app_name}-service-{sanitized_endpoint_name}",
-            # TODO better matcher
-            "rule": "ClientIP(`0.0.0.0/0`)",
-            **(
-                {"middlewares": list(redirect_middleware.keys())}
-                if redirect_middleware
-                else {}
-            ),
-        }
+        if endpoint.protocol == "grpc":
+            http_routers[f"juju-{model_name}-{app_name}-{sanitized_endpoint_name}"] = {
+                "entryPoints": [sanitized_endpoint_name],
+                "service": f"juju-{model_name}-{app_name}-service-{sanitized_endpoint_name}",
+                # TODO better matcher
+                "rule": "ClientIP(`0.0.0.0/0`)",
+                **(
+                    {"middlewares": list(redirect_middleware.keys())}
+                    if redirect_middleware
+                    else {}
+                ),
+            }
+
+        else:
+            http_routers[f"juju-{model_name}-{app_name}-{sanitized_endpoint_name}"] = {
+                "entryPoints": [sanitized_endpoint_name],
+                "service": f"juju-{model_name}-{app_name}-service-{sanitized_endpoint_name}",
+                "rule": f"PathPrefix(`{prefix}`)",
+                "middlewares": [stripprefix_middleware_name]
+                + list(redirect_middleware.keys()),
+            }
+
         if endpoint.protocol == "grpc" and not tls:
             # to send data to unsecured GRPC endpoints, we need h2c
             # see https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-http-h2c
@@ -99,7 +118,8 @@ def static_ingress_config(endpoints: List[Endpoint]):
     """Static portion of the traefik-route ingress configuration."""
     return {
         "entryPoints": {
-            endpoint.name.replace("_", "-"): {"address": f":{endpoint.port}"}
+            endpoint.entrypoint_name.replace("_", "-"): {"address": f":{endpoint.port}"}
         }
         for endpoint in endpoints
+        if endpoint.protocol == "grpc"
     }

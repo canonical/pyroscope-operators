@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from ops import ActiveStatus
-from ops.testing import Container, Context, Relation
+from ops.testing import Container, Context, Relation, PeerRelation
 
 from charm import PyroscopeCoordinatorCharm
 
@@ -59,30 +59,16 @@ def s3(s3_config):
 
 
 @pytest.fixture(scope="function")
-def ingress_subpath():
-    return Relation(
-        "ingress",
-        remote_app_data={
-            "ingress": json.dumps({"url": "http://1.2.3.5/model-pyroscope-k8s"})
-        },
-        local_unit_data={
-            "host": "localhost",
-            "ip": "127.0.0.1",
-        },
-    )
+def external_host():
+    # traefik hostname
+    return "example.com"
 
 
 @pytest.fixture(scope="function")
-def ingress_subdomain():
+def ingress(external_host):
     return Relation(
         "ingress",
-        remote_app_data={
-            "ingress": json.dumps({"url": "http://pyroscope-k8s.canonical.com"})
-        },
-        local_unit_data={
-            "host": "localhost",
-            "ip": "127.0.0.1",
-        },
+        remote_app_data={"external_host": external_host, "scheme": "http"},
     )
 
 
@@ -103,6 +89,13 @@ def all_worker():
                 ),
             }
         },
+    )
+
+
+@pytest.fixture(scope="function")
+def peers():
+    return PeerRelation(
+        "peers",
     )
 
 
