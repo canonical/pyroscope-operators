@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 
 dependencies = [
     "ops[tracing]",
-    "coordinated-workers>=2.0.0",
+    "coordinated-workers>=2.0.2",
     "pydantic<3",
 ]
 

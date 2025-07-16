@@ -195,8 +195,8 @@ def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
     juju.deploy(
         "s3-integrator",
         s3_integrator_app,
-        # channel="2/edge",
-        revision=157,  # FIXME: regression in 2/edge breaks bucket name in databag
+        channel="2/edge",
+        revision=157, # FIXME: regression in 2/edge breaks bucket name in databag
         base="ubuntu@24.04",
     )
 

@@ -24,7 +24,7 @@ http_locations: List[NginxLocationConfig] = [
         path="/", backend="worker", modifier="="
     ),  # pyroscope UI - not bound to a specific role
     NginxLocationConfig(path="/assets", backend="worker"),
-    NginxLocationConfig(path="/ingest", backend="ingester", modifier="="),
+    NginxLocationConfig(path="/ingest", backend="distributor", modifier="="),
     NginxLocationConfig(
         path="/pyroscope", backend="query-frontend", modifier=""
     ),  # API queries
