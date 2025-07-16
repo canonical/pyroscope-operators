@@ -225,7 +225,7 @@ def test_alert_rules_integration(juju: Juju):
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
     # WHEN we query for alert rules
     url = f"http://{address}:9090/api/v1/rules"
-    # THEN we should get a successful responseisting dashboard
+    # THEN we should get a successful response
     try:
         response = requests.get(url)
         data = response.json()
