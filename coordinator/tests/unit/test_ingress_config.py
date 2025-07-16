@@ -1,6 +1,6 @@
 import yaml
 
-from coordinator.src import traefik_config
+import traefik_config
 
 
 def test_ingress_config():

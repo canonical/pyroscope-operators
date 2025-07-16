@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Dict, Iterable, List, Literal
+from typing import Dict, Iterable, List, Literal, Callable
 
 
 @dataclasses.dataclass
@@ -9,6 +9,45 @@ class Endpoint:
     entrypoint_name: str
     protocol: Literal["http", "grpc"]
     port: int
+
+    @property
+    def sanitized_entrypoint_name(self) -> str:
+        return self.entrypoint_name.replace("_", "-")
+
+
+def _generate_http_routers_config(
+        endpoints:Iterable[Endpoint],
+        service_name_getter: Callable[[Endpoint], str],
+        router_name_getter: Callable[[Endpoint], str],
+        redirect_middleware_name:str,
+        stripprefix_middleware_name:str,
+        prefix: str
+):
+    http_routers = {}
+
+    for endpoint in endpoints:
+        if endpoint.protocol == "grpc":
+            http_routers[router_name_getter(endpoint)] = {
+                "entryPoints": [endpoint.sanitized_entrypoint_name],
+                "service": service_name_getter(endpoint),
+                # TODO better matcher
+                "rule": "ClientIP(`0.0.0.0/0`)",
+                **(
+                    {"middlewares": [redirect_middleware_name]}
+                    if redirect_middleware_name
+                    else {}
+                ),
+            }
+
+        else:
+            http_routers[router_name_getter(endpoint)] = {
+                "entryPoints": [endpoint.sanitized_entrypoint_name],
+                "service": service_name_getter(endpoint),
+                "rule": f"PathPrefix(`{prefix}`)",
+                "middlewares": [stripprefix_middleware_name, *redirect_middleware_name]
+            }
+
+    return http_routers
 
 
 def ingress_config(
@@ -21,10 +60,12 @@ def ingress_config(
     prefix: str,
 ) -> dict:
     """Build a raw ingress configuration for Traefik."""
-    http_routers = {}
     http_services = {}
 
-    stripprefix_middleware_name = f"juju-{model_name}-{app_name}-middleware-noprefix"
+    def middleware_name_getter(name:str):
+        return f"juju-{model_name}-{app_name}-middleware-{name}"
+
+    stripprefix_middleware_name = middleware_name_getter("stripprefix")
     middlewares = {
         stripprefix_middleware_name: {
             "stripPrefix": {"forceSlash": False, "prefixes": [prefix]}
@@ -32,10 +73,10 @@ def ingress_config(
     }
 
     for endpoint in endpoints:
-        sanitized_endpoint_name = endpoint.entrypoint_name.replace("_", "-")
+        redirect_middleware_name = middleware_name_getter(endpoint.sanitized_entrypoint_name+"-redirect")
         redirect_middleware = (
             {
-                f"juju-{model_name}-{app_name}-middleware-{sanitized_endpoint_name}": {
+                redirect_middleware_name: {
                     "redirectScheme": {
                         "permanent": True,
                         "port": endpoint.port,
@@ -47,28 +88,6 @@ def ingress_config(
             else {}
         )
         middlewares.update(redirect_middleware)
-
-        if endpoint.protocol == "grpc":
-            http_routers[f"juju-{model_name}-{app_name}-{sanitized_endpoint_name}"] = {
-                "entryPoints": [sanitized_endpoint_name],
-                "service": f"juju-{model_name}-{app_name}-service-{sanitized_endpoint_name}",
-                # TODO better matcher
-                "rule": "ClientIP(`0.0.0.0/0`)",
-                **(
-                    {"middlewares": list(redirect_middleware.keys())}
-                    if redirect_middleware
-                    else {}
-                ),
-            }
-
-        else:
-            http_routers[f"juju-{model_name}-{app_name}-{sanitized_endpoint_name}"] = {
-                "entryPoints": [sanitized_endpoint_name],
-                "service": f"juju-{model_name}-{app_name}-service-{sanitized_endpoint_name}",
-                "rule": f"PathPrefix(`{prefix}`)",
-                "middlewares": [stripprefix_middleware_name]
-                + list(redirect_middleware.keys()),
-            }
 
         if endpoint.protocol == "grpc" and not tls:
             # to send data to unsecured GRPC endpoints, we need h2c
@@ -95,9 +114,21 @@ def ingress_config(
                 }
             }
 
+    def service_name_getter(endpoint: Endpoint):
+        return f"juju-{model_name}-{app_name}-service-{endpoint.sanitized_entrypoint_name}"
+    def router_name_getter(endpoint: Endpoint):
+        return f"juju-{model_name}-{app_name}-router-{endpoint.sanitized_entrypoint_name}"
+
     return {
         "http": {
-            "routers": http_routers,
+            "routers": _generate_http_routers_config(
+                endpoints,
+                service_name_getter=service_name_getter,
+                router_name_getter=router_name_getter,
+                stripprefix_middleware_name=stripprefix_middleware_name,
+                redirect_middleware_name=redirect_middleware_name,
+                prefix=prefix
+            ),
             "services": http_services,
             # else we get: level=error msg="Error occurred during watcher callback:
             # ...: middlewares cannot be a standalone element (type map[string]*dynamic.Middleware)"
