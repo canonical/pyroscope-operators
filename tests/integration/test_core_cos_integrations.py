@@ -4,6 +4,7 @@
 
 import json
 import logging
+import re
 
 import pytest
 import requests
@@ -13,6 +14,7 @@ from tenacity import (
     stop_after_attempt,
     wait_fixed,
 )
+from requests.auth import HTTPBasicAuth
 
 from helpers import (
     deploy_distributed_cluster,
@@ -207,17 +209,26 @@ def test_catalogue_integration(juju: Juju):
 
 def test_dashboard_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with grafana
+    address = get_unit_ip_address(juju, GRAFANA_APP, 0)
     grafana_unit = f"{GRAFANA_APP}/0"
+    # WHEN we search for a dashboard with Pyroscope's tag in Grafana
     out = juju.cli(
-        "show-unit", grafana_unit, "--endpoint", "grafana-dashboard", "--format", "json"
+        "run", grafana_unit, "get-admin-password"
     )
-    # WHEN we look into relation data for a relation with grafana
-    pyroscope_app_databag = json.loads(out)[grafana_unit]["relation-info"][0][
-        "application-data"
-    ]
-    templates = pyroscope_app_databag["dashboards"]
-    # THEN we find an existing dashboard
-    assert "file:pyroscope" in templates
+    match = re.search(r"admin-password:\s*(\S+)", out)
+    if match:
+        pw = match.group(1)
+        url = f"http://{address}:3000/api/dashboards/tags"
+        auth = HTTPBasicAuth("admin", pw)
+        params = {"tag": PYROSCOPE_APP}
+        try:
+            response = requests.get(url, auth=auth, params=params)
+            # THEN we find an existing tag
+            assert PYROSCOPE_APP in response.text
+        except requests.exceptions.RequestException:
+            assert False
+    else:
+        raise RuntimeError("No password in grafana's output")
 
 
 def test_alert_rules_integration(juju: Juju):
