@@ -38,7 +38,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self._ingress_prefix = f"{self.model.name}-{self.app.name}"
+        self._ingress_prefix = f"/{self.model.name}-{self.app.name}"
 
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
@@ -105,7 +105,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             and self.ingress.scheme
             and self.ingress.external_host
         ):
-            ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}/{self._ingress_prefix}"
+            ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}{self._ingress_prefix}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
 
