@@ -73,6 +73,11 @@ def ingress(external_host):
 
 
 @pytest.fixture(scope="function")
+def catalogue():
+    return Relation("catalogue")
+
+
+@pytest.fixture(scope="function")
 def all_worker():
     return Relation(
         "pyroscope-cluster",

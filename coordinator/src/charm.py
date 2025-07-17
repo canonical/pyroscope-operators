@@ -225,7 +225,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
                     coordinator_fqdns=self._get_peer_fqdns(),
                     model_name=self.model.name,
                     app_name=self.app.name,
-                    ingressed=self.ingress.is_ready(),
                     tls=self._are_certificates_on_disk,
                     prefix=self._ingress_prefix,
                 ),
@@ -252,15 +251,15 @@ class PyroscopeCoordinatorCharm(CharmBase):
         if self.peers and self.peers.data:
             PeerData(fqdn=self.hostname).dump(self.peers.data[self.unit])
 
-    def _get_peer_data(self, unit: ops.Unit) -> Optional[PeerData]:
+    def _get_peer_data(self, unit: ops.Unit) -> PeerData:
         """Get peer data from a given unit data bucket."""
-        if not (self.peers and self.peers.data):
-            return None
-
         return PeerData.load(self.peers.data.get(unit, {}))
 
     def _get_peer_fqdns(self) -> List[str]:
-        """Obtain from peer data all peer unit fqdns."""
+        """Obtain from peer data all peer unit fqdns (including this unit)."""
+        if not self.peers or not self.peers.data:
+            return [self.hostname]
+
         return [self._get_peer_data(peer).fqdn for peer in self.peers.units] + [
             self.hostname
         ]
