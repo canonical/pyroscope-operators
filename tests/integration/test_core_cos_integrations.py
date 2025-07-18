@@ -4,6 +4,7 @@
 
 import json
 import logging
+import re
 
 import pytest
 import requests
@@ -13,6 +14,7 @@ from tenacity import (
     stop_after_attempt,
     wait_fixed,
 )
+from requests.auth import HTTPBasicAuth
 
 from helpers import (
     deploy_distributed_cluster,
@@ -30,6 +32,7 @@ TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker"
 TEMPO_S3_APP = "tempo-s3-bucket"
 CATALOGUE_APP = "catalogue"
+GRAFANA_APP = "grafana"
 TEMPO_S3_BUCKET = "tempo"
 COS_COMPONENTS = (
     PROMETHEUS_APP,
@@ -38,6 +41,7 @@ COS_COMPONENTS = (
     TEMPO_APP,
     TEMPO_S3_APP,
     CATALOGUE_APP,
+    GRAFANA_APP,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,6 +97,15 @@ def test_setup(juju: Juju):
         channel=INTEGRATION_TESTERS_CHANNEL,
     )
     juju.integrate(PYROSCOPE_APP, CATALOGUE_APP)
+
+    # AND grafana
+    juju.deploy(
+        "grafana-k8s",
+        GRAFANA_APP,
+        channel=INTEGRATION_TESTERS_CHANNEL,
+        trust=True,
+    )
+    juju.integrate(PYROSCOPE_APP + ":grafana-dashboard", GRAFANA_APP)
 
     # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
@@ -192,6 +205,30 @@ def test_catalogue_integration(juju: Juju):
     # THEN we receive a 200 OK response (0 exit status)
     # AND we confirm the response is from the Pyroscope UI (via the page title)
     assert "<title>Grafana Pyroscope</title>" in response
+
+
+def test_dashboard_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with grafana
+    address = get_unit_ip_address(juju, GRAFANA_APP, 0)
+    grafana_unit = f"{GRAFANA_APP}/0"
+    # WHEN we search for a dashboard with Pyroscope's tag in Grafana
+    out = juju.cli(
+        "run", grafana_unit, "get-admin-password"
+    )
+    match = re.search(r"admin-password:\s*(\S+)", out)
+    if match:
+        pw = match.group(1)
+        url = f"http://{address}:3000/api/dashboards/tags"
+        auth = HTTPBasicAuth("admin", pw)
+        params = {"tag": PYROSCOPE_APP}
+        try:
+            response = requests.get(url, auth=auth, params=params)
+            # THEN we find an existing tag
+            assert PYROSCOPE_APP in response.text
+        except requests.exceptions.RequestException:
+            assert False
+    else:
+        raise RuntimeError("No password in grafana's output")
 
 
 def test_alert_rules_integration(juju: Juju):

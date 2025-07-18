@@ -192,6 +192,7 @@ def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
     Assumes there's a MINIO_APP deployed and ready.
     """
     logger.info(f"deploying {s3_integrator_app=}")
+    # latest revision of s3-integrator creates buckets under relation name, we pin to a working version
     juju.deploy(
         "s3-integrator",
         s3_integrator_app,
