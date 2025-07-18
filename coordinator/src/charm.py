@@ -6,31 +6,21 @@
 
 import logging
 import socket
-from typing import List, Optional, Set, Tuple
+from typing import Optional
 
-import ops
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH, NginxConfig
-from cosl.interfaces.utils import DatabagModel
 from ops.charm import CharmBase
 
 import nginx_config
 import traefik_config
+from peers import Peers, PEERS_RELATION_ENDPOINT_NAME
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
 
 logger = logging.getLogger(__name__)
-
-PEERS_RELATION_ENDPOINT_NAME = "peers"
-
-
-class PeerData(DatabagModel):
-    """Databag model for the "peers" relation between coordinator units."""
-
-    fqdn: str
-    """FQDN hostname of this coordinator unit."""
 
 
 class PyroscopeCoordinatorCharm(CharmBase):
@@ -39,6 +29,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._ingress_prefix = f"/{self.model.name}-{self.app.name}"
+        self._peers = Peers(
+            self.model.get_relation(PEERS_RELATION_ENDPOINT_NAME),
+            self.hostname,
+            self.unit,
+        )
 
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
@@ -75,7 +70,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 enable_status_page=True,
             ),
             workers_config=self.pyroscope.config,
-            worker_ports=self._get_worker_ports,
+            worker_ports=lambda role: (
+                Pyroscope.memberlist_port,
+                # we need http_server_port because the metrics server runs on it.
+                Pyroscope.http_server_port,
+            ),
             workload_tracing_protocols=["jaeger_thrift_http"],
             container_name="charm",
             resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
@@ -84,10 +83,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
         # do this regardless of what event we are processing
         self._reconcile()
-
-        ######################################
-        # === EVENT HANDLER REGISTRATION === #
-        ######################################
 
     ######################
     # UTILITY PROPERTIES #
@@ -189,14 +184,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ),
         )
 
-    ##################
-    # EVENT HANDLERS #
-    ##################
-
-    ###################
-    # UTILITY METHODS #
-    ###################
-
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
         # regardless of the event we are processing.
@@ -204,7 +191,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         # we need to 'remember' to run this logic as soon as we become ready, which is hard and error-prone
         # open the necessary ports on this unit
         self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
-        self._update_peer_data()
+        self._peers.reconcile()
         self._reconcile_ingress()
 
     def _reconcile_ingress(self):
@@ -214,46 +201,13 @@ class PyroscopeCoordinatorCharm(CharmBase):
         config = traefik_config.traefik_config(
             http_port=self._http_server_port,
             grpc_port=nginx_config.grpc_server_port,
-            coordinator_fqdns=self._get_peer_fqdns(),
+            coordinator_fqdns=self._peers.get_fqdns(),
             model_name=self.model.name,
             app_name=self.app.name,
             tls=self._are_certificates_on_disk,
             prefix=self._ingress_prefix,
         )
         self.ingress.submit_to_traefik(config=config.dynamic, static=config.static)
-
-    def _get_worker_ports(self, role: str) -> Tuple[int, ...]:
-        """Determine, from the role of a worker, which ports it should open."""
-        ports: Set[int] = {
-            Pyroscope.memberlist_port,
-            # we need http_server_port because the metrics server runs on it.
-            Pyroscope.http_server_port,
-        }
-        return tuple(ports)
-
-    # peer relation: scaled-up coordinator units fqdn collection
-    @property
-    def peers(self):
-        """Fetch the "peers" peer relation."""
-        return self.model.get_relation(PEERS_RELATION_ENDPOINT_NAME)
-
-    def _update_peer_data(self) -> None:
-        """Update peer unit data bucket with this unit's hostname."""
-        if self.peers and self.peers.data:
-            PeerData(fqdn=self.hostname).dump(self.peers.data[self.unit])
-
-    def _get_peer_data(self, unit: ops.Unit) -> PeerData:
-        """Get peer data from a given unit data bucket."""
-        return PeerData.load(self.peers.data.get(unit, {}))
-
-    def _get_peer_fqdns(self) -> List[str]:
-        """Obtain from peer data all peer unit fqdns (including this unit)."""
-        if not self.peers or not self.peers.data:
-            return [self.hostname]
-
-        return [self._get_peer_data(peer).fqdn for peer in self.peers.units] + [
-            self.hostname
-        ]
 
 
 if __name__ == "__main__":  # pragma: nocover

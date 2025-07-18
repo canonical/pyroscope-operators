@@ -80,7 +80,7 @@ def test_nginx_grpc_server_route_before_ingress(juju: Juju):
 @pytest.mark.setup
 def test_add_ingress(juju):
     # AND WHEN we integrate the tempo cluster with traefik over ingress
-    juju.integrate(PYROSCOPE_APP + ":ingress", TRAEFIK_APP + ":ingress")
+    juju.integrate(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
 
     # THEN the coordinator, worker, and traefik are all in active/idle state
     juju.wait(
@@ -105,7 +105,7 @@ def test_nginx_grpc_server_route_with_ingress(juju: Juju):
 def test_remove_ingress(juju: Juju):
     # GIVEN a model with traefik and the tempo cluster integrated
     # WHEN we remove the ingress relation
-    juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP + ":ingress")
+    juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
 
     # THEN the coordinator and worker are in active/idle state
     juju.wait(
