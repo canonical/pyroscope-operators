@@ -4,7 +4,7 @@
 
 """Peer relation for pyroscope coordinators to exchange fqdns."""
 
-from typing import List
+from typing import List, Optional
 
 import ops
 from cosl.interfaces.utils import DatabagModel
@@ -20,25 +20,32 @@ class PeerData(DatabagModel):
 
 
 class Peers:
-    def __init__(self, relation: ops.Relation, hostname: str, unit: ops.Unit):
+    """Thin wrapper around a peer relation for the coordinator units to share data."""
+
+    def __init__(self, relation: Optional[ops.Relation], hostname: str, unit: ops.Unit):
         self._relation = relation
         self._hostname = hostname
         self._unit = unit
 
     def reconcile(self) -> None:
         """Update peer unit data bucket with this unit's hostname."""
-        if self._relation and self._relation.data:
-            PeerData(fqdn=self._hostname).dump(self._relation.data[self._unit])
+        relation = self._relation
+        if not (relation and relation.data):
+            return
 
-    def _get_peer_data(self, unit: ops.Unit) -> PeerData:
+        PeerData(fqdn=self._hostname).dump(relation.data[self._unit])
+
+    @staticmethod
+    def _get_peer_data(relation: ops.Relation, unit: ops.Unit) -> PeerData:
         """Get peer data from a given unit data bucket."""
-        return PeerData.load(self._relation.data.get(unit, {}))
+        return PeerData.load(relation.data.get(unit, {}))
 
     def get_fqdns(self) -> List[str]:
         """Obtain from peer data all peer unit fqdns (including this unit)."""
-        if not self._relation or not self._relation.data:
+        relation = self._relation
+        if not (relation and relation.data):
             return [self._hostname]
 
-        return [self._get_peer_data(peer).fqdn for peer in self._relation.units] + [
+        return [self._get_peer_data(relation, peer).fqdn for peer in relation.units] + [
             self._hostname
         ]

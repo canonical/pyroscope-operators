@@ -40,9 +40,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
             "nginx-prometheus-exporter"
         )
         self.ingress = TraefikRouteRequirer(
-            self, self.model.get_relation("ingress"), "ingress"
-        )  # type: ignore
-        self.pyroscope = Pyroscope(external_url=self._external_http_url)
+            self,
+            self.model.get_relation("ingress"),  # type: ignore
+            "ingress",
+        )
+        self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,

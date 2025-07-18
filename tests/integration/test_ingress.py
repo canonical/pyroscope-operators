@@ -18,7 +18,7 @@ from helpers import (
     deploy_monolithic_cluster,
     TRAEFIK_APP,
     get_ingress_proxied_hostname,
-get_unit_ip_address
+    get_unit_ip_address,
 )
 
 # hardcoded here instead of imported from coordinator.src.nginx_config to avoid dependency and PYTHONPATH conflicts
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))
-def check_http_endpoint(juju:Juju, use_ingress:bool):
+def check_http_endpoint(juju: Juju, use_ingress: bool):
     if use_ingress:
         ingress_ip = get_ingress_proxied_hostname(juju)
         url = f"http://{ingress_ip}/{juju.model}-{PYROSCOPE_APP}"
@@ -40,8 +40,9 @@ def check_http_endpoint(juju:Juju, use_ingress:bool):
     ui = requests.get(url)
     assert b"Grafana Pyroscope" in ui.content
 
+
 @tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))
-def check_grpc_endpoint(juju:Juju, use_ingress:bool):
+def check_grpc_endpoint(juju: Juju, use_ingress: bool):
     if use_ingress:
         hostname = get_ingress_proxied_hostname(juju)
     else:
@@ -55,8 +56,6 @@ def check_grpc_endpoint(juju:Juju, use_ingress:bool):
     else:
         # this is the response you get by curling a grpc server, and that's all we want to verify in this test
         assert "Received HTTP/0.9 when not allowed" in proc.stderr
-
-
 
 
 @pytest.mark.setup
@@ -90,6 +89,7 @@ def test_add_ingress(juju):
         error=jubilant.any_error,
         timeout=2000,
     )
+
 
 def test_nginx_ui_route_with_ingress(juju: Juju):
     """Verify that once we integrate ingress, we can hit the http endpoint through nginx."""
