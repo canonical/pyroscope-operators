@@ -2,15 +2,16 @@
 # See LICENSE file for licensing details.
 """Coordinator's Traefik configuration for traefik_route.
 
-Pyroscope accepts http traffic (e.g. to serve the UI) and grpc traffic (to ingest profiles) on the same port (8080).
+Pyroscope accepts http traffic (e.g. to serve the UI) and grpc traffic (to ingest profiles)
+on the same port (4040).
 Traefik and Nginx don't support that.
 Therefore, we use the following routing strategy. For grpc traffic:
 
-    traefik:42424 --> coordinator(nginx):42424 --> worker:8080
+    traefik:42424 --> coordinator(nginx):42424 --> worker:4040
 
 And for http traffic:
 
-    traefik/<model-name>-<coordinator-app-name> --> coordinator(nginx):8080 --> worker:8080
+    traefik/<model-name>-<coordinator-app-name> --> coordinator(nginx):8080 --> worker:4040
 """
 
 import dataclasses
