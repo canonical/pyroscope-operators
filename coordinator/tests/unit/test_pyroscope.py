@@ -3,6 +3,7 @@ import pytest
 
 from pyroscope import Pyroscope
 
+
 @pytest.mark.parametrize("url", ("/", None, "foo.com"))
 def test_pyroscope(url):
     # this test was added for the one and only purpose to achieve 100% coverage.
