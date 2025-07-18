@@ -1,11 +1,12 @@
 from unittest.mock import MagicMock
+import pytest
 
 from pyroscope import Pyroscope
 
-
-def test_pyroscope():
+@pytest.mark.parametrize("url", ("/", None, "foo.com"))
+def test_pyroscope(url):
     # this test was added for the one and only purpose to achieve 100% coverage.
-    cfg = Pyroscope("/")
+    cfg = Pyroscope(url)
     mm = MagicMock()
     mm.cluster.gather_addresses.return_value = ("192.0.2.0", "192.0.2.1")
     mm.cluster.gather_addresses_by_role.return_value = {

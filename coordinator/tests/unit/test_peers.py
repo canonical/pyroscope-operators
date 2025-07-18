@@ -4,6 +4,8 @@ import socket
 import pytest
 from ops.testing import PeerRelation, State
 
+from charm import PyroscopeCoordinatorCharm
+
 
 @pytest.mark.parametrize(
     "fqdns", (["matterhost", "localmost"], ["matter.host"], [], None)
@@ -32,4 +34,5 @@ def test_peer_fqdns(
             leader=True,
         ),
     ) as mgr:
-        assert set(mgr.charm._get_peer_fqdns()) == {*(fqdns or {}), socket.getfqdn()}
+        charm: PyroscopeCoordinatorCharm = mgr.charm
+        assert set(charm._peers.get_fqdns()) == {*(fqdns or {}), socket.getfqdn()}

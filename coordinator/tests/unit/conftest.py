@@ -33,7 +33,8 @@ def coordinator():
 def cleanup_rendered_alert_rules():
     yield
     src_dir = Path(__file__).parent / "src"
-    rmtree(src_dir)
+    if src_dir.exists():
+        rmtree(src_dir)
 
 
 @pytest.fixture
