@@ -1,5 +1,7 @@
 import json
 from contextlib import contextmanager
+from pathlib import Path
+from shutil import rmtree
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,6 +27,13 @@ def k8s_patch(status=ActiveStatus(), is_ready=True):
 @pytest.fixture()
 def coordinator():
     return MagicMock()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def cleanup_rendered_alert_rules():
+    yield
+    src_dir = Path(__file__).parent / "src"
+    rmtree(src_dir)
 
 
 @pytest.fixture

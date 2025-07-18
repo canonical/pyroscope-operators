@@ -1,8 +1,20 @@
 # Copyright 2025 Canonical
 # See LICENSE file for licensing details.
-"""Coordinator's Traefik configuration for traefik_route."""
+"""Coordinator's Traefik configuration for traefik_route.
+
+Pyroscope accepts http traffic (e.g. to serve the UI) and grpc traffic (to ingest profiles) on the same port (8080).
+Traefik and Nginx don't support that.
+Therefore, we use the following routing strategy. For grpc traffic:
+
+    traefik:42424 --> coordinator(nginx):42424 --> worker:8080
+
+And for http traffic:
+
+    traefik/<model-name>-<coordinator-app-name> --> coordinator(nginx):8080 --> worker:8080
+"""
 
 import dataclasses
+from collections import namedtuple
 from typing import Dict, Iterable, List, Literal, Callable
 
 _REDIRECT_MIDDLEWARE_SUFFIX = "-redirect"
@@ -190,3 +202,38 @@ def static_ingress_config(endpoints: List[Endpoint]):
         for endpoint in endpoints
         if endpoint.protocol == "grpc"
     }
+
+
+_TraefikConfig = namedtuple("_TraefikConfig", "static, dynamic")
+
+
+def traefik_config(
+    http_port: int,
+    grpc_port: int,
+    coordinator_fqdns: List[str],
+    model_name: str,
+    app_name: str,
+    tls: bool,
+    prefix: str,
+) -> _TraefikConfig:
+    """Generate static and dynamic traefik configuration."""
+    endpoints = [
+        Endpoint(entrypoint_name="web", protocol="http", port=http_port),
+        Endpoint(
+            entrypoint_name="pyroscope-grpc-server",
+            protocol="grpc",
+            port=grpc_port,
+        ),
+    ]
+
+    return _TraefikConfig(
+        dynamic=ingress_config(
+            endpoints,
+            coordinator_fqdns=coordinator_fqdns,
+            model_name=model_name,
+            app_name=app_name,
+            tls=tls,
+            prefix=prefix,
+        ),
+        static=static_ingress_config(endpoints),
+    )

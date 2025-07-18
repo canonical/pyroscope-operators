@@ -208,28 +208,19 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self._reconcile_ingress()
 
     def _reconcile_ingress(self):
-        if self.ingress.is_ready():
-            endpoints = [
-                traefik_config.Endpoint(
-                    entrypoint_name="web", protocol="http", port=self._http_server_port
-                ),
-                traefik_config.Endpoint(
-                    entrypoint_name="pyroscope-grpc-server",
-                    protocol="grpc",
-                    port=nginx_config.grpc_server_port,
-                ),
-            ]
-            self.ingress.submit_to_traefik(
-                traefik_config.ingress_config(
-                    endpoints,
-                    coordinator_fqdns=self._get_peer_fqdns(),
-                    model_name=self.model.name,
-                    app_name=self.app.name,
-                    tls=self._are_certificates_on_disk,
-                    prefix=self._ingress_prefix,
-                ),
-                static=traefik_config.static_ingress_config(endpoints),
-            )
+        if not self.ingress.is_ready():
+            return
+
+        config = traefik_config.traefik_config(
+            http_port=self._http_server_port,
+            grpc_port=nginx_config.grpc_server_port,
+            coordinator_fqdns=self._get_peer_fqdns(),
+            model_name=self.model.name,
+            app_name=self.app.name,
+            tls=self._are_certificates_on_disk,
+            prefix=self._ingress_prefix,
+        )
+        self.ingress.submit_to_traefik(config=config.dynamic, static=config.static)
 
     def _get_worker_ports(self, role: str) -> Tuple[int, ...]:
         """Determine, from the role of a worker, which ports it should open."""
