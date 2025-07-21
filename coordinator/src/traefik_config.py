@@ -121,7 +121,7 @@ def _generate_http_services_config(
                 }
             }
         else:
-            # anything else, including secured GRPC, can use _internal_url
+            # anything else, including secured GRPC, can use http
             # ref https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-https
             http_services[service_name_getter(endpoint)] = {
                 "loadBalancer": {

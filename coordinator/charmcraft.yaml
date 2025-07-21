@@ -100,8 +100,8 @@ requires:
     optional: true
     limit: 1
     description: |
-      Request ingress endpoints to load-balance across all coordinator units any 
-      incoming http and grpc traffic.
+      Request ingress endpoints to load-balance any incoming http and grpc traffic
+      across all coordinator units.
 
 peers:
   peers:
