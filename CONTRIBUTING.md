@@ -6,7 +6,7 @@ This documents explains the processes and practices recommended for contributing
 this operator.
 
 - Generally, before developing enhancements to this charm, you should consider [opening an issue
-  ](https://github.com/canonical/pyroscope-k8s-operator/issues) explaining your use case.
+  ](https://github.com/canonical/pyroscope-operators/issues) explaining your use case.
 - If you would like to chat with us about your use-cases or proposed implementation, you can reach
   us at the [Canonical Observability Matrix public channel](https://matrix.to/#/#cos:ubuntu.com)
   or [Discourse](https://discourse.charmhub.io/).

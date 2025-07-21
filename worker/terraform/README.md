@@ -33,14 +33,14 @@ Upon application, the module exports the following outputs:
 ## Usage
 
 > [!NOTE]
-> This module is intended to be used only in conjunction with its counterpart, [pyroscope coordinator module](https://github.com/canonical/pyroscope-k8s-operator/coordinator) and, when deployed in isolation, is not functional. 
+> This module is intended to be used only in conjunction with its counterpart, [pyroscope coordinator module](https://github.com/canonical/pyroscope-operators/coordinator) and, when deployed in isolation, is not functional. 
 > For the pyroscope HA solution module deployment, check [pyroscope HA module](https://github.com/canonical/observability)
 
 ### Basic usage
 In order to deploy this standalone module, create a `main.tf` file with the following content:
 ```hcl
 module "pyroscope-worker" {
-  source      = "git::https://github.com/canonical/pyroscope-k8s-operator//worker/terraform"
+  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   model_name  = var.model_name
   app_name    = var.app_name
   channel     = var.channel
