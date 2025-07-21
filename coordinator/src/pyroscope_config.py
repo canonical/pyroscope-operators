@@ -21,8 +21,6 @@ class PyroscopeRole(StrEnum):
       -> https://grafana.com/docs/pyroscope/latest/configure-server/
     """
 
-    # FIXME: add other optional modules
-    # https://github.com/canonical/pyroscope-k8s-operator/issues/4
     all = "all"  # default, meta-role.
     querier = "querier"
     query_frontend = "query-frontend"

@@ -1,4 +1,4 @@
-# pyroscope-k8s-operator
+# pyroscope-operators
 This charmed operator is part of automating the operational procedures of running Grafana Pyroscope, an open-source profiling backend, in microservices mode.
 
 This repository hosts two charms following the [coordinated-workers](https://discourse.charmhub.io/t/cos-lite-docs-managing-deployments-of-cos-lite-ha-addons/15213) pattern.
