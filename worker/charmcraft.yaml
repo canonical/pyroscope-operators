@@ -30,8 +30,8 @@ resources:
 links:
   documentation: https://discourse.charmhub.io/t/18122
   website: https://charmhub.io/pyroscope-worker-k8s
-  source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/worker
-  issues: https://github.com/canonical/pyroscope-k8s-operator/issues
+  source: https://github.com/canonical/pyroscope-operators/tree/main/worker
+  issues: https://github.com/canonical/pyroscope-operators/issues
 
 requires:
   pyroscope-cluster:
