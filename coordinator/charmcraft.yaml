@@ -57,6 +57,11 @@ provides:
     interface: grafana_datasource_exchange
     description: |
       Provide this charm's datasource identification data and endpoints to another charm.
+  profiling:
+    optional: true
+    interface: profiling
+    description: |
+      Provide this charm's profile ingestion GRPC server URL.
 
 requires:
   s3:
