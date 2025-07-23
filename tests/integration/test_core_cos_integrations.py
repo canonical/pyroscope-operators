@@ -257,7 +257,7 @@ def test_alert_rules_integration(juju: Juju):
 
 
 def test_loki_alert_rules_integration(juju: Juju):
-        # GIVEN a pyroscope cluster integrated with loki
+    # GIVEN a pyroscope cluster integrated with loki
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query for alert rules
     url = f"http://{address}:3100/loki/api/v1/rules"
@@ -265,6 +265,7 @@ def test_loki_alert_rules_integration(juju: Juju):
     try:
         response = requests.get(url)
         # TODO known issue: https://github.com/canonical/cos-coordinated-workers/issues/21
+        # once that's fixed, update asserts to check for alerts with workers topology
         assert PYROSCOPE_APP in response.text
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Loki failed: {e}"
