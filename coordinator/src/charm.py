@@ -233,7 +233,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         )
 
     def _reconcile_ingress(self):
-        if not self.ingress.is_ready():
+        if not self.ingress.is_ready() or not self.unit.is_leader():
             return
 
         config = traefik_config.traefik_config(
