@@ -227,7 +227,10 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
         self._peers.reconcile()
         self._reconcile_ingress()
-        self.profiling_provider.publish_endpoint(self._most_external_grpc_url)
+        self.profiling_provider.publish_endpoint(
+            grpc_endpoint=self._most_external_grpc_url,
+            http_endpoint=self._most_external_http_url + "/ingest",
+        )
 
     def _reconcile_ingress(self):
         if not self.ingress.is_ready():
