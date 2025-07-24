@@ -44,11 +44,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
         )
-        self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
+        self.pyroscope = Pyroscope(external_url=self._most_external_url)
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
-            external_url=self._most_external_http_url,
+            external_url=self._most_external_url,
             worker_metrics_port=Pyroscope.http_server_port,
             endpoints={
                 "certificates": "certificates",
@@ -141,12 +141,12 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return f"{self._scheme}://{self.service_hostname}:{self._http_server_port}"
 
     @property
-    def _most_external_http_url(self) -> str:
-        """Return the most external url known about by this charm.
+    def _most_external_url(self) -> str:
+        """Return the most external HTTP url known about by this charm.
 
         This will return the first of:
         - the external URL, if the ingress is configured and ready
-        - the internal URL
+        - the internal URL (fqdn)
         """
         external_url = self._external_http_url
         if external_url:
@@ -179,7 +179,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             # use app name in case there are multiple Pyroscope apps deployed.
             name=f"Pyroscope ({self.app.name})",
             icon="flame",
-            url=self._most_external_http_url,
+            url=self._most_external_url,
             description=(
                 "Grafana Pyroscope is a distributed continuous profiling backend. "
                 "Allows you to collect, store, query, and visualize profiles from your distributed deployment."

@@ -38,7 +38,7 @@ def _generate_http_routers_config(
     endpoints: Iterable[Endpoint],
     service_name_getter: Callable[[Endpoint], str],
     router_name_getter: Callable[[Endpoint], str],
-    redirect_middleware_name: Callable[[Endpoint], str],
+    redirect_middleware_name_getter: Callable[[Endpoint], str],
     stripprefix_middleware_name: str,
     tls: bool,
     prefix: str,
@@ -46,7 +46,7 @@ def _generate_http_routers_config(
     http_routers = {}
 
     for endpoint in endpoints:
-        redirect_middleware = redirect_middleware_name(endpoint) if tls else None
+        redirect_middleware = redirect_middleware_name_getter(endpoint) if tls else None
         if endpoint.protocol == "grpc":
             http_routers[router_name_getter(endpoint)] = {
                 "entryPoints": [endpoint.sanitized_entrypoint_name],
@@ -165,8 +165,8 @@ def ingress_config(
                 endpoints,
                 service_name_getter=service_name_getter,
                 router_name_getter=router_name_getter,
+                redirect_middleware_name_getter=redirect_middleware_name_getter,
                 stripprefix_middleware_name=stripprefix_middleware_name,
-                redirect_middleware_name=redirect_middleware_name_getter,
                 tls=tls,
                 prefix=prefix,
             ),
