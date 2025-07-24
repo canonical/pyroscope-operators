@@ -46,7 +46,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             "ingress",
         )
         self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
-        self.profiling_provider = ProfilingEndpointProvider(self.model.relations['profiling'], self.app)
+        self.profiling_provider = ProfilingEndpointProvider(
+            self.model.relations["profiling"], self.app
+        )
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
@@ -118,7 +120,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             and self.ingress.scheme
             and self.ingress.external_host
         ):
-            ingress_url = f"{self.ingress.external_host}:{nginx_config.grpc_server_port}"
+            ingress_url = (
+                f"{self.ingress.external_host}:{nginx_config.grpc_server_port}"
+            )
             logger.debug("This unit's grpc server ingress URL: %s", ingress_url)
             return ingress_url
 

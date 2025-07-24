@@ -1,5 +1,6 @@
 """Profiling integration endpoint wrapper.
 """
+import logging
 from typing import List
 
 import ops
@@ -17,6 +18,7 @@ LIBPATCH = 1
 
 DEFAULT_ENDPOINT_NAME = "profiling"
 
+logger = logging.getLogger()
 
 class ProfilingAppDatabagModel(pydantic.BaseModel):
     """Application databag model for the profiling interface."""
@@ -32,10 +34,15 @@ class ProfilingEndpointProvider:
     def publish_endpoint(self, grpc_endpoint:str):
         """Publish the profiling grpc endpoint to all relations."""
         for relation in self._relations:
-            relation.save(
-                ProfilingAppDatabagModel(otlp_grpc_endpoint_url=grpc_endpoint),
-                self._app
-            )
+            try:
+                relation.save(
+                    ProfilingAppDatabagModel(otlp_grpc_endpoint_url=grpc_endpoint),
+                    self._app
+                )
+            except ops.ModelError:
+                logger.debug("failed to validate app data; is the relation still being created?")
+                continue
+
 
 
 class ProfilingEndpointRequirer:
@@ -43,11 +50,21 @@ class ProfilingEndpointRequirer:
     def __init__(self, relations:List[ops.Relation]):
         self._relations = relations
 
-    def get_endpoints(self):
+    def get_endpoints(self)->List[str]:
         """Obtain the profiling grpc endpoints from all relations."""
+        out = []
         for relation in self._relations:
-            relation.load(
+            try:
+                otlp_grpc_endpoint_url = relation.load(
                 ProfilingAppDatabagModel,
                 relation.app
-            )
+            ).otlp_grpc_endpoint_url
+            except ops.ModelError:
+                logger.debug("failed to validate app data; is the relation still being created?")
+                continue
+            except pydantic.ValidationError:
+                logger.debug("failed to validate app data; is the relation still settling?")
+                continue
+            out.append(otlp_grpc_endpoint_url)
+        return out
 
