@@ -167,7 +167,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     @property
     def _most_external_http_url(self) -> str:
-        """Return the most external url known about by this charm.
+        """Return the most external HTTP url known about by this charm.
 
         This will return the first of:
         - the external URL, if the ingress is configured and ready

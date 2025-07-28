@@ -254,6 +254,21 @@ def test_alert_rules_integration(juju: Juju):
         assert False, f"Request to Prometheus failed: {e}"
 
 
+def test_loki_alert_rules_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with loki
+    address = get_unit_ip_address(juju, LOKI_APP, 0)
+    # WHEN we query for alert rules
+    url = f"http://{address}:3100/loki/api/v1/rules"
+    # THEN we should get a successful response
+    try:
+        response = requests.get(url)
+        # TODO known issue: https://github.com/canonical/cos-coordinated-workers/issues/21
+        # once that's fixed, update asserts to check for alerts with workers topology
+        assert PYROSCOPE_APP in response.text
+    except requests.exceptions.RequestException as e:
+        assert False, f"Request to Loki failed: {e}"
+
+
 @pytest.mark.teardown
 @pytest.mark.xfail(reason="https://github.com/canonical/pyroscope-operators/issues/208")
 def test_teardown(juju: Juju):
