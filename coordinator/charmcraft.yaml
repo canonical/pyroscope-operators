@@ -61,7 +61,7 @@ provides:
     optional: true
     interface: profiling
     description: |
-      Provide this charm's profile ingestion GRPC server URL.
+      Provide this charm's profile ingestion server URLs (all supported protocols).
 
 requires:
   s3:
