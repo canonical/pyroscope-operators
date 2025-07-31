@@ -5,6 +5,8 @@
 import json
 import logging
 import re
+from tenacity import retry, stop_after_delay
+from tenacity import wait_exponential as wexp
 
 import pytest
 import requests
@@ -106,6 +108,7 @@ def test_setup(juju: Juju):
         trust=True,
     )
     juju.integrate(PYROSCOPE_APP + ":grafana-dashboard", GRAFANA_APP)
+    juju.integrate(PYROSCOPE_APP + ":grafana-source", GRAFANA_APP)
 
     # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
@@ -229,6 +232,26 @@ def test_dashboard_integration(juju: Juju):
             assert False
     else:
         raise RuntimeError("No password in grafana's output")
+
+
+@pytest.fixture(scope="module")
+def grafana_admin_creds(juju)->str:
+    # NB this fixture can only be accessed after GRAFANA has been deployed.
+    # obtain admin credentials via juju action, formatted as "username:password" (for basicauth)
+    result = juju.run(GRAFANA_APP+"/0", "get-admin-password")
+    return f"admin:{result.results['admin-password']}"
+
+
+@pytest.mark.xfail(
+    reason="pyroscope datasource is unsupported in the grafana "
+           "version that the grafana charm currently deploys"
+)
+@retry(wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True)
+def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
+    """Verify that the parca datasource is registered in grafana."""
+    graf_ip = get_unit_ip_address(juju, GRAFANA_APP, 0)
+    res = requests.get(f"http://{grafana_admin_creds}@{graf_ip}:3000/api/datasources")
+    assert "parca" in {ds['type']for ds in res.json()}
 
 
 def test_alert_rules_integration(juju: Juju):

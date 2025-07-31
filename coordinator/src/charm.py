@@ -100,7 +100,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     @property
     def _ingress_ready(self):
-        return (
+        return bool(
             self.ingress.is_ready()
             and self.ingress.scheme
             and self.ingress.external_host
