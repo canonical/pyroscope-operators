@@ -9,6 +9,7 @@ import socket
 from typing import Optional
 
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
+from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH, NginxConfig
@@ -43,6 +44,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             self,
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
+        )
+        self.grafana_source = GrafanaSourceProvider(
+            self, source_type="pyroscope", is_ingress_per_app=self._ingress_ready
         )
         self.pyroscope = Pyroscope(external_url=self._most_external_url)
         self.coordinator = Coordinator(
@@ -95,13 +99,17 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return socket.getfqdn()
 
     @property
-    def _external_http_url(self) -> Optional[str]:
-        """Return the external URL if the ingress is configured and ready, otherwise None."""
-        if (
+    def _ingress_ready(self):
+        return (
             self.ingress.is_ready()
             and self.ingress.scheme
             and self.ingress.external_host
-        ):
+        )
+
+    @property
+    def _external_http_url(self) -> Optional[str]:
+        """Return the external URL if the ingress is configured and ready, otherwise None."""
+        if self._ingress_ready:
             ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}{self._ingress_prefix}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
@@ -195,6 +203,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
         self._peers.reconcile()
         self._reconcile_ingress()
+        self.grafana_source.update_source(self._most_external_url)
 
     def _reconcile_ingress(self):
         if not self.ingress.is_ready():
