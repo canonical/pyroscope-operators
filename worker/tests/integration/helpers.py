@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 import yaml
-from pytest_jubilant import pack_charm
+from pytest_jubilant import pack
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 PYROSCOPE_WORKER_APP = "pyroscope-worker"
@@ -26,7 +26,7 @@ def get_worker_charm():
     for _ in range(3):
         logger.info("packing...")
         try:
-            pth = pack_charm().charm.absolute()
+            pth = pack()
         except subprocess.CalledProcessError:
             logger.warning("Failed to build Pyroscope worker. Trying again!")
             continue

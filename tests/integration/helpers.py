@@ -10,7 +10,7 @@ import jubilant
 import yaml
 from jubilant import Juju
 from minio import Minio
-from pytest_jubilant import pack_charm
+from pytest_jubilant import pack
 
 from coordinator.src.pyroscope_config import PyroscopeRole
 
@@ -64,12 +64,12 @@ def charm_and_channel_and_resources(
     for _ in range(3):
         logger.info(f"packing Pyroscope {role} charm...")
         try:
-            pth = pack_charm(Path() / role).charm.absolute()
+            pth = pack(Path() / role)
         except subprocess.CalledProcessError:
             logger.warning(f"Failed to build Pyroscope {role}. Trying again!")
             continue
         os.environ[charm_path_key] = str(pth)
-        return pth, None, _get_resources(pth.parent / role)
+        return pth, None, _get_resources(Path().parent / role)
     raise subprocess.CalledProcessError
 
 
