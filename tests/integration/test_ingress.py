@@ -51,11 +51,13 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
     url = f"http://{hostname}:{NGINX_CONFIG_GRPC_SERVER_PORT}"
     proc = subprocess.run(["curl", url], capture_output=True, text=True, check=False)
 
-    if use_ingress:
-        assert "Welcome to nginx!" in proc.stdout
-    else:
-        # this is the response you get by curling a grpc server, and that's all we want to verify in this test
-        assert "Received HTTP/0.9 when not allowed" in proc.stderr
+    # With ingress, Traefik connects to nginx over h2c (HTTP/2),
+    # so nginx accepts the request and serves the default homepage on the gRPC port, since no `location /` is defined.
+    # Without ingress, https://github.com/canonical/nginx-rock 1.27.5 also accepts plain HTTP/1.1 connections on the gRPC port,
+    # so direct curl requests to the gRPC port are handled and return the default homepage as well.
+
+    # NOTE: `ubuntu/nginx:1.24-24.04_beta` didn't accept plain HTTP/1.1 connections on a gRPC port.
+    assert "Welcome to nginx!" in proc.stdout
 
 
 @pytest.mark.setup

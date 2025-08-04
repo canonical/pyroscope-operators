@@ -279,7 +279,7 @@ def test_teardown(juju: Juju):
     # THEN the coordinator and all workers eventually reach active/idle state
     juju.wait(
         lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
-        error=any_error,
+        error=lambda status: any_error(status, PYROSCOPE_APP, *ALL_WORKERS),
         timeout=2000,
         delay=10,
         successes=3,
