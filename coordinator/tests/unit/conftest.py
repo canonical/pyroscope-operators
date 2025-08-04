@@ -69,6 +69,11 @@ def s3(s3_config):
 
 
 @pytest.fixture(scope="function")
+def profiling():
+    return Relation("profiling")
+
+
+@pytest.fixture(scope="function")
 def external_host():
     # traefik hostname
     return "example.com"

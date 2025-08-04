@@ -2,7 +2,7 @@
 """
 import dataclasses
 import logging
-from typing import List
+from typing import List, Optional
 
 import ops
 import pydantic
@@ -15,7 +15,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 DEFAULT_ENDPOINT_NAME = "profiling"
 
@@ -24,7 +24,7 @@ logger = logging.getLogger()
 class ProfilingAppDatabagModel(pydantic.BaseModel):
     """Application databag model for the profiling interface."""
     otlp_grpc_endpoint_url: str
-    otlp_http_endpoint_url: str
+    otlp_http_endpoint_url: Optional[str]=None
 
 
 class ProfilingEndpointProvider:
@@ -33,15 +33,17 @@ class ProfilingEndpointProvider:
         self._relations = relations
         self._app = app
 
-    def publish_endpoint(self, grpc_endpoint:str,
-                         http_endpoint:str):
-        """Publish the HTTP and GRPC profiling ingestion endpoints to all relations."""
+    def publish_endpoint(self,
+                         otlp_grpc_endpoint:str,
+                         otlp_http_endpoint:Optional[str]=None
+                         ):
+        """Publish profiling ingestion endpoints to all relations."""
         for relation in self._relations:
             try:
                 relation.save(
                     ProfilingAppDatabagModel(
-                        otlp_grpc_endpoint_url=grpc_endpoint,
-                        otlp_http_endpoint_url=http_endpoint,
+                        otlp_grpc_endpoint_url=otlp_grpc_endpoint,
+                        otlp_http_endpoint_url=otlp_http_endpoint,
                     ),
                     self._app
                 )
@@ -53,7 +55,7 @@ class ProfilingEndpointProvider:
 @dataclasses.dataclass
 class _Endpoint:
     otlp_grpc: str
-    otlp_http: str
+    otlp_http: Optional[str]
 
 
 class ProfilingEndpointRequirer:
