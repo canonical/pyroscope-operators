@@ -9,6 +9,7 @@ import socket
 from typing import Optional
 
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
+from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH, NginxConfig
@@ -44,11 +45,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
         )
-        self.pyroscope = Pyroscope(external_url=self._most_external_url)
+        self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
+        self.profiling_provider = ProfilingEndpointProvider(
+            self.model.relations["profiling"], self.app
+        )
         self.coordinator = Coordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
-            external_url=self._most_external_url,
+            external_url=self._most_external_http_url,
             worker_metrics_port=Pyroscope.http_server_port,
             endpoints={
                 "certificates": "certificates",
@@ -109,6 +113,22 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return None
 
     @property
+    def _external_grpc_url(self) -> Optional[str]:
+        """Return the external grpc server URL if the ingress is configured and ready, otherwise None."""
+        if (
+            self.ingress.is_ready()
+            and self.ingress.scheme
+            and self.ingress.external_host
+        ):
+            ingress_url = (
+                f"{self.ingress.external_host}:{nginx_config.grpc_server_port}"
+            )
+            logger.debug("This unit's grpc server ingress URL: %s", ingress_url)
+            return ingress_url
+
+        return None
+
+    @property
     def service_hostname(self) -> str:
         """The FQDN of the k8s service associated with this application.
 
@@ -137,22 +157,34 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     @property
     def _internal_http_url(self) -> str:
-        """Return the locally addressable, FQDN based service address."""
+        """Return the locally addressable, FQDN based service address for the http server."""
         return f"{self._scheme}://{self.service_hostname}:{self._http_server_port}"
 
     @property
-    def _most_external_url(self) -> str:
+    def _internal_grpc_url(self) -> str:
+        """Return the locally addressable, FQDN based service address for the grpc server."""
+        return f"{self.service_hostname}:{nginx_config.grpc_server_port}"
+
+    @property
+    def _most_external_http_url(self) -> str:
         """Return the most external HTTP url known about by this charm.
 
         This will return the first of:
         - the external URL, if the ingress is configured and ready
-        - the internal URL (fqdn)
+        - the internal k8s service URL
         """
-        external_url = self._external_http_url
-        if external_url:
-            return external_url
+        return self._external_http_url or self._internal_http_url
+
+    @property
+    def _most_external_grpc_url(self) -> str:
+        """Return the most external grpc server url known about by this charm.
+
+        This will return the first of:
+        - the external URL, if the ingress is configured and ready
+        - the internal k8s service URL
+        """
         # If we do not have an ingress, then use the K8s service.
-        return self._internal_http_url
+        return self._external_grpc_url or self._internal_grpc_url
 
     @property
     def _are_certificates_on_disk(self) -> bool:
@@ -179,7 +211,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             # use app name in case there are multiple Pyroscope apps deployed.
             name=f"Pyroscope ({self.app.name})",
             icon="flame",
-            url=self._most_external_url,
+            url=self._most_external_http_url,
             description=(
                 "Grafana Pyroscope is a distributed continuous profiling backend. "
                 "Allows you to collect, store, query, and visualize profiles from your distributed deployment."
@@ -195,6 +227,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
         self._peers.reconcile()
         self._reconcile_ingress()
+        self.profiling_provider.publish_endpoint(
+            otlp_grpc_endpoint=self._most_external_grpc_url,
+        )
 
     def _reconcile_ingress(self):
         if not self.ingress.is_ready() or not self.unit.is_leader():

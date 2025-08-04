@@ -212,9 +212,7 @@ def test_dashboard_integration(juju: Juju):
     address = get_unit_ip_address(juju, GRAFANA_APP, 0)
     grafana_unit = f"{GRAFANA_APP}/0"
     # WHEN we search for a dashboard with Pyroscope's tag in Grafana
-    out = juju.cli(
-        "run", grafana_unit, "get-admin-password"
-    )
+    out = juju.cli("run", grafana_unit, "get-admin-password")
     match = re.search(r"admin-password:\s*(\S+)", out)
     if match:
         pw = match.group(1)
@@ -272,9 +270,7 @@ def test_loki_alert_rules_integration(juju: Juju):
 
 
 @pytest.mark.teardown
-@pytest.mark.xfail(
-    reason="https://github.com/canonical/pyroscope-operators/issues/208"
-)
+@pytest.mark.xfail(reason="https://github.com/canonical/pyroscope-operators/issues/208")
 def test_teardown(juju: Juju):
     # GIVEN a pyroscope cluster with core cos relations
     # WHEN we remove the cos components

@@ -549,7 +549,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.3.1" },
-    { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = ">=0.6" },
+    { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = "~=1.0" },
     { name = "ruff", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev"]
@@ -601,15 +601,15 @@ wheels = [
 
 [[package]]
 name = "pytest-jubilant"
-version = "0.7.1"
+version = "1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jubilant" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/21/20/a35203e1ba501c0eeb826917b023e3c8d06ee965741ac8245155e7628f84/pytest_jubilant-0.7.1.tar.gz", hash = "sha256:0a69a352d9da01b2e02331ef392baee1127f58f0529cf5ae9660a2bcf7f62b09", size = 11734, upload-time = "2025-07-07T13:31:32.521Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/01/a089e0b323d87519e19425809062090a615cc10fdf8879ecf0ec5c5dfc36/pytest_jubilant-1.1.tar.gz", hash = "sha256:755dd5a1b4c295773a01ed3005cec1bd106a46bf51ec041ae56004dd558e8f9c", size = 12368, upload-time = "2025-07-28T06:42:44.808Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/d9/4544a16eb660da6d467f2565ca5be2c520df8a2d0611f8d657ddb92498a4/pytest_jubilant-0.7.1-py3-none-any.whl", hash = "sha256:1d89321ed6728fa412c5bd6112856e42c7f5e5905587657bd53b2158f7488bfd", size = 11811, upload-time = "2025-07-07T13:31:31.151Z" },
+    { url = "https://files.pythonhosted.org/packages/10/e2/0d9124119c994aba4fbb48457a3dde01d5af5db1cd095be7b03bc6b21215/pytest_jubilant-1.1-py3-none-any.whl", hash = "sha256:1c643b0e64173e405988074e551dd2101805412d807c3c0e51983b52f8b198d4", size = 12040, upload-time = "2025-07-28T06:42:43.518Z" },
 ]
 
 [[package]]
