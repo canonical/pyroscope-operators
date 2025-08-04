@@ -32,9 +32,11 @@ def coordinator():
 @pytest.fixture(autouse=True, scope="session")
 def cleanup_rendered_alert_rules():
     yield
-    src_dir = Path(__file__).parent / "src"
-    if src_dir.exists():
-        rmtree(src_dir)
+    src_dir = Path(__file__).parent.parent.parent / "src"
+    for alerts_dir in ("prometheus_alert_rules", "loki_alert_rules"):
+        consolidated_dir = src_dir / alerts_dir / "consolidated_rules"
+        if consolidated_dir.exists():
+            rmtree(consolidated_dir)
 
 
 @pytest.fixture
