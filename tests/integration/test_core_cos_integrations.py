@@ -262,15 +262,14 @@ def test_loki_alert_rules_integration(juju: Juju):
     # THEN we should get a successful response
     try:
         response = requests.get(url)
-        # TODO known issue: https://github.com/canonical/cos-coordinated-workers/issues/21
-        # once that's fixed, update asserts to check for alerts with workers topology
-        assert PYROSCOPE_APP in response.text
+        # AND for every pyroscope app, there is at least one loki alert rule
+        for app in (PYROSCOPE_APP, *ALL_WORKERS):
+            assert app in response.text, f"No Loki alert rules found for app '{app}'"
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Loki failed: {e}"
 
 
 @pytest.mark.teardown
-@pytest.mark.xfail(reason="https://github.com/canonical/pyroscope-operators/issues/208")
 def test_teardown(juju: Juju):
     # GIVEN a pyroscope cluster with core cos relations
     # WHEN we remove the cos components

@@ -9,7 +9,7 @@ from charm import PyroscopeWorkerCharm
 from ops import ActiveStatus
 
 PYROSCOPE_VERSION_EXEC_OUTPUT = Exec(
-    command_prefix=("/usr/bin/pyroscope", "-version"), stdout="1.13.4"
+    command_prefix=("/bin/pyroscope", "-version"), stdout="1.13.4"
 )
 
 
