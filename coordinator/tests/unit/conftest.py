@@ -88,6 +88,11 @@ def catalogue():
 
 
 @pytest.fixture(scope="function")
+def grafana_source():
+    return Relation("grafana-source")
+
+
+@pytest.fixture(scope="function")
 def all_worker():
     return Relation(
         "pyroscope-cluster",

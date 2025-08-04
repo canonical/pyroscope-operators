@@ -46,6 +46,11 @@ provides:
     interface: grafana_dashboard
     description: |
       Provide a grafana dashboard definition for monitoring Pyroscope.
+  grafana-source:
+    optional: true
+    interface: grafana_datasource
+    description: |
+      Provide a grafana datasource for querying Pyroscope data from Grafana.
   metrics-endpoint:
     optional: true
     interface: prometheus_scrape
