@@ -12,8 +12,6 @@ from jubilant import Juju
 from minio import Minio
 from pytest_jubilant import pack
 
-from coordinator.src.pyroscope_config import PyroscopeRole
-
 # Application names used uniformly across the tests
 ACCESS_KEY = "accesskey"
 SECRET_KEY = "secretkey"
@@ -23,7 +21,19 @@ S3_APP = "s3-integrator"
 WORKER_APP = "pyroscope-worker"
 PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
-ALL_ROLES = [role.value for role in PyroscopeRole.all_nonmeta()]
+# we don't import this from the coordinator module because that'd mean we need to
+# bring in the whole charm's dependencies just to run the integration tests
+ALL_ROLES = [
+    "querier",
+    "query-frontend",
+    "query-scheduler",
+    "ingester",
+    "distributor",
+    "compactor",
+    "store-gateway",
+    "tenant-settings",
+    "ad-hoc-profiles",
+]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 S3_CREDENTIALS = {
     "access-key": ACCESS_KEY,
