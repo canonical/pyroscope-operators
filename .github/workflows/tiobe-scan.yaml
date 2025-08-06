@@ -13,13 +13,13 @@ on:
 jobs:
     tiobe-scan-worker:
         name: TiCs-worker
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@fix/tiobe-scan-monorepo
         with:
             charm-path: ./worker
         secrets: inherit
     tiobe-scan-coordinator:
         name: TiCs-coordinator
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@fix/tiobe-scan-monorepo
         with:
             charm-path: ./coordinator
         secrets: inherit
