@@ -229,7 +229,7 @@ def test_dashboard_integration(juju: Juju):
 
 
 def test_alert_rules_integration(juju: Juju):
-    # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
+    # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint:
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
     # WHEN we query for alert rules
     url = f"http://{address}:9090/api/v1/rules"
