@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 name: pyroscope-worker-k8s
 type: charm
+title: Pyroscope Charmed Operator worker node
 
 assumes:
   - k8s-api
@@ -14,36 +15,37 @@ summary: |
   Pyroscope is a distributed profiling backend by Grafana.
 
 containers:
-
+  pyroscope:
+    resource: pyroscope-image
+    mounts:
+      - storage: data
+        location: /pyroscope-data
 
 resources:
-
+  pyroscope-image:
+    type: oci-image
+    description: OCI image for Grafana Pyroscope
+    upstream-source: ubuntu/pyroscope:1.14-24.04_edge
 
 links:
-  documentation: https://discourse.charmhub.io/t/pyroscope-worker-k8s-docs-index/15419
+  documentation: https://discourse.charmhub.io/t/18122
   website: https://charmhub.io/pyroscope-worker-k8s
-  source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/worker
-  issues: https://github.com/canonical/pyroscope-k8s-operator/issues
-
-provides:
-
+  source: https://github.com/canonical/pyroscope-operators/tree/main/worker
+  issues: https://github.com/canonical/pyroscope-operators/issues
 
 requires:
+  pyroscope-cluster:
+    interface: pyroscope_cluster
+    optional: false
+    limit: 1
+    description: |
+      Connect a single pyroscope-coordinator-k8s charm that will configure this node to work as 
+      part of a distributed Pyroscope cluster. The charm needs this integration to work.
 
 
 storage:
   data:
     type: filesystem
-    location: /pyroscope-data
-
-actions:
-
-
-peers:
-  peers:
-    interface: pyroscope_peers
-    description: |
-      peer relation for internal coordination
 
 platforms:
   ubuntu@24.04:amd64:
@@ -54,10 +56,138 @@ parts:
     plugin: uv
     build-packages: [git] # handy for git+ dependencies during development
     build-snaps: [astral-uv]
-    override-build: |
-      craftctl default
-      git describe --always > $CRAFT_PART_INSTALL/version
+    # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
+    # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
+
+    # override-build: |
+    #   craftctl default
+    #   git describe --always > $CRAFT_PART_INSTALL/version
 
 config:
   options:
+    role-all:
+      type: boolean
+      default: true
+      description: |
+        Configure the application to run with all roles enabled. This is the default configuration. 
+        This is a meta-role that configures the application to enable all other roles.
+             
+        If you want to configure this app to run with a role other than `all`, remember to set `all` to `false`.
+        
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-querier:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-query-frontend:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-query-scheduler:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-ingester:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-distributor:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+  
+
+    role-compactor:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-store-gateway:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-tenant-settings:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-ad-hoc-profiles:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    cpu_limit:
+      description: |
+        K8s cpu resource limit, e.g. "1" or "500m". Default is unset (no limit). This value is used
+        for the "limits" portion of the resource requirements.
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
+
+    memory_limit:
+      description: |
+        K8s memory resource limit, e.g. "1Gi". Default is unset (no limit). This value is used
+        for the "limits" portion of the resource requirements.
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
 

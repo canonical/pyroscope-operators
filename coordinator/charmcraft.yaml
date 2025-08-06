@@ -14,36 +14,105 @@ summary: |
   Pyroscope is a distributed profiling backend by Grafana.
 
 containers:
-
+  nginx:
+    resource: nginx-image
+  nginx-prometheus-exporter:
+    resource: nginx-prometheus-exporter-image
 
 resources:
-
+  nginx-image:
+    type: oci-image
+    description: OCI image for nginx
+    upstream-source: ghcr.io/canonical/nginx@sha256:6415a2c5f25f1d313c87315a681bdc84be80f3c79c304c6744737f9b34207993 # 1.27.5 rock 
+  nginx-prometheus-exporter-image:
+    type: oci-image
+    description: OCI image for nginx-prometheus-exporter
+    upstream-source: ubuntu/nginx-prometheus-exporter:1.4-24.04_stable
 
 links:
-  documentation: https://discourse.charmhub.io/t/pyroscope-coordinator-k8s-docs-index/15419
+  documentation: https://discourse.charmhub.io/t/18121
   website: https://charmhub.io/pyroscope-coordinator-k8s
-  source: https://github.com/canonical/pyroscope-k8s-operator/tree/main/coordinator
-  issues: https://github.com/canonical/pyroscope-k8s-operator/issues
+  source: https://github.com/canonical/pyroscope-operators/tree/main/coordinator
+  issues: https://github.com/canonical/pyroscope-operators/issues
 
 provides:
-
+  pyroscope-cluster:
+    interface: pyroscope_cluster
+    description: |
+      Connect any number of pyroscope-worker-k8s charms to cluster the Pyroscope components off to different nodes.
+      The charm needs this integration to work.
+  grafana-dashboard:
+    optional: true
+    interface: grafana_dashboard
+    description: |
+      Provide a grafana dashboard definition for monitoring Pyroscope.
+  metrics-endpoint:
+    optional: true
+    interface: prometheus_scrape
+    description: |
+      Provide one or more Prometheus metrics endpoints that can be scraped to obtain 
+      metrics of all Pyroscope worker processes.
+  send-datasource:
+    optional: true
+    interface: grafana_datasource_exchange
+    description: |
+      Provide this charm's datasource identification data and endpoints to another charm.
+  profiling:
+    optional: true
+    interface: profiling
+    description: |
+      Provide this charm's profile ingestion server URLs (all supported protocols).
 
 requires:
-
-
-storage:
-  data:
-    type: filesystem
-    location: /pyroscope-data
-
-actions:
-
+  s3:
+    interface: s3
+    limit: 1
+    description: |
+      Request an s3 bucket for profile data storage. The charm needs this integration to work.
+  charm-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which Pyroscope will send its charm traces to a 
+      tracing backend.
+    limit: 1
+  workload-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which all Pyroscope workers will send their 
+      workload traces to a tracing backend.
+    limit: 1
+  logging:
+    optional: true
+    interface: loki_push_api
+    description: |
+      Request a loki-push-api endpoint for all worker's Pyroscope application logs.
+  certificates:
+    optional: true
+    interface: tls-certificates
+    limit: 1
+    description: |
+      Request a certificate and key files for securing Pyroscope internal and external
+      communications with TLS.
+  catalogue:
+    optional: true
+    interface: catalogue
+    description: |
+      Request an entry in a central application catalogue, to help users discover Pyroscope's UI.
+  ingress:
+    interface: traefik_route
+    optional: true
+    limit: 1
+    description: |
+      Request ingress endpoints to load-balance any incoming http and grpc traffic
+      across all coordinator units.
 
 peers:
   peers:
     interface: pyroscope_peers
     description: |
-      peer relation for internal coordination
+      Peer relation for internal coordination.
 
 platforms:
   ubuntu@24.04:amd64:
@@ -54,10 +123,21 @@ parts:
     plugin: uv
     build-packages: [git] # handy for git+ dependencies during development
     build-snaps: [astral-uv]
-    override-build: |
-      craftctl default
-      git describe --always > $CRAFT_PART_INSTALL/version
+    # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
+    # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
 
 config:
   options:
+    cpu_limit:
+      description: |
+        K8s cpu resource limit, e.g. "1" or "500m". Default is unset (no limit). This value is used
+        for the "limits" portion of the resource requirements.
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
 
+    memory_limit:
+      description: |
+        K8s memory resource limit, e.g. "1Gi". Default is unset (no limit). This value is used
+        for the "limits" portion of the resource requirements.
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
