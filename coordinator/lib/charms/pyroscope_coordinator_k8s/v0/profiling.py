@@ -24,7 +24,6 @@ logger = logging.getLogger()
 class ProfilingAppDatabagModel(pydantic.BaseModel):
     """Application databag model for the profiling interface."""
     otlp_grpc_endpoint_url: str
-    pyroscope_http_endpoint_url: Optional[str]=None
 
 
 class ProfilingEndpointProvider:
@@ -35,7 +34,6 @@ class ProfilingEndpointProvider:
 
     def publish_endpoint(self,
                          otlp_grpc_endpoint:str,
-                         pyroscope_http_endpoint:Optional[str]=None
                          ):
         """Publish profiling ingestion endpoints to all relations."""
         for relation in self._relations:
@@ -43,7 +41,6 @@ class ProfilingEndpointProvider:
                 relation.save(
                     ProfilingAppDatabagModel(
                         otlp_grpc_endpoint_url=otlp_grpc_endpoint,
-                        pyroscope_http_endpoint_url=pyroscope_http_endpoint,
                     ),
                     self._app
                 )
@@ -55,7 +52,6 @@ class ProfilingEndpointProvider:
 @dataclasses.dataclass
 class _Endpoint:
     otlp_grpc: str
-    pyroscope_http: Optional[str]
 
 
 class ProfilingEndpointRequirer:
@@ -70,7 +66,6 @@ class ProfilingEndpointRequirer:
             try:
                 data = relation.load(ProfilingAppDatabagModel, relation.app)
                 otlp_grpc_endpoint_url = data.otlp_grpc_endpoint_url
-                pyroscope_http_endpoint_url = data.pyroscope_http_endpoint_url
             except ops.ModelError:
                 logger.debug("failed to validate app data; is the relation still being created?")
                 continue
@@ -78,7 +73,6 @@ class ProfilingEndpointRequirer:
                 logger.debug("failed to validate app data; is the relation still settling?")
                 continue
             out.append(_Endpoint(
-                pyroscope_http=pyroscope_http_endpoint_url,
                 otlp_grpc=otlp_grpc_endpoint_url,
             ))
         return out

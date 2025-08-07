@@ -38,10 +38,6 @@ def test_provide_profiling(
     assert profiling_out.local_app_data["otlp_grpc_endpoint_url"] == json.dumps(
         f"foo.com:{nginx_config.grpc_server_port}"
     )
-    assert profiling_out.local_app_data.get(
-        "pyroscope_http_endpoint_url"
-    ) == json.dumps("http://foo.com:8080")
-
 
 def test_provide_profiling_ingress(
     context,
@@ -69,28 +65,15 @@ def test_provide_profiling_ingress(
     assert profiling_out.local_app_data["otlp_grpc_endpoint_url"] == json.dumps(
         f"{external_host}:{nginx_config.grpc_server_port}"
     )
-    assert profiling_out.local_app_data.get(
-        "pyroscope_http_endpoint_url"
-    ) == json.dumps(
-        f"http://example.com/{state_out.model.name}-pyroscope-coordinator-k8s"
-    )
 
 
 @pytest.mark.parametrize(
     "databag, expected",
     (
         ({}, []),
-        ({"pyroscope_http_endpoint_url": '"http://foo.com:1234"'}, []),
         (
             {"otlp_grpc_endpoint_url": '"foo.com:1234"'},
-            [_Endpoint(otlp_grpc="foo.com:1234", pyroscope_http=None)],
-        ),
-        (
-            {
-                "otlp_grpc_endpoint_url": '"foo.com:1234"',
-                "pyroscope_http_endpoint_url": '"http://foo.com:1234"',
-            },
-            [_Endpoint(otlp_grpc="foo.com:1234", pyroscope_http="http://foo.com:1234")],
+            [_Endpoint(otlp_grpc="foo.com:1234")],
         ),
     ),
 )
