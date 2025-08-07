@@ -40,9 +40,7 @@ def test_provide_profiling(
     )
     assert profiling_out.local_app_data.get(
         "pyroscope_http_endpoint_url"
-    ) == json.dumps(
-        f"http://foo.com:8080"
-    )
+    ) == json.dumps("http://foo.com:8080")
 
 
 def test_provide_profiling_ingress(
