@@ -2,7 +2,7 @@
 """
 import dataclasses
 import logging
-from typing import List, Optional
+from typing import List
 
 import ops
 import pydantic
@@ -15,7 +15,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 DEFAULT_ENDPOINT_NAME = "profiling"
 
