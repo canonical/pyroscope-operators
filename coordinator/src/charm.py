@@ -229,6 +229,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self._reconcile_ingress()
         self.profiling_provider.publish_endpoint(
             otlp_grpc_endpoint=self._most_external_grpc_url,
+            pyroscope_http_endpoint=self._most_external_http_url
         )
 
     def _reconcile_ingress(self):
