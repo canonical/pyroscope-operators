@@ -39,6 +39,7 @@ def test_provide_profiling(
         f"foo.com:{nginx_config.grpc_server_port}"
     )
 
+
 def test_provide_profiling_ingress(
     context,
     s3,
