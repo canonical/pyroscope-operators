@@ -24,6 +24,12 @@ def k8s_patch(status=ActiveStatus(), is_ready=True):
             yield patcher
 
 
+@pytest.fixture(autouse=True)
+def patch_consolidate_alert_rules():
+    with patch("coordinated_workers.coordinator.Coordinator._consolidate_alert_rules"):
+        yield
+
+
 @pytest.fixture()
 def coordinator():
     return MagicMock()

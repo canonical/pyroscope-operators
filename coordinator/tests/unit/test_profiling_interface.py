@@ -38,9 +38,6 @@ def test_provide_profiling(
     assert profiling_out.local_app_data["otlp_grpc_endpoint_url"] == json.dumps(
         f"foo.com:{nginx_config.grpc_server_port}"
     )
-    assert profiling_out.local_app_data.get("otlp_http_endpoint_url") == json.dumps(
-        None
-    )
 
 
 def test_provide_profiling_ingress(
@@ -69,26 +66,15 @@ def test_provide_profiling_ingress(
     assert profiling_out.local_app_data["otlp_grpc_endpoint_url"] == json.dumps(
         f"{external_host}:{nginx_config.grpc_server_port}"
     )
-    assert profiling_out.local_app_data.get("otlp_http_endpoint_url") == json.dumps(
-        None
-    )
 
 
 @pytest.mark.parametrize(
     "databag, expected",
     (
         ({}, []),
-        ({"otlp_http_endpoint_url": '"http://foo.com:1234"'}, []),
         (
             {"otlp_grpc_endpoint_url": '"foo.com:1234"'},
-            [_Endpoint(otlp_grpc="foo.com:1234", otlp_http=None)],
-        ),
-        (
-            {
-                "otlp_grpc_endpoint_url": '"foo.com:1234"',
-                "otlp_http_endpoint_url": '"http://foo.com:1234"',
-            },
-            [_Endpoint(otlp_grpc="foo.com:1234", otlp_http="http://foo.com:1234")],
+            [_Endpoint(otlp_grpc="foo.com:1234")],
         ),
     ),
 )
