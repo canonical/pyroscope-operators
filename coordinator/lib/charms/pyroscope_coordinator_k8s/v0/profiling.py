@@ -55,7 +55,7 @@ class ProfilingEndpointProvider:
 @dataclasses.dataclass
 class _Endpoint:
     otlp_grpc: str
-    insecure: bool
+    insecure: bool = False
 
 
 class ProfilingEndpointRequirer:
