@@ -15,7 +15,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 DEFAULT_ENDPOINT_NAME = "profiling"
 
@@ -24,6 +24,7 @@ logger = logging.getLogger()
 class ProfilingAppDatabagModel(pydantic.BaseModel):
     """Application databag model for the profiling interface."""
     otlp_grpc_endpoint_url: str
+    insecure: bool
 
 
 class ProfilingEndpointProvider:
@@ -34,13 +35,15 @@ class ProfilingEndpointProvider:
 
     def publish_endpoint(self,
                          otlp_grpc_endpoint:str,
-                         ):
+                         insecure:bool=True,
+                        ):
         """Publish profiling ingestion endpoints to all relations."""
         for relation in self._relations:
             try:
                 relation.save(
                     ProfilingAppDatabagModel(
                         otlp_grpc_endpoint_url=otlp_grpc_endpoint,
+                        insecure=insecure,
                     ),
                     self._app
                 )
@@ -52,6 +55,7 @@ class ProfilingEndpointProvider:
 @dataclasses.dataclass
 class _Endpoint:
     otlp_grpc: str
+    insecure: bool
 
 
 class ProfilingEndpointRequirer:
@@ -65,7 +69,6 @@ class ProfilingEndpointRequirer:
         for relation in self._relations:
             try:
                 data = relation.load(ProfilingAppDatabagModel, relation.app)
-                otlp_grpc_endpoint_url = data.otlp_grpc_endpoint_url
             except ops.ModelError:
                 logger.debug("failed to validate app data; is the relation still being created?")
                 continue
@@ -73,7 +76,8 @@ class ProfilingEndpointRequirer:
                 logger.debug("failed to validate app data; is the relation still settling?")
                 continue
             out.append(_Endpoint(
-                otlp_grpc=otlp_grpc_endpoint_url,
+                otlp_grpc=data.otlp_grpc_endpoint_url,
+                insecure=data.insecure,
             ))
         return out
 
