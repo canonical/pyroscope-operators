@@ -24,7 +24,7 @@ logger = logging.getLogger()
 class ProfilingAppDatabagModel(pydantic.BaseModel):
     """Application databag model for the profiling interface."""
     otlp_grpc_endpoint_url: str
-    insecure: bool
+    insecure: bool = False
 
 
 class ProfilingEndpointProvider:
@@ -35,7 +35,7 @@ class ProfilingEndpointProvider:
 
     def publish_endpoint(self,
                          otlp_grpc_endpoint:str,
-                         insecure:bool=True,
+                         insecure:bool=False,
                          ):
         """Publish profiling ingestion endpoints to all relations."""
         for relation in self._relations:
