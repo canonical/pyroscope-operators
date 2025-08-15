@@ -24,4 +24,5 @@ jobs:
         with:
             charm-path: ./worker
             tiobe-project-name: pyroscope-worker-k8s
+            
         secrets: inherit
