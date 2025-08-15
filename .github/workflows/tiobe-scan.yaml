@@ -11,15 +11,17 @@ on:
     - cron: "0 0 * * 1"  # Runs at midnight UTC every Monday
 
 jobs:
-    tiobe-scan-worker:
-        name: TiCs-worker
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
-        with:
-            charm-path: ./worker
-        secrets: inherit
     tiobe-scan-coordinator:
         name: TiCs-coordinator
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@fix/tiobe-scan-monorepo
         with:
             charm-path: ./coordinator
+            tiobe-project-name: pyroscope-coordinator-k8s
+        secrets: inherit
+    tiobe-scan-worker:
+        name: TiCs-worker
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@fix/tiobe-scan-monorepo
+        with:
+            charm-path: ./worker
+            tiobe-project-name: pyroscope-worker-k8s
         secrets: inherit
