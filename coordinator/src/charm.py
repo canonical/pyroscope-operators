@@ -229,6 +229,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self._reconcile_ingress()
         self.profiling_provider.publish_endpoint(
             otlp_grpc_endpoint=self._most_external_grpc_url,
+            # FIXME: pass _are_certificates_on_disk once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
+            insecure=True,
         )
 
     def _reconcile_ingress(self):
