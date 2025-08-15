@@ -36,7 +36,7 @@ class ProfilingEndpointProvider:
     def publish_endpoint(self,
                          otlp_grpc_endpoint:str,
                          insecure:bool=True,
-                        ):
+                         ):
         """Publish profiling ingestion endpoints to all relations."""
         for relation in self._relations:
             try:
