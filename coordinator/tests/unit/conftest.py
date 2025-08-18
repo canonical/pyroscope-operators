@@ -96,6 +96,14 @@ def ingress(external_host):
 
 
 @pytest.fixture(scope="function")
+def ingress_with_tls(external_host):
+    return Relation(
+        "ingress",
+        remote_app_data={"external_host": external_host, "scheme": "https"},
+    )
+
+
+@pytest.fixture(scope="function")
 def catalogue():
     return Relation("catalogue")
 

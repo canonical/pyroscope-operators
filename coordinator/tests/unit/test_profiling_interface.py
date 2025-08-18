@@ -14,6 +14,18 @@ from charms.pyroscope_coordinator_k8s.v0.profiling import (
 )
 
 
+@pytest.mark.parametrize(
+    "tls",
+    (
+        False,
+        pytest.param(
+            True,
+            marks=pytest.mark.skip(
+                reason="FIXME: https://github.com/canonical/pyroscope-k8s-operator/issues/231"
+            ),
+        ),
+    ),
+)
 def test_provide_profiling(
     context,
     s3,
@@ -22,6 +34,7 @@ def test_provide_profiling(
     nginx_prometheus_exporter_container,
     profiling,
     peers,
+    tls,
 ):
     with patch("socket.getfqdn", new=lambda: "foo.com"):
         state_out = context.run(
@@ -35,11 +48,15 @@ def test_provide_profiling(
         )
     profiling_out = state_out.get_relation(profiling.id)
 
-    assert profiling_out.local_app_data["otlp_grpc_endpoint_url"] == json.dumps(
-        f"foo.com:{nginx_config.grpc_server_port}"
-    )
+    assert profiling_out.local_app_data == {
+        "insecure": json.dumps(not tls),
+        "otlp_grpc_endpoint_url": json.dumps(
+            f"foo.com:{nginx_config.grpc_server_port}"
+        ),
+    }
 
 
+@pytest.mark.parametrize("tls", (False, True))
 def test_provide_profiling_ingress(
     context,
     s3,
@@ -48,14 +65,22 @@ def test_provide_profiling_ingress(
     nginx_prometheus_exporter_container,
     profiling,
     ingress,
+    ingress_with_tls,
     external_host,
     peers,
+    tls,
 ):
     with patch("socket.getfqdn", new=lambda: "foo.com"):
         state_out = context.run(
             context.on.update_status(),
             State(
-                relations=[peers, s3, ingress, all_worker, profiling],
+                relations=[
+                    peers,
+                    s3,
+                    ingress_with_tls if tls else ingress,
+                    all_worker,
+                    profiling,
+                ],
                 containers=[nginx_container, nginx_prometheus_exporter_container],
                 unit_status=ops.ActiveStatus(),
                 leader=True,
@@ -63,9 +88,12 @@ def test_provide_profiling_ingress(
         )
     profiling_out = state_out.get_relation(profiling.id)
 
-    assert profiling_out.local_app_data["otlp_grpc_endpoint_url"] == json.dumps(
-        f"{external_host}:{nginx_config.grpc_server_port}"
-    )
+    assert profiling_out.local_app_data == {
+        "insecure": json.dumps(not tls),
+        "otlp_grpc_endpoint_url": json.dumps(
+            f"{external_host}:{nginx_config.grpc_server_port}"
+        ),
+    }
 
 
 @pytest.mark.parametrize(
@@ -73,8 +101,12 @@ def test_provide_profiling_ingress(
     (
         ({}, []),
         (
-            {"otlp_grpc_endpoint_url": '"foo.com:1234"'},
-            [_Endpoint(otlp_grpc="foo.com:1234")],
+            {"otlp_grpc_endpoint_url": '"foo.com:1234"', "insecure": '"true"'},
+            [_Endpoint(otlp_grpc="foo.com:1234", insecure=True)],
+        ),
+        (
+            {"otlp_grpc_endpoint_url": '"foo.com:1234"', "insecure": '"false"'},
+            [_Endpoint(otlp_grpc="foo.com:1234", insecure=False)],
         ),
     ),
 )

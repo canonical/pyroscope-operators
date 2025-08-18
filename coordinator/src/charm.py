@@ -12,7 +12,7 @@ from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH, NginxConfig
+from coordinated_workers.nginx import NginxConfig
 from ops.charm import CharmBase
 
 import nginx_config
@@ -71,7 +71,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 server_name=self.hostname,
                 upstream_configs=nginx_config.upstreams(Pyroscope.http_server_port),
                 server_ports_to_locations=nginx_config.server_ports_to_locations(
-                    tls_available=self._are_certificates_on_disk
+                    # FIXME: check for TLS once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
+                    tls_available=False,
                 ),
                 enable_status_page=True,
             ),
@@ -97,6 +98,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
     def hostname(self) -> str:
         """Unit's hostname."""
         return socket.getfqdn()
+
+    @property
+    def _is_external_url_tls(self) -> bool:
+        """Return True if an ingress is configured and is configured with TLS, otherwise False."""
+        external_http_url = self._external_http_url
+        if external_http_url and external_http_url.startswith("https://"):
+            return True
+        return False
 
     @property
     def _external_http_url(self) -> Optional[str]:
@@ -151,9 +160,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
     @property
     def _scheme(self) -> str:
         """Return the URI scheme that should be used when communicating with this unit."""
-        scheme = "http"
-        # FIXME: add a check for are_certificates_on_disk
-        return scheme
+        # FIXME: check for TLS once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
+        return "http"
 
     @property
     def _internal_http_url(self) -> str:
@@ -187,22 +195,10 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return self._external_grpc_url or self._internal_grpc_url
 
     @property
-    def _are_certificates_on_disk(self) -> bool:
-        return (
-            self._nginx_container.can_connect()
-            and self._nginx_container.exists(CERT_PATH)
-            and self._nginx_container.exists(KEY_PATH)
-            and self._nginx_container.exists(CA_CERT_PATH)
-        )
-
-    @property
     def _http_server_port(self) -> int:
         """The http port that we should open on this pod."""
-        return (
-            nginx_config.https_server_port
-            if self._are_certificates_on_disk
-            else nginx_config.http_server_port
-        )
+        # FIXME: check for TLS once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
+        return nginx_config.http_server_port
 
     @property
     def _catalogue_item(self) -> CatalogueItem:
@@ -229,8 +225,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self._reconcile_ingress()
         self.profiling_provider.publish_endpoint(
             otlp_grpc_endpoint=self._most_external_grpc_url,
-            # FIXME: pass _are_certificates_on_disk once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
-            insecure=True,
+            # FIXME: check for internal TLS once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
+            insecure=not self._is_external_url_tls,
         )
 
     def _reconcile_ingress(self):
@@ -243,7 +239,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
             coordinator_fqdns=self._peers.get_fqdns(),
             model_name=self.model.name,
             app_name=self.app.name,
-            tls=self._are_certificates_on_disk,
+            # FIXME: check for TLS once https://github.com/canonical/pyroscope-k8s-operator/issues/231 is fixed
+            tls=False,
             prefix=self._ingress_prefix,
         )
         self.ingress.submit_to_traefik(config=config.dynamic, static=config.static)
