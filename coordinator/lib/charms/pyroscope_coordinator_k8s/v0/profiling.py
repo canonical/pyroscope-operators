@@ -24,7 +24,7 @@ logger = logging.getLogger()
 
 @dataclasses.dataclass
 class Endpoint:
-    """Represents a profiling endpoint."""
+    """Profiling endpoint."""
 
     otlp_grpc: str
     insecure: bool = False
