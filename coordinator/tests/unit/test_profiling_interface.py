@@ -10,7 +10,7 @@ from ops.testing import State, Context
 
 from charms.pyroscope_coordinator_k8s.v0.profiling import (
     ProfilingEndpointRequirer,
-    _Endpoint,
+    Endpoint,
 )
 
 
@@ -102,11 +102,11 @@ def test_provide_profiling_ingress(
         ({}, []),
         (
             {"otlp_grpc_endpoint_url": '"foo.com:1234"', "insecure": '"true"'},
-            [_Endpoint(otlp_grpc="foo.com:1234", insecure=True)],
+            [Endpoint(otlp_grpc="foo.com:1234", insecure=True)],
         ),
         (
             {"otlp_grpc_endpoint_url": '"foo.com:1234"', "insecure": '"false"'},
-            [_Endpoint(otlp_grpc="foo.com:1234", insecure=False)],
+            [Endpoint(otlp_grpc="foo.com:1234", insecure=False)],
         ),
     ),
 )
