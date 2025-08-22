@@ -256,4 +256,8 @@ def _deploy_and_configure_minio(juju: Juju):
 
 
 def get_ingress_proxied_hostname(juju: Juju):
-    return json.loads(juju.run(TRAEFIK_APP+"/0", 'show-proxied-endpoints').results['proxied-endpoints'])[TRAEFIK_APP]['url']
+    return json.loads(
+        juju.run(TRAEFIK_APP + "/0", "show-proxied-endpoints").results[
+            "proxied-endpoints"
+        ]
+    )[TRAEFIK_APP]["url"]
