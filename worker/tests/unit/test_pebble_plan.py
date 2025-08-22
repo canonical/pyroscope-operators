@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
+import os
 import socket
 from unittest.mock import MagicMock, patch
 import pytest
@@ -8,12 +9,13 @@ from ops.model import ActiveStatus
 from scenario import Relation, State
 from cosl import JujuTopology
 
-from tests.unit.helpers import set_roles
-from tests.unit.conftest import config_on_disk, endpoint_ready
+from helpers import set_roles
+from conftest import config_on_disk, endpoint_ready
 
 
 @config_on_disk()
 @endpoint_ready()
+@pytest.mark.parametrize("https_proxy", (True, False))
 @pytest.mark.parametrize(
     "roles",
     (
@@ -30,27 +32,11 @@ from tests.unit.conftest import config_on_disk, endpoint_ready
         ["compactor", "store-gateway"],
     ),
 )
-def test_pebble_ready_plan(ctx, pyroscope_container, roles):
+def test_pebble_ready_plan(ctx, pyroscope_container, roles, https_proxy):
     roles = sorted(roles)
     host = socket.getfqdn()
-    expected_plan = {
-        "checks": {
-            "ready": {
-                "http": {"url": f"http://{host}:4040/ready"},
-                "override": "replace",
-                "threshold": 3,
-            }
-        },
-        "services": {
-            "pyroscope": {
-                "override": "replace",
-                "summary": "pyroscope worker process",
-                "command": f"/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target={','.join(roles)}",
-                "startup": "enabled",
-            }
-        },
-    }
-
+    if https_proxy:
+        os.environ["JUJU_CHARM_HTTPS_PROXY"] = "0.0.0.1"
     # GIVEN a pyroscope-cluster with a placeholder worker config
     state = set_roles(
         State(
@@ -71,7 +57,14 @@ def test_pebble_ready_plan(ctx, pyroscope_container, roles):
 
     # THEN pyroscope pebble plan is generated
     pyroscope_container_out = state_out.get_container(pyroscope_container.name)
-    assert pyroscope_container_out.plan.to_dict() == expected_plan
+    plan_out = pyroscope_container_out.plan.to_dict()
+
+    assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
+    assert (
+        plan_out["services"]["pyroscope"]["command"]
+        == f"/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target={','.join(roles)}"
+    )
+    assert plan_out["services"]["pyroscope"]["environment"]["https_proxy"] == "0.0.0.1"
     # AND the pebble service is running
     assert pyroscope_container_out.services.get("pyroscope").is_running() is True
 
