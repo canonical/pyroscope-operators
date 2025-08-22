@@ -83,7 +83,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 Pyroscope.http_server_port,
             ),
             workload_tracing_protocols=["jaeger_thrift_http"],
-            container_name="charm",
+            container_name="nginx",
             resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
             catalogue_item=self._catalogue_item,
         )
