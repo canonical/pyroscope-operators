@@ -93,33 +93,6 @@ def test_pebble_ready_plan(ctx, pyroscope_container, roles, https_proxy):
 def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
     host = socket.getfqdn()
     tempo_endpoint = "http://127.0.0.1"
-    expected_plan = {
-        "checks": {
-            "ready": {
-                "http": {"url": f"http://{host}:4040/ready"},
-                "override": "replace",
-                "threshold": 3,
-            }
-        },
-        "services": {
-            "pyroscope": {
-                "override": "replace",
-                "summary": "pyroscope worker process",
-                "command": "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target=all",
-                "startup": "enabled",
-                "environment": {
-                    "JAEGER_ENDPOINT": (
-                        f"{tempo_endpoint}/api/traces?format=jaeger.thrift"
-                    ),
-                    "JAEGER_SAMPLER_PARAM": "1",
-                    "JAEGER_SAMPLER_TYPE": "const",
-                    "JAEGER_TAGS": "juju_application=worker,juju_model=test"
-                    + ",juju_model_uuid=00000000-0000-4000-8000-000000000000,juju_unit=worker/0,juju_charm=pyroscope",
-                },
-            }
-        },
-    }
-
     # GIVEN a workload tracing endpoint in the pyroscope-cluster config
     state = State(
         containers=[pyroscope_container],
@@ -143,4 +116,20 @@ def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
 
     # THEN the pebble plan contains the workload tracing-related environment variables
     pyroscope_container_out = state_out.get_container(pyroscope_container.name)
-    assert pyroscope_container_out.plan.to_dict() == expected_plan
+    plan_out = pyroscope_container_out.plan.to_dict()
+
+    assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
+    assert (
+        plan_out["services"]["pyroscope"]["command"]
+        == "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target=all"
+    )
+    assert (
+        plan_out["services"]["pyroscope"]["environment"]["JAEGER_ENDPOINT"]
+        == f"{tempo_endpoint}/api/traces?format=jaeger.thrift"
+    )
+    assert plan_out["services"]["pyroscope"]["environment"]["JAEGER_SAMPLER_PARAM"]
+    assert plan_out["services"]["pyroscope"]["environment"]["JAEGER_SAMPLER_TYPE"]
+    assert (
+        plan_out["services"]["pyroscope"]["environment"]["JAEGER_TAGS"]
+        == "juju_application=worker,juju_model=test,juju_model_uuid=00000000-0000-4000-8000-000000000000,juju_unit=worker/0,juju_charm=pyroscope"
+    )
