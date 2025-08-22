@@ -1,5 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
 import os
 import subprocess
@@ -255,4 +256,4 @@ def _deploy_and_configure_minio(juju: Juju):
 
 
 def get_ingress_proxied_hostname(juju: Juju):
-    return juju.run(TRAEFIK_APP+"/0", 'show-proxied-endpoints').results['proxied-endpoints']['traefik']['url']
+    return json.loads(juju.run(TRAEFIK_APP+"/0", 'show-proxied-endpoints').results['proxied-endpoints'])['traefik']['url']
