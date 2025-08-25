@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def check_http_endpoint(juju: Juju, use_ingress: bool):
     if use_ingress:
         ingress_hostname = get_ingress_proxied_hostname(juju)
-        url = f"{ingress_hostname}/{juju.model}-{PYROSCOPE_APP}"
+        url = f"http://{ingress_hostname}/{juju.model}-{PYROSCOPE_APP}"
     else:
         nginx_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
         url = f"http://{nginx_ip}:{NGINX_CONFIG_HTTP_SERVER_PORT}"
