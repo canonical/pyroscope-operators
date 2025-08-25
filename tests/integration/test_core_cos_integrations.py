@@ -110,7 +110,7 @@ def test_setup(juju: Juju):
     # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
         lambda status: all_active(status, *COS_COMPONENTS, *pyro_apps),
-        timeout=10000,
+        timeout=3000,
         delay=5,
         successes=5,
     )
