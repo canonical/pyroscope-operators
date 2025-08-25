@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 @tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))
 def check_http_endpoint(juju: Juju, use_ingress: bool):
     if use_ingress:
-        ingress_ip = get_ingress_proxied_hostname(juju)
-        url = f"http://{ingress_ip}/{juju.model}-{PYROSCOPE_APP}"
+        ingress_hostname = get_ingress_proxied_hostname(juju)
+        url = f"http://{ingress_hostname}/{juju.model}-{PYROSCOPE_APP}"
     else:
         nginx_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
         url = f"http://{nginx_ip}:{NGINX_CONFIG_HTTP_SERVER_PORT}"
@@ -46,9 +46,9 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
     if use_ingress:
         hostname = get_ingress_proxied_hostname(juju)
     else:
-        hostname = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
+        hostname = "http://" + get_unit_ip_address(juju, PYROSCOPE_APP, 0)
 
-    url = f"http://{hostname}:{NGINX_CONFIG_GRPC_SERVER_PORT}"
+    url = f"{hostname}:{NGINX_CONFIG_GRPC_SERVER_PORT}"
     proc = subprocess.run(["curl", url], capture_output=True, text=True, check=False)
 
     # With ingress, Traefik connects to nginx over h2c (HTTP/2),
