@@ -86,6 +86,7 @@ k8s_resource_patch_ready = MagicMock(return_value=True)
 def patch_all():
     with ExitStack() as stack:
         stack.enter_context(patch("lightkube.core.client.GenericSyncClient"))
+        stack.enter_context(patch("coordinated_workers.coordinator.Coordinator._consolidate_alert_rules"))
         stack.enter_context(
             patch.multiple(
                 "charms.observability_libs.v0.kubernetes_compute_resources_patch.KubernetesComputeResourcesPatch",
@@ -146,3 +147,18 @@ def s3_tester(interface_tester: InterfaceTester):
         ),
     )
     yield interface_tester
+
+
+
+@pytest.fixture
+def profiling_tester(interface_tester: InterfaceTester):
+    interface_tester.configure(
+        charm_type=PyroscopeCoordinatorCharm,
+        state_template=State(
+            leader=True,
+            containers=[nginx_container, nginx_prometheus_exporter_container],
+            relations=[peers, s3_relation, cluster_relation],
+        ),
+    )
+    yield interface_tester
+
