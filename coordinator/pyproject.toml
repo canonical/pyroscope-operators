@@ -20,14 +20,14 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant~=1.0",
+    "pytest-jubilant",
 
 #   LINTING
     "pyright",
     "ruff",
 
 #   INTERFACE TESTS
-    "pytest-interface-tester==3.3.1",
+    "pytest-interface-tester",
 ]
 
 [tool.pyright]
