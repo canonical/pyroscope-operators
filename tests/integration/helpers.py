@@ -1,5 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
 import os
 import subprocess
@@ -255,12 +256,8 @@ def _deploy_and_configure_minio(juju: Juju):
 
 
 def get_ingress_proxied_hostname(juju: Juju):
-    status = juju.status()
-    status_msg = status.apps[TRAEFIK_APP].app_status.message
-
-    # hacky way to get ingress hostname, but it's the safest one.
-    if "Serving at" not in status_msg:
-        raise RuntimeError(
-            f"Ingressed hostname is not present in {TRAEFIK_APP} status message."
-        )
-    return status_msg.replace("Serving at", "").strip()
+    return json.loads(
+        juju.run(TRAEFIK_APP + "/0", "show-proxied-endpoints").results[
+            "proxied-endpoints"
+        ]
+    )[TRAEFIK_APP]["url"].split("://")[1]
