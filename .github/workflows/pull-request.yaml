@@ -49,12 +49,10 @@ jobs:
   pull-request-coordinator:
     needs: charms-changed
     if: needs.charms-changed.outputs.coordinator_changed == 'true'
-    # FIXME: unpin
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@feat/run-interface-tests
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
     secrets: inherit
     with:
       charm-path: coordinator
-      strict-interface-tests: true # opt in to gating interface tests
   pull-request-worker:
     needs: charms-changed
     if: needs.charms-changed.outputs.worker_changed == 'true'
