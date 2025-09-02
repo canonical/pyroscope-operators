@@ -272,14 +272,16 @@ def emit_profile(
     endpoint: str,
     service_name: str = "profilegen",
 ):
-    env = {
+    env = os.environ.copy()
+    profilegen_env = {
         "PROFILEGEN_SERVICE": service_name,
         "PROFILEGEN_ENDPOINT": endpoint,
     }
+    env.update(profilegen_env)
 
     cmd = f"python {str(PROFILEGEN_SCRIPT_PATH)}"
 
-    logger.info(f"running profilegen with env: {env!r}")
+    logger.info(f"running profilegen with env: {profilegen_env!r}")
     out = subprocess.run(
         shlex.split(cmd), text=True, capture_output=True, check=True, env=env
     )
