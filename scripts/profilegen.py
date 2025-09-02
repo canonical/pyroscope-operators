@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Utility script to generate a CPU profile and export it using OTLP gRPC to a profiling backend (i.e. Pyroscope/Otel Collector)."""
+"""Utility script to generate a mock CPU profile and export it using OTLP gRPC to a profiling backend (i.e. Pyroscope/Otel Collector)."""
 
 import os
 import grpc
