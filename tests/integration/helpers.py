@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Literal, Sequence, Union
@@ -22,6 +23,7 @@ S3_APP = "s3-integrator"
 WORKER_APP = "pyroscope-worker"
 PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
+OTEL_COLLECTOR_APP = "opentelemetry-collector"
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [
@@ -41,6 +43,7 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
+PROFILEGEN_SCRIPT_PATH = Path() / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
 
@@ -261,3 +264,18 @@ def get_ingress_proxied_hostname(juju: Juju):
             "proxied-endpoints"
         ]
     )[TRAEFIK_APP]["url"].split("://")[1]
+
+
+def emit_profile(
+    endpoint: str,
+    service_name: str = "profilegen",
+):
+    cmd = (
+        f"PROFILEGEN_SERVICE={service_name} "
+        f"PROFILEGEN_ENDPOINT={endpoint} "
+        f"python {str(PROFILEGEN_SCRIPT_PATH)}"
+    )
+
+    logger.info(f"running profilegen with {cmd!r}")
+    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True, check=True)
+    logger.info(f"profilegen completed; stdout={out.stdout!r}")
