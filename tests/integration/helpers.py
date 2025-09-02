@@ -43,7 +43,9 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
-PROFILEGEN_SCRIPT_PATH = Path().parent / "scripts" / "profilegen.py"
+PROFILEGEN_SCRIPT_PATH = (
+    Path(__file__).parent.parent.parent / "scripts" / "profilegen.py"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -270,12 +272,15 @@ def emit_profile(
     endpoint: str,
     service_name: str = "profilegen",
 ):
-    cmd = (
-        f"PROFILEGEN_SERVICE={service_name} "
-        f"PROFILEGEN_ENDPOINT={endpoint} "
-        f"python {str(PROFILEGEN_SCRIPT_PATH)}"
-    )
+    env = {
+        "PROFILEGEN_SERVICE": service_name,
+        "PROFILEGEN_ENDPOINT": endpoint,
+    }
 
-    logger.info(f"running profilegen with {cmd!r}")
-    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True, check=True)
+    cmd = f"python {str(PROFILEGEN_SCRIPT_PATH)}"
+
+    logger.info(f"running profilegen with env: {env!r}")
+    out = subprocess.run(
+        shlex.split(cmd), text=True, capture_output=True, check=True, env=env
+    )
     logger.info(f"profilegen completed; stdout={out.stdout!r}")
