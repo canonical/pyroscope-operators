@@ -43,7 +43,7 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
-PROFILEGEN_SCRIPT_PATH = Path() / "scripts" / "profilegen.py"
+PROFILEGEN_SCRIPT_PATH = Path().parent / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
 
