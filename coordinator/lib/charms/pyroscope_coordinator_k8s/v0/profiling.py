@@ -32,7 +32,7 @@ class MyCharm(ops.CharmBase):
         def configure_profiling(self):
             "Do whatever application-specific thing you need to do to configure profiling."
             for endpoint in self.profiling_endpoints:
-                self.add_profiling_endpoint(url=endpont.otlp_grpc, insecure=endpoint.insecure)
+                self.add_profiling_endpoint(url=endpoint.otlp_grpc, insecure=endpoint.insecure)
 ```
 
 ## Provider usage
