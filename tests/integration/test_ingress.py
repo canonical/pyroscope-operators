@@ -63,7 +63,7 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
 @pytest.mark.setup
 def test_setup(juju: Juju):
     # GIVEN an empty model
-    # WHEN deploying the tempo cluster and traefik
+    # WHEN deploying the pyroscope cluster and traefik
     juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="latest/stable", trust=True)
     deploy_monolithic_cluster(juju)
 
@@ -80,7 +80,7 @@ def test_nginx_grpc_server_route_before_ingress(juju: Juju):
 
 @pytest.mark.setup
 def test_add_ingress(juju):
-    # AND WHEN we integrate the tempo cluster with traefik over ingress
+    # AND WHEN we integrate the pyroscope cluster with traefik over ingress
     juju.integrate(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
 
     # THEN the coordinator, worker, and traefik are all in active/idle state
@@ -105,7 +105,7 @@ def test_nginx_grpc_server_route_with_ingress(juju: Juju):
 
 @pytest.mark.teardown
 def test_remove_ingress(juju: Juju):
-    # GIVEN a model with traefik and the tempo cluster integrated
+    # GIVEN a model with traefik and the pyroscope cluster integrated
     # WHEN we remove the ingress relation
     juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
 
@@ -129,7 +129,7 @@ def test_nginx_grpc_server_route_after_ingress(juju: Juju):
 
 @pytest.mark.teardown
 def test_teardown(juju: Juju):
-    # GIVEN a model with traefik and the tempo cluster
+    # GIVEN a model with traefik and the pyroscope cluster
     # WHEN we remove traefik, the coordinator, and the worker
     juju.remove_application(PYROSCOPE_APP)
     juju.remove_application(WORKER_APP)
