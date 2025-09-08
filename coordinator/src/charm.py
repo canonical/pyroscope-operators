@@ -107,7 +107,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
     @property
     def _is_ingressed(self) -> bool:
         "Return True if an ingress is configured and ready, otherwise False."
-        return self.ingress.is_ready() and self.ingress.scheme and self.ingress.external_host
+        return bool(
+            self.ingress.is_ready()
+            and self.ingress.scheme
+            and self.ingress.external_host
+        )
 
     @property
     def _is_external_url_tls(self) -> bool:
