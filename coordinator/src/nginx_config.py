@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 grpc_server_port = 42424
 http_server_port = 8080
 # e2e TLS in upstream is not supported yet, so we can only support TLS termination at nginx
+# https://github.com/grafana/pyroscope/issues/3598
 upstream_tls = False
 
 http_locations: List[NginxLocationConfig] = [

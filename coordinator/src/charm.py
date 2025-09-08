@@ -105,6 +105,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
         )
 
     @property
+    def _is_ingressed(self) -> bool:
+        "Return True if an ingress is configured and ready, otherwise False."
+        return self.ingress.is_ready() and self.ingress.scheme and self.ingress.external_host
+
+    @property
     def _is_external_url_tls(self) -> bool:
         """Return True if an ingress is configured and is configured with TLS, otherwise False."""
         external_http_url = self._external_http_url
@@ -115,11 +120,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
     @property
     def _external_http_url(self) -> Optional[str]:
         """Return the external URL if the ingress is configured and ready, otherwise None."""
-        if (
-            self.ingress.is_ready()
-            and self.ingress.scheme
-            and self.ingress.external_host
-        ):
+        if self._is_ingressed:
             ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}{self._ingress_prefix}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
@@ -129,11 +130,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
     @property
     def _external_grpc_url(self) -> Optional[str]:
         """Return the external grpc server URL if the ingress is configured and ready, otherwise None."""
-        if (
-            self.ingress.is_ready()
-            and self.ingress.scheme
-            and self.ingress.external_host
-        ):
+        if self._is_ingressed:
             ingress_url = (
                 f"{self.ingress.external_host}:{nginx_config.grpc_server_port}"
             )
@@ -222,7 +219,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             # otherwise check if internal TLS (certificates on disk) is configured.
             insecure=not (
                 self._is_external_url_tls
-                if self._external_grpc_url
+                if self._is_ingressed
                 else self._are_certificates_on_disk
             ),
         )

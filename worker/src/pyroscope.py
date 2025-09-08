@@ -83,4 +83,5 @@ class PyroscopeWorker:
     def readiness_check_endpoint(worker: Worker) -> str:
         """Endpoint for worker readiness checks."""
         # e2e TLS in upstream is not supported yet
+        # https://github.com/grafana/pyroscope/issues/3598
         return f"http://{socket.getfqdn()}:{API_PORT}/ready"
