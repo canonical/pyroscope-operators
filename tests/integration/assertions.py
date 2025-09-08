@@ -4,7 +4,6 @@
 import json
 import subprocess
 import shlex
-from pathlib import Path
 from typing import Optional
 import logging
 
@@ -15,7 +14,7 @@ def assert_profile_is_ingested(
     hostname: str,
     service_name: str = "profilegen",
     tls: bool = False,
-    ca_path: Optional[Path] = None,
+    ca_path: Optional[str] = None,
     server_name: Optional[str] = None,
 ):
     scheme = f"http{'s' if tls else ''}"
@@ -30,12 +29,13 @@ def assert_profile_is_ingested(
     )
 
     if ca_path:
-        cmd += f" --cacert {str(ca_path)}"
+        cmd += f" --cacert {ca_path}"
     if server_name:
         cmd += f" --resolve {target_hostname}:{port}:{hostname}"
 
     logger.info(f"running: {cmd!r}")
-    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
+    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True, check=True)
+
     flames = json.loads(out.stdout)
 
     # equivalent to: jq -r '.flamebearer.levels[0] | add'"

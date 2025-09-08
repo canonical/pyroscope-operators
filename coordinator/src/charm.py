@@ -198,6 +198,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ),
         )
 
+    # TODO: use the coordinated_workers method
+    # cfr https://github.com/canonical/cos-coordinated-workers/issues/54
     @property
     def _are_certificates_on_disk(self) -> bool:
         """Return True if the certificates files are on the nginx container's disk."""

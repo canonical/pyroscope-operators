@@ -273,7 +273,7 @@ def emit_profile(
     endpoint: str,
     service_name: str = "profilegen",
     tls: bool = False,
-    ca_path: Optional[Path] = None,
+    ca_path: Optional[str] = None,
     server_name: Optional[str] = None,
 ):
     env = os.environ.copy()

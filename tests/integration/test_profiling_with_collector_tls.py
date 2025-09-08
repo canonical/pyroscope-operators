@@ -52,6 +52,10 @@ def test_deploy_and_integrate_collector(juju: Juju):
 @given("a certificates provider charm is deployed")
 def test_deploy_ssc(juju: Juju):
     juju.deploy("self-signed-certificates", SSC_APP)
+    juju.wait(
+        lambda status: all_active(status, SSC_APP),
+        timeout=10 * 60,
+    )
 
 
 @pytest.mark.setup
@@ -59,7 +63,7 @@ def test_deploy_ssc(juju: Juju):
 def test_integrate_ssc_pyroscope(juju: Juju):
     juju.integrate(f"{PYROSCOPE_APP}:certificates", SSC_APP)
     juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
+        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP, SSC_APP),
         timeout=10 * 60,
         error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
         delay=10,
@@ -68,15 +72,17 @@ def test_integrate_ssc_pyroscope(juju: Juju):
 
 
 @pytest.mark.setup
-@given("the certificates provider charm is integrated with otel collector over receive-ca-cert")
+@given(
+    "the certificates provider charm is integrated with otel collector over receive-ca-cert"
+)
 def test_integrate_ssc_collector(juju: Juju):
     juju.integrate(f"{OTEL_COLLECTOR_APP}:receive-ca-cert", SSC_APP)
     juju.wait(
-        lambda status: all_active(status, OTEL_COLLECTOR_APP),
+        lambda status: all_active(status, OTEL_COLLECTOR_APP, SSC_APP),
         timeout=10 * 60,
         error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
         delay=10,
-        successes=6,
+        successes=3,
     )
 
 

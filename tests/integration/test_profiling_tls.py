@@ -44,7 +44,7 @@ def test_emit_profile_tls(juju: Juju, ca_cert_path):
     emit_profile(
         endpoint=f"{pyroscope_ip}:42424",
         tls=True,
-        ca_path=ca_cert_path,
+        ca_path=str(ca_cert_path),
         # pass server_name to avoid hostname mismatch
         server_name=f"{PYROSCOPE_APP}.{juju.model}.svc.cluster.local",
     )
