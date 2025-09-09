@@ -3,9 +3,10 @@
 import json
 import logging
 import os
+import shlex
 import subprocess
 from pathlib import Path
-from typing import Literal, Sequence, Union
+from typing import Literal, Optional, Sequence, Union
 
 import jubilant
 import yaml
@@ -22,6 +23,8 @@ S3_APP = "s3-integrator"
 WORKER_APP = "pyroscope-worker"
 PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
+OTEL_COLLECTOR_APP = "opentelemetry-collector"
+SSC_APP = "ssc"
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [
@@ -41,6 +44,9 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
+PROFILEGEN_SCRIPT_PATH = (
+    Path(__file__).parent.parent.parent / "scripts" / "profilegen.py"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -261,3 +267,33 @@ def get_ingress_proxied_hostname(juju: Juju):
             "proxied-endpoints"
         ]
     )[TRAEFIK_APP]["url"].split("://")[1]
+
+
+def emit_profile(
+    endpoint: str,
+    service_name: str = "profilegen",
+    tls: bool = False,
+    ca_path: Optional[str] = None,
+    server_name: Optional[str] = None,
+):
+    env = os.environ.copy()
+
+    profilegen_env = {
+        "PROFILEGEN_SERVICE": service_name,
+        "PROFILEGEN_ENDPOINT": endpoint,
+        "PROFILEGEN_INSECURE": str(not tls),
+    }
+    if ca_path:
+        profilegen_env["PROFILEGEN_CA_PATH"] = ca_path
+    if server_name:
+        profilegen_env["PROFILEGEN_SERVER_NAME"] = server_name
+
+    env.update(profilegen_env)
+
+    cmd = f"python {str(PROFILEGEN_SCRIPT_PATH)}"
+
+    logger.info(f"running profilegen with env: {profilegen_env!r}")
+    out = subprocess.run(
+        shlex.split(cmd), text=True, capture_output=True, check=True, env=env
+    )
+    logger.info(f"profilegen completed; stdout={out.stdout!r}")
