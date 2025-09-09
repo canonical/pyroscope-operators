@@ -82,5 +82,6 @@ class PyroscopeWorker:
     @staticmethod
     def readiness_check_endpoint(worker: Worker) -> str:
         """Endpoint for worker readiness checks."""
-        scheme = "https" if worker.cluster.get_tls_data() else "http"
-        return f"{scheme}://{socket.getfqdn()}:{API_PORT}/ready"
+        # e2e TLS in upstream is not supported yet
+        # https://github.com/grafana/pyroscope/issues/3598
+        return f"http://{socket.getfqdn()}:{API_PORT}/ready"

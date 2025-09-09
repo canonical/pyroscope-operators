@@ -13,6 +13,7 @@ from helpers import (
     OTEL_COLLECTOR_APP,
     INTEGRATION_TESTERS_CHANNEL,
     WORKER_APP,
+    SSC_APP,
 )
 from assertions import assert_profile_is_ingested
 from pytest_bdd import given, when, then
@@ -47,6 +48,44 @@ def test_deploy_and_integrate_collector(juju: Juju):
     )
 
 
+@pytest.mark.setup
+@given("a certificates provider charm is deployed")
+def test_deploy_ssc(juju: Juju):
+    juju.deploy("self-signed-certificates", SSC_APP)
+    juju.wait(
+        lambda status: all_active(status, SSC_APP),
+        timeout=10 * 60,
+    )
+
+
+@pytest.mark.setup
+@given("the certificates provider charm is integrated with pyroscope over certificates")
+def test_integrate_ssc_pyroscope(juju: Juju):
+    juju.integrate(f"{PYROSCOPE_APP}:certificates", SSC_APP)
+    juju.wait(
+        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP, SSC_APP),
+        timeout=10 * 60,
+        error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
+        delay=10,
+        successes=6,
+    )
+
+
+@pytest.mark.setup
+@given(
+    "the certificates provider charm is integrated with otel collector over receive-ca-cert"
+)
+def test_integrate_ssc_collector(juju: Juju):
+    juju.integrate(f"{OTEL_COLLECTOR_APP}:receive-ca-cert", SSC_APP)
+    juju.wait(
+        lambda status: all_active(status, OTEL_COLLECTOR_APP, SSC_APP),
+        timeout=10 * 60,
+        error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
+        delay=10,
+        successes=3,
+    )
+
+
 @when("we emit a profile to the otel collector using otlp grpc")
 def test_emit_profile_to_collector(juju: Juju):
     collector_ip = get_unit_ip_address(juju, OTEL_COLLECTOR_APP, 0)
@@ -57,10 +96,15 @@ def test_emit_profile_to_collector(juju: Juju):
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 @then("the profile should be ingested by pyroscope")
-def test_ingest_profile_from_collector(juju: Juju):
+def test_ingest_profile_from_collector(juju: Juju, ca_cert_path):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_profile_is_ingested(
-        hostname=pyroscope_ip, service_name="profilegen-otel-collector"
+        hostname=pyroscope_ip,
+        service_name="profilegen-otel-collector",
+        tls=True,
+        ca_path=str(ca_cert_path),
+        # pass server_name to avoid hostname mismatch
+        server_name=f"{PYROSCOPE_APP}.{juju.model}.svc.cluster.local",
     )
 
 
