@@ -108,7 +108,7 @@ def test_happy_status_message(
         ),
     )
     assert (
-        state_out.unit_status.message == "[degraded] UI ready at http://localhost:8080"
+        state_out.unit_status.message == "[degraded] UI ready at http://foo.com:8080"
     )
 
 
