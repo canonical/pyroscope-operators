@@ -25,6 +25,20 @@ from cosl.reconciler import all_events, observe_events
 logger = logging.getLogger(__name__)
 
 
+class PyroscopeCoordinator(Coordinator):
+    def __init__(self, *args, active_status_msg: str = "ready", **kwargs):
+        super().__init__(*args, **kwargs)
+        self._active_status_msg = active_status_msg
+
+    @property
+    def _default_active_message(self) -> str:
+        return self._active_status_msg
+
+    @property
+    def _default_degraded_message(self) -> str:
+        return "[degraded] " + self._active_status_msg
+
+
 class PyroscopeCoordinatorCharm(CharmBase):
     """Charmed Operator for Pyroscope; a distributed profiling backend."""
 
@@ -50,7 +64,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.profiling_provider = ProfilingEndpointProvider(
             self.model.relations["profiling"], self.app
         )
-        self.coordinator = Coordinator(
+        self.coordinator = PyroscopeCoordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
             external_url=self._most_external_http_url,
@@ -84,6 +98,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             container_name="nginx",
             resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
             catalogue_item=self._catalogue_item,
+            active_status_msg=self._active_status_msg,
         )
 
         # do this regardless of what event we are processing
@@ -128,7 +143,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}{self._ingress_prefix}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
-
         return None
 
     @property
@@ -167,6 +181,10 @@ class PyroscopeCoordinatorCharm(CharmBase):
         - the internal k8s service URL
         """
         return self._external_http_url or self._internal_http_url
+
+    @property
+    def _active_status_msg(self) -> str:
+        return f"UI ready at {self._most_external_http_url}"
 
     @property
     def _most_external_grpc_url(self) -> str:

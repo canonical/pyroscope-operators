@@ -7,3 +7,4 @@ Together, they deploy and operate Grafana Pyroscope, an open-source profiling ba
 The charm in `./coordinator` deploys and operates a configurator charm and an nginx instance responsible for routing traffic to the worker nodes.
 
 The charm in `./worker` deploys and operates one or multiple roles of Pyroscope's distributed architecture.
+

@@ -15,4 +15,4 @@ tests/unit/src/prometheus_alert_rules/consolidated_rules/**
 tests/unit/src/loki_alert_rules/consolidated_rules/**
 .terraform*
 *.tfstate*
-
+.logs/
