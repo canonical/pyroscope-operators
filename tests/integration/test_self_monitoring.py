@@ -17,6 +17,7 @@ from tenacity import (
     wait_fixed,
 )
 from requests.auth import HTTPBasicAuth
+from pytest_bdd import given, when, then
 
 from helpers import (
     deploy_distributed_cluster,
@@ -49,6 +50,8 @@ COS_COMPONENTS = (
 logger = logging.getLogger(__name__)
 
 
+@given("a pyroscope cluster is deployed with COS")
+@given("we integrate pyroscope and COS")
 @pytest.mark.setup
 def test_setup(juju: Juju):
     # GIVEN an empty model
@@ -119,6 +122,7 @@ def test_setup(juju: Juju):
     )
 
 
+@then("metrics are sent to prometheus")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_metrics_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
@@ -137,6 +141,7 @@ def test_metrics_integration(juju: Juju):
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 
+@then("metrics are sent to prometheus")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_metrics_nginx_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
@@ -155,6 +160,7 @@ def test_metrics_nginx_integration(juju: Juju):
         assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
 
+@then("charm traces are sent to tempo")
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
 def test_charm_tracing_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
@@ -170,6 +176,7 @@ def test_charm_tracing_integration(juju: Juju):
         assert app in tags
 
 
+@then("Pyroscope logs are sent to loki")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_logging_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki over logging
@@ -189,7 +196,7 @@ def test_logging_integration(juju: Juju):
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Loki failed for app '{app}': {e}"
 
-
+@then("catalogue items are provisioned")
 def test_catalogue_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with catalogue
     catalogue_unit = f"{CATALOGUE_APP}/0"
@@ -208,7 +215,7 @@ def test_catalogue_integration(juju: Juju):
     # AND we confirm the response is from the Pyroscope UI (via the page title)
     assert "<title>Grafana Pyroscope</title>" in response
 
-
+@then("Dashboards are provisioned")
 def test_dashboard_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with grafana
     address = get_unit_ip_address(juju, GRAFANA_APP, 0)
@@ -239,10 +246,7 @@ def grafana_admin_creds(juju)->str:
     return f"admin:{result.results['admin-password']}"
 
 
-@pytest.mark.xfail(
-    reason="pyroscope datasource is unsupported in the grafana "
-           "version that the grafana charm currently deploys"
-)
+@then("a pyroscope datasource is provisioned in grafana")
 @retry(wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True)
 def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
     """Verify that the parca datasource is registered in grafana."""
@@ -251,6 +255,7 @@ def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
     assert "parca" in {ds['type']for ds in res.json()}
 
 
+@then("alert rules are sent to prometheus")
 def test_alert_rules_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
@@ -276,6 +281,7 @@ def test_alert_rules_integration(juju: Juju):
         assert False, f"Request to Prometheus failed: {e}"
 
 
+@then("loki alert rules are sent to loki")
 def test_loki_alert_rules_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki
     address = get_unit_ip_address(juju, LOKI_APP, 0)
