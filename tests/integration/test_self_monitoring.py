@@ -12,12 +12,11 @@ import pytest
 import requests
 from jubilant import Juju, all_active, any_error
 from tenacity import (
-    retry,
     stop_after_attempt,
     wait_fixed,
 )
 from requests.auth import HTTPBasicAuth
-from pytest_bdd import given, when, then
+from pytest_bdd import given, then
 
 from helpers import (
     deploy_distributed_cluster,
@@ -196,6 +195,7 @@ def test_logging_integration(juju: Juju):
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Loki failed for app '{app}': {e}"
 
+
 @then("catalogue items are provisioned")
 def test_catalogue_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with catalogue
@@ -214,6 +214,7 @@ def test_catalogue_integration(juju: Juju):
     # THEN we receive a 200 OK response (0 exit status)
     # AND we confirm the response is from the Pyroscope UI (via the page title)
     assert "<title>Grafana Pyroscope</title>" in response
+
 
 @then("Dashboards are provisioned")
 def test_dashboard_integration(juju: Juju):
@@ -239,20 +240,22 @@ def test_dashboard_integration(juju: Juju):
 
 
 @pytest.fixture(scope="module")
-def grafana_admin_creds(juju)->str:
+def grafana_admin_creds(juju) -> str:
     # NB this fixture can only be accessed after GRAFANA has been deployed.
     # obtain admin credentials via juju action, formatted as "username:password" (for basicauth)
-    result = juju.run(GRAFANA_APP+"/0", "get-admin-password")
+    result = juju.run(GRAFANA_APP + "/0", "get-admin-password")
     return f"admin:{result.results['admin-password']}"
 
 
 @then("a pyroscope datasource is provisioned in grafana")
-@retry(wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True)
+@retry(
+    wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True
+)
 def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
     """Verify that the parca datasource is registered in grafana."""
     graf_ip = get_unit_ip_address(juju, GRAFANA_APP, 0)
     res = requests.get(f"http://{grafana_admin_creds}@{graf_ip}:3000/api/datasources")
-    assert "parca" in {ds['type']for ds in res.json()}
+    assert "parca" in {ds["type"] for ds in res.json()}
 
 
 @then("alert rules are sent to prometheus")
