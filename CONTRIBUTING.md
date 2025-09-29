@@ -73,7 +73,7 @@ juju add-model dev
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
 juju deploy ./coordinator/pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm \
-    --resource nginx-image=ubuntu/nginx:1.24-24.04_beta \
+    --resource nginx-image=ghcr.io/canonical/nginx@sha256:6415a2c5f25f1d313c87315a681bdc84be80f3c79c304c6744737f9b34207993  \
     --resource nginx-prometheus-exporter-image=nginx/nginx-prometheus-exporter:1.1.0 \
     --trust pyroscope
 juju deploy ./worker/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm \

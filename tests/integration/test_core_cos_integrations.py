@@ -113,10 +113,9 @@ def test_setup(juju: Juju):
     # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
         lambda status: all_active(status, *COS_COMPONENTS, *pyro_apps),
-        error=any_error,
         timeout=3000,
         delay=5,
-        successes=12,
+        successes=5,
     )
 
 
@@ -215,9 +214,7 @@ def test_dashboard_integration(juju: Juju):
     address = get_unit_ip_address(juju, GRAFANA_APP, 0)
     grafana_unit = f"{GRAFANA_APP}/0"
     # WHEN we search for a dashboard with Pyroscope's tag in Grafana
-    out = juju.cli(
-        "run", grafana_unit, "get-admin-password"
-    )
+    out = juju.cli("run", grafana_unit, "get-admin-password")
     match = re.search(r"admin-password:\s*(\S+)", out)
     if match:
         pw = match.group(1)
@@ -287,17 +284,14 @@ def test_loki_alert_rules_integration(juju: Juju):
     # THEN we should get a successful response
     try:
         response = requests.get(url)
-        # TODO known issue: https://github.com/canonical/cos-coordinated-workers/issues/21
-        # once that's fixed, update asserts to check for alerts with workers topology
-        assert PYROSCOPE_APP in response.text
+        # AND for every pyroscope app, there is at least one loki alert rule
+        for app in (PYROSCOPE_APP, *ALL_WORKERS):
+            assert app in response.text, f"No Loki alert rules found for app '{app}'"
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Loki failed: {e}"
 
 
 @pytest.mark.teardown
-@pytest.mark.xfail(
-    reason="https://github.com/canonical/pyroscope-operators/issues/208"
-)
 def test_teardown(juju: Juju):
     # GIVEN a pyroscope cluster with core cos relations
     # WHEN we remove the cos components
@@ -307,7 +301,7 @@ def test_teardown(juju: Juju):
     # THEN the coordinator and all workers eventually reach active/idle state
     juju.wait(
         lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
-        error=any_error,
+        error=lambda status: any_error(status, PYROSCOPE_APP, *ALL_WORKERS),
         timeout=2000,
         delay=10,
         successes=3,

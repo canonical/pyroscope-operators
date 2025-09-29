@@ -3,11 +3,10 @@
 [project]
 name = "pyroscope-worker-k8s"
 version = "0.1"  # this is in fact irrelevant
-requires-python = ">=3.12"
+requires-python = "~=3.12.0"
 
 dependencies = [
-    "ops[tracing]",
-    "coordinated-workers>=1.0.1",
+    "coordinated-workers",
 ]
 
 [project.optional-dependencies]
@@ -20,7 +19,7 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant>=0.2.1",
+    "pytest-jubilant~=1.0",
 
 #   LINTING
     "pyright",

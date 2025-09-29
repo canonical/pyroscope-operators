@@ -24,6 +24,18 @@ def k8s_patch(status=ActiveStatus(), is_ready=True):
             yield patcher
 
 
+@contextmanager
+def tls_patch(tls=False):
+    with patch("charm.PyroscopeCoordinatorCharm._are_certificates_on_disk", tls):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def patch_consolidate_alert_rules():
+    with patch("coordinated_workers.coordinator.Coordinator._consolidate_alert_rules"):
+        yield
+
+
 @pytest.fixture()
 def coordinator():
     return MagicMock()
@@ -32,14 +44,16 @@ def coordinator():
 @pytest.fixture(autouse=True, scope="session")
 def cleanup_rendered_alert_rules():
     yield
-    src_dir = Path(__file__).parent / "src"
-    if src_dir.exists():
-        rmtree(src_dir)
+    src_dir = Path(__file__).parent.parent.parent / "src"
+    for alerts_dir in ("prometheus_alert_rules", "loki_alert_rules"):
+        consolidated_dir = src_dir / alerts_dir / "consolidated_rules"
+        if consolidated_dir.exists():
+            rmtree(consolidated_dir)
 
 
 @pytest.fixture
 def pyroscope_charm():
-    with patch("socket.getfqdn", return_value="localhost"):
+    with patch("socket.getfqdn", return_value="foo.com"):
         with k8s_patch():
             yield PyroscopeCoordinatorCharm
 
@@ -69,6 +83,11 @@ def s3(s3_config):
 
 
 @pytest.fixture(scope="function")
+def profiling():
+    return Relation("profiling")
+
+
+@pytest.fixture(scope="function")
 def external_host():
     # traefik hostname
     return "example.com"
@@ -79,6 +98,14 @@ def ingress(external_host):
     return Relation(
         "ingress",
         remote_app_data={"external_host": external_host, "scheme": "http"},
+    )
+
+
+@pytest.fixture(scope="function")
+def ingress_with_tls(external_host):
+    return Relation(
+        "ingress",
+        remote_app_data={"external_host": external_host, "scheme": "https"},
     )
 
 

@@ -10,7 +10,9 @@ __pycache__/
 *.egg-info/
 cos-tool-*
 src/prometheus_alert_rules/consolidated_rules/**
-tests/scenario/src/prometheus_alert_rules/consolidated_rules/**
+src/loki_alert_rules/consolidated_rules/**
+tests/unit/src/prometheus_alert_rules/consolidated_rules/**
+tests/unit/src/loki_alert_rules/consolidated_rules/**
 .terraform*
 *.tfstate*
-
+.logs/

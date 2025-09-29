@@ -1,18 +1,18 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
 import os
+import shlex
 import subprocess
 from pathlib import Path
-from typing import Literal, Sequence, Union
+from typing import Literal, Optional, Sequence, Union
 
 import jubilant
 import yaml
 from jubilant import Juju
 from minio import Minio
-from pytest_jubilant import pack_charm
-
-from coordinator.src.pyroscope_config import PyroscopeRole
+from pytest_jubilant import pack
 
 # Application names used uniformly across the tests
 ACCESS_KEY = "accesskey"
@@ -23,13 +23,30 @@ S3_APP = "s3-integrator"
 WORKER_APP = "pyroscope-worker"
 PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
-ALL_ROLES = [role.value for role in PyroscopeRole.all_nonmeta()]
+OTEL_COLLECTOR_APP = "opentelemetry-collector"
+SSC_APP = "ssc"
+# we don't import this from the coordinator module because that'd mean we need to
+# bring in the whole charm's dependencies just to run the integration tests
+ALL_ROLES = [
+    "querier",
+    "query-frontend",
+    "query-scheduler",
+    "ingester",
+    "distributor",
+    "compactor",
+    "store-gateway",
+    "tenant-settings",
+    "ad-hoc-profiles",
+]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 S3_CREDENTIALS = {
     "access-key": ACCESS_KEY,
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
+PROFILEGEN_SCRIPT_PATH = (
+    Path(__file__).parent.parent.parent / "scripts" / "profilegen.py"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +81,12 @@ def charm_and_channel_and_resources(
     for _ in range(3):
         logger.info(f"packing Pyroscope {role} charm...")
         try:
-            pth = pack_charm(Path() / role).charm.absolute()
+            pth = pack(Path() / role)
         except subprocess.CalledProcessError:
             logger.warning(f"Failed to build Pyroscope {role}. Trying again!")
             continue
         os.environ[charm_path_key] = str(pth)
-        return pth, None, _get_resources(pth.parent / role)
+        return pth, None, _get_resources(Path().parent / role)
     raise subprocess.CalledProcessError
 
 
@@ -245,12 +262,38 @@ def _deploy_and_configure_minio(juju: Juju):
 
 
 def get_ingress_proxied_hostname(juju: Juju):
-    status = juju.status()
-    status_msg = status.apps[TRAEFIK_APP].app_status.message
+    return json.loads(
+        juju.run(TRAEFIK_APP + "/0", "show-proxied-endpoints").results[
+            "proxied-endpoints"
+        ]
+    )[TRAEFIK_APP]["url"].split("://")[1]
 
-    # hacky way to get ingress hostname, but it's the safest one.
-    if "Serving at" not in status_msg:
-        raise RuntimeError(
-            f"Ingressed hostname is not present in {TRAEFIK_APP} status message."
-        )
-    return status_msg.replace("Serving at", "").strip()
+
+def emit_profile(
+    endpoint: str,
+    service_name: str = "profilegen",
+    tls: bool = False,
+    ca_path: Optional[str] = None,
+    server_name: Optional[str] = None,
+):
+    env = os.environ.copy()
+
+    profilegen_env = {
+        "PROFILEGEN_SERVICE": service_name,
+        "PROFILEGEN_ENDPOINT": endpoint,
+        "PROFILEGEN_INSECURE": str(not tls),
+    }
+    if ca_path:
+        profilegen_env["PROFILEGEN_CA_PATH"] = ca_path
+    if server_name:
+        profilegen_env["PROFILEGEN_SERVER_NAME"] = server_name
+
+    env.update(profilegen_env)
+
+    cmd = f"python {str(PROFILEGEN_SCRIPT_PATH)}"
+
+    logger.info(f"running profilegen with env: {profilegen_env!r}")
+    out = subprocess.run(
+        shlex.split(cmd), text=True, capture_output=True, check=True, env=env
+    )
+    logger.info(f"profilegen completed; stdout={out.stdout!r}")

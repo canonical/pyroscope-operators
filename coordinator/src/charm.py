@@ -10,9 +10,10 @@ from typing import Optional
 
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
+from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH, NginxConfig
+from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
 from ops.charm import CharmBase
 
 import nginx_config
@@ -20,8 +21,23 @@ import traefik_config
 from peers import Peers, PEERS_RELATION_ENDPOINT_NAME
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
+from cosl.reconciler import all_events, observe_events
 
 logger = logging.getLogger(__name__)
+
+
+class PyroscopeCoordinator(Coordinator):
+    def __init__(self, *args, active_status_msg: str = "ready", **kwargs):
+        super().__init__(*args, **kwargs)
+        self._active_status_msg = active_status_msg
+
+    @property
+    def _default_active_message(self) -> str:
+        return self._active_status_msg
+
+    @property
+    def _default_degraded_message(self) -> str:
+        return "[degraded] " + self._active_status_msg
 
 
 class PyroscopeCoordinatorCharm(CharmBase):
@@ -48,11 +64,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self, source_type="pyroscope", is_ingress_per_app=self._ingress_ready
         )
-        self.pyroscope = Pyroscope(external_url=self._most_external_url)
-        self.coordinator = Coordinator(
+        self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
+        self.profiling_provider = ProfilingEndpointProvider(
+            self.model.relations["profiling"], self.app
+        )
+        self.coordinator = PyroscopeCoordinator(
             charm=self,
             roles_config=PYROSCOPE_ROLES_CONFIG,
-            external_url=self._most_external_url,
+            external_url=self._most_external_http_url,
             worker_metrics_port=Pyroscope.http_server_port,
             endpoints={
                 "certificates": "certificates",
@@ -70,9 +89,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             nginx_config=NginxConfig(
                 server_name=self.hostname,
                 upstream_configs=nginx_config.upstreams(Pyroscope.http_server_port),
-                server_ports_to_locations=nginx_config.server_ports_to_locations(
-                    tls_available=self._are_certificates_on_disk
-                ),
+                server_ports_to_locations=nginx_config.server_ports_to_locations(),
                 enable_status_page=True,
             ),
             workers_config=self.pyroscope.config,
@@ -82,13 +99,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 Pyroscope.http_server_port,
             ),
             workload_tracing_protocols=["jaeger_thrift_http"],
-            container_name="charm",
+            container_name="nginx",
             resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
             catalogue_item=self._catalogue_item,
+            active_status_msg=self._active_status_msg,
         )
 
         # do this regardless of what event we are processing
-        self._reconcile()
+        observe_events(self, all_events, self._reconcile)
 
     ######################
     # UTILITY PROPERTIES #
@@ -99,7 +117,15 @@ class PyroscopeCoordinatorCharm(CharmBase):
         return socket.getfqdn()
 
     @property
-    def _ingress_ready(self):
+    def app_hostname(self) -> str:
+        """Application-level fqdn."""
+        return Coordinator.app_hostname(
+            hostname=self.hostname, app_name=self.app.name, model_name=self.model.name
+        )
+
+    @property
+    def _is_ingressed(self) -> bool:
+        "Return True if an ingress is configured and ready, otherwise False."
         return bool(
             self.ingress.is_ready()
             and self.ingress.scheme
@@ -107,78 +133,78 @@ class PyroscopeCoordinatorCharm(CharmBase):
         )
 
     @property
+    def _is_external_url_tls(self) -> bool:
+        """Return True if an ingress is configured and is configured with TLS, otherwise False."""
+        external_http_url = self._external_http_url
+        if external_http_url and external_http_url.startswith("https://"):
+            return True
+        return False
+
+    @property
     def _external_http_url(self) -> Optional[str]:
         """Return the external URL if the ingress is configured and ready, otherwise None."""
-        if self._ingress_ready:
+        if self._is_ingressed:
             ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}{self._ingress_prefix}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
+            return ingress_url
+        return None
+
+    @property
+    def _external_grpc_url(self) -> Optional[str]:
+        """Return the external grpc server URL if the ingress is configured and ready, otherwise None."""
+        if self._is_ingressed:
+            ingress_url = (
+                f"{self.ingress.external_host}:{nginx_config.grpc_server_port}"
+            )
+            logger.debug("This unit's grpc server ingress URL: %s", ingress_url)
             return ingress_url
 
         return None
 
     @property
-    def service_hostname(self) -> str:
-        """The FQDN of the k8s service associated with this application.
-
-        This service load balances traffic across all application units.
-        Falls back to this unit's DNS name if the hostname does not resolve to a Kubernetes-style fqdn.
-        """
-        # example: 'pyroscope-0.pyroscope-headless.default.svc.cluster.local'
-        hostname = self.hostname
-        hostname_parts = hostname.split(".")
-        # 'svc' is always there in a K8s service fqdn
-        # ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#services
-        if "svc" not in hostname_parts:
-            logger.debug(f"expected K8s-style fqdn, but got {hostname} instead")
-            return hostname
-
-        dns_name_parts = hostname_parts[hostname_parts.index("svc") :]
-        dns_name = ".".join(dns_name_parts)  # 'svc.cluster.local'
-        return f"{self.app.name}.{self.model.name}.{dns_name}"  # 'pyroscope.model.svc.cluster.local'
-
-    @property
     def _scheme(self) -> str:
         """Return the URI scheme that should be used when communicating with this unit."""
-        scheme = "http"
-        # FIXME: add a check for are_certificates_on_disk
-        return scheme
+        return "https" if self._are_certificates_on_disk else "http"
 
     @property
     def _internal_http_url(self) -> str:
-        """Return the locally addressable, FQDN based service address."""
-        return f"{self._scheme}://{self.service_hostname}:{self._http_server_port}"
+        """Return the locally addressable, FQDN based service address for the http server."""
+        return f"{self._scheme}://{self.app_hostname}:{self._http_server_port}"
 
     @property
-    def _most_external_url(self) -> str:
+    def _internal_grpc_url(self) -> str:
+        """Return the locally addressable, FQDN based service address for the grpc server."""
+        return f"{self.app_hostname}:{nginx_config.grpc_server_port}"
+
+    @property
+    def _most_external_http_url(self) -> str:
         """Return the most external HTTP url known about by this charm.
 
         This will return the first of:
         - the external URL, if the ingress is configured and ready
-        - the internal URL (fqdn)
+        - the internal k8s service URL
         """
-        external_url = self._external_http_url
-        if external_url:
-            return external_url
-        # If we do not have an ingress, then use the K8s service.
-        return self._internal_http_url
+        return self._external_http_url or self._internal_http_url
 
     @property
-    def _are_certificates_on_disk(self) -> bool:
-        return (
-            self._nginx_container.can_connect()
-            and self._nginx_container.exists(CERT_PATH)
-            and self._nginx_container.exists(KEY_PATH)
-            and self._nginx_container.exists(CA_CERT_PATH)
-        )
+    def _active_status_msg(self) -> str:
+        return f"UI ready at {self._most_external_http_url}"
+
+    @property
+    def _most_external_grpc_url(self) -> str:
+        """Return the most external grpc server url known about by this charm.
+
+        This will return the first of:
+        - the external URL, if the ingress is configured and ready
+        - the internal k8s service URL
+        """
+        # If we do not have an ingress, then use the K8s service.
+        return self._external_grpc_url or self._internal_grpc_url
 
     @property
     def _http_server_port(self) -> int:
         """The http port that we should open on this pod."""
-        return (
-            nginx_config.https_server_port
-            if self._are_certificates_on_disk
-            else nginx_config.http_server_port
-        )
+        return nginx_config.http_server_port
 
     @property
     def _catalogue_item(self) -> CatalogueItem:
@@ -187,11 +213,23 @@ class PyroscopeCoordinatorCharm(CharmBase):
             # use app name in case there are multiple Pyroscope apps deployed.
             name=f"Pyroscope ({self.app.name})",
             icon="flame",
-            url=self._most_external_url,
+            url=self._most_external_http_url,
             description=(
                 "Grafana Pyroscope is a distributed continuous profiling backend. "
                 "Allows you to collect, store, query, and visualize profiles from your distributed deployment."
             ),
+        )
+
+    # TODO: use the coordinated_workers method
+    # cfr https://github.com/canonical/cos-coordinated-workers/issues/54
+    @property
+    def _are_certificates_on_disk(self) -> bool:
+        """Return True if the certificates files are on the nginx container's disk."""
+        return (
+            self._nginx_container.can_connect()
+            and self._nginx_container.exists(CERT_PATH)
+            and self._nginx_container.exists(KEY_PATH)
+            and self._nginx_container.exists(CA_CERT_PATH)
         )
 
     def _reconcile(self):
@@ -203,6 +241,16 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.unit.set_ports(self._http_server_port, nginx_config.grpc_server_port)
         self._peers.reconcile()
         self._reconcile_ingress()
+        self.profiling_provider.publish_endpoint(
+            otlp_grpc_endpoint=self._most_external_grpc_url,
+            # if ingress is configured, rely on its TLS config
+            # otherwise check if internal TLS (certificates on disk) is configured.
+            insecure=not (
+                self._is_external_url_tls
+                if self._is_ingressed
+                else self._are_certificates_on_disk
+            ),
+        )
         self.grafana_source.update_source(self._most_external_url)
 
     def _reconcile_ingress(self):

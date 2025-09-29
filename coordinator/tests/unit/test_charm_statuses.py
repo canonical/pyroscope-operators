@@ -87,6 +87,31 @@ def test_happy_status(
     assert state_out.unit_status.name == "active"
 
 
+def test_happy_status_message(
+    context,
+    s3,
+    all_worker,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+):
+    state_out = context.run(
+        context.on.start(),
+        State(
+            relations=[
+                PeerRelation("peers", peers_data={1: {}, 2: {}}),
+                s3,
+                all_worker,
+            ],
+            containers=[nginx_container, nginx_prometheus_exporter_container],
+            unit_status=ops.ActiveStatus(),
+            leader=True,
+        ),
+    )
+    assert (
+        state_out.unit_status.message == "[degraded] UI ready at http://foo.com:8080"
+    )
+
+
 @k8s_patch(status=ops.BlockedStatus("`juju trust` this application"))
 def test_k8s_patch_failed(
     context,
