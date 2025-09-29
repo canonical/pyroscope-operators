@@ -62,7 +62,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             "ingress",
         )
         self.grafana_source = GrafanaSourceProvider(
-            self, source_type="pyroscope", is_ingress_per_app=self._ingress_ready
+            self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
         self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
         self.profiling_provider = ProfilingEndpointProvider(
@@ -125,7 +125,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     @property
     def _is_ingressed(self) -> bool:
-        "Return True if an ingress is configured and ready, otherwise False."
+        """Return True if an ingress is configured and ready, otherwise False."""
         return bool(
             self.ingress.is_ready()
             and self.ingress.scheme
@@ -251,7 +251,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 else self._are_certificates_on_disk
             ),
         )
-        self.grafana_source.update_source(self._most_external_url)
+        self.grafana_source.update_source(self._most_external_http_url)
 
     def _reconcile_ingress(self):
         if not self.ingress.is_ready() or not self.unit.is_leader():
