@@ -9,6 +9,7 @@ import socket
 from typing import Optional
 
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
+from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
@@ -59,6 +60,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             self,
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
+        )
+        self.grafana_source = GrafanaSourceProvider(
+            self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
         self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
         self.profiling_provider = ProfilingEndpointProvider(
@@ -121,7 +125,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     @property
     def _is_ingressed(self) -> bool:
-        "Return True if an ingress is configured and ready, otherwise False."
+        """Return True if an ingress is configured and ready, otherwise False."""
         return bool(
             self.ingress.is_ready()
             and self.ingress.scheme
@@ -247,6 +251,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 else self._are_certificates_on_disk
             ),
         )
+        self.grafana_source.update_source(self._most_external_http_url)
 
     def _reconcile_ingress(self):
         if not self.ingress.is_ready() or not self.unit.is_leader():
