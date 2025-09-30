@@ -252,10 +252,10 @@ def grafana_admin_creds(juju) -> str:
     wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True
 )
 def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
-    """Verify that the parca datasource is registered in grafana."""
+    """Verify that the pyroscope datasource is registered in grafana."""
     graf_ip = get_unit_ip_address(juju, GRAFANA_APP, 0)
     res = requests.get(f"http://{grafana_admin_creds}@{graf_ip}:3000/api/datasources")
-    assert "parca" in {ds["type"] for ds in res.json()}
+    assert "pyroscope" in {ds["type"] for ds in res.json()}
 
 
 @then("alert rules are sent to prometheus")
