@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from ops import ActiveStatus
-from ops.testing import Container, Context, Relation, PeerRelation
+from ops.testing import Container, Context, Relation, PeerRelation, Exec
 
 from charm import PyroscopeCoordinatorCharm
 
@@ -150,6 +150,7 @@ def peers():
 def nginx_container():
     return Container(
         "nginx",
+        execs={Exec(['update-ca-certificates', '--fresh'])},
         can_connect=True,
     )
 
@@ -158,5 +159,6 @@ def nginx_container():
 def nginx_prometheus_exporter_container():
     return Container(
         "nginx-prometheus-exporter",
+        execs={Exec(['update-ca-certificates', '--fresh'])},
         can_connect=True,
     )
