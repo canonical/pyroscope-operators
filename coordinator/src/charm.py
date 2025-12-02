@@ -14,6 +14,7 @@ from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvi
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
+from ops import ActiveStatus, BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
 
 import nginx_config
@@ -65,9 +66,15 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
+        self._compactor_blocks_retention_period = str(
+            self.config["compactor_blocks_retention_period"]
+        )
         self.pyroscope = Pyroscope(
             external_url=self._most_external_http_url,
-            compactor_blocks_retention_period=self._compactor_blocks_retention_period,
+            compactor_blocks_retention_period=(
+                self._compactor_blocks_retention_period if is_valid_timespec(self._compactor_blocks_retention_period)
+                else "0"
+            )
         )
         self.profiling_provider = ProfilingEndpointProvider(
             self.model.relations["profiling"], self.app
@@ -111,6 +118,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
         # do this regardless of what event we are processing
         observe_events(self, all_events, self._reconcile)
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
 
     ######################
     # UTILITY PROPERTIES #
@@ -224,16 +232,11 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ),
         )
 
-    @property
-    def _compactor_blocks_retention_period(self) -> str:
-        compactor_blocks_retention_period_config = str(
-            self.config["compactor_blocks_retention_period"]
-        )
-        return (
-            compactor_blocks_retention_period_config
-            if is_valid_timespec(compactor_blocks_retention_period_config)
-            else "1d"
-        )
+    def _on_collect_unit_status(self, event: CollectStatusEvent):
+        event.add_status(ActiveStatus())
+        if not is_valid_timespec(self._compactor_blocks_retention_period):
+            logger.warning(f"Suspending data deletion due to invalid option set in config: {self._compactor_blocks_retention_period}. To resume data deletion, please reset value to a valid option.")
+            event.add_status(BlockedStatus(f"Invalid config option (see debug-log): retention_period={self._compactor_blocks_retention_period}"))
 
     # TODO: use the coordinated_workers method
     # cfr https://github.com/canonical/cos-coordinated-workers/issues/54

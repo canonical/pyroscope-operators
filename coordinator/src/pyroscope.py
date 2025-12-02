@@ -100,7 +100,8 @@ class Pyroscope:
 
     def _build_limits_config(self):
         return pyroscope_config.Limits(
-            compactor_blocks_retention_period=self._compactor_blocks_retention_period
+            compactor_blocks_retention_period=0 if self._compactor_blocks_retention_period == "0"
+            else self._compactor_blocks_retention_period
         )
 
     @staticmethod

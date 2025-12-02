@@ -196,7 +196,7 @@ class DB(BaseModel):
 class Limits(BaseModel):
     """Limits schema."""
 
-    compactor_blocks_retention_period: str = "1d"
+    compactor_blocks_retention_period: str | int = "1d"
 
 
 class PyroscopeConfig(BaseModel):

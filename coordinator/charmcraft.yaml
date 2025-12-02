@@ -147,7 +147,8 @@ config:
       type: string
     compactor_blocks_retention_period:
         description: |
-          Delete blocks containing samples older than the specified retention period. 
-          To disable set to 0.
+          Delete blocks containing samples older than the specified retention period.
+          Defaults to 1d.
+          Supported units: d, w, m, y, h, s, ms or 0 for no limit (disable).
         type: string
         default: "1d"
