@@ -193,6 +193,12 @@ class DB(BaseModel):
     data_path: str
 
 
+class Limits(BaseModel):
+    """Limits schema."""
+
+    compactor_blocks_retention_period: str = "1d"
+
+
 class PyroscopeConfig(BaseModel):
     """PyroscopeConfig config schema."""
 
@@ -202,6 +208,7 @@ class PyroscopeConfig(BaseModel):
     ingester: Ingester
     store_gateway: StoreGateway
     memberlist: Memberlist
+    limits: Limits
     storage: Storage
     compactor: Compactor
     pyroscopedb: DB

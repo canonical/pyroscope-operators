@@ -23,8 +23,11 @@ class Pyroscope:
     # this is an http server, but it can also somehow accept grpc traffic using some dark trick
     http_server_port = 4040
 
-    def __init__(self, external_url: str):
+    def __init__(
+        self, external_url: str, compactor_blocks_retention_period: str = "1d"
+    ):
         self._external_url = external_url
+        self._compactor_blocks_retention_period = compactor_blocks_retention_period
 
     def config(
         self,
@@ -40,6 +43,7 @@ class Pyroscope:
             ingester=self._build_ingester_config(addrs_by_role),
             store_gateway=self._build_store_gateway_config(addrs_by_role),
             memberlist=self._build_memberlist_config(addrs),
+            limits=self._build_limits_config(),
             storage=self._build_storage_config(coordinator._s3_config),
             compactor=self._build_compactor_config(),
             pyroscopedb=self._build_pyroscope_db(),
@@ -53,7 +57,8 @@ class Pyroscope:
             http_listen_port=self.http_server_port,
         )
 
-    def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
+    @staticmethod
+    def _build_ingester_config(roles_addresses: Dict[str, Set[str]]):
         ingester_addresses = roles_addresses.get(
             pyroscope_config.PyroscopeRole.ingester
         )
@@ -70,7 +75,8 @@ class Pyroscope:
             )
         )
 
-    def _build_store_gateway_config(self, roles_addresses: Dict[str, Set[str]]):
+    @staticmethod
+    def _build_store_gateway_config(roles_addresses: Dict[str, Set[str]]):
         store_gw_addresses = roles_addresses.get(
             pyroscope_config.PyroscopeRole.store_gateway
         )
@@ -92,12 +98,19 @@ class Pyroscope:
             ),
         )
 
-    def _build_storage_config(self, s3_config: dict):
+    def _build_limits_config(self):
+        return pyroscope_config.Limits(
+            compactor_blocks_retention_period=self._compactor_blocks_retention_period
+        )
+
+    @staticmethod
+    def _build_storage_config(s3_config: dict):
         return pyroscope_config.Storage(
             backend="s3", s3=pyroscope_config.S3Storage(**s3_config)
         )
 
-    def _build_compactor_config(self):
+    @staticmethod
+    def _build_compactor_config():
         return pyroscope_config.Compactor(
             sharding_ring=pyroscope_config.ShardingRingCompactor(
                 kvstore=pyroscope_config.Kvstore(store="memberlist")
@@ -107,7 +120,8 @@ class Pyroscope:
     def _build_pyroscope_db(self):
         return pyroscope_config.DB(data_path=self._data_path)
 
-    def _build_distributor_config(self):
+    @staticmethod
+    def _build_distributor_config():
         return pyroscope_config.Distributor(
             ring=pyroscope_config.Ring(
                 kvstore=pyroscope_config.Kvstore(
@@ -125,5 +139,6 @@ class Pyroscope:
             return pyroscope_config.Api(base_url=base_url)  # pyright: ignore[reportCallIssue]
         return pyroscope_config.Api()
 
-    def _base_url(self, external_url):
+    @staticmethod
+    def _base_url(external_url):
         return urlparse(external_url).path

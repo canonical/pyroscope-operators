@@ -22,6 +22,7 @@ from peers import Peers, PEERS_RELATION_ENDPOINT_NAME
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
 from cosl.reconciler import all_events, observe_events
+from cosl.time_validation import is_valid_timespec
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,10 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
-        self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
+        self.pyroscope = Pyroscope(
+            external_url=self._most_external_http_url,
+            compactor_blocks_retention_period=self._compactor_blocks_retention_period,
+        )
         self.profiling_provider = ProfilingEndpointProvider(
             self.model.relations["profiling"], self.app
         )
@@ -218,6 +222,17 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 "Grafana Pyroscope is a distributed continuous profiling backend. "
                 "Allows you to collect, store, query, and visualize profiles from your distributed deployment."
             ),
+        )
+
+    @property
+    def _compactor_blocks_retention_period(self) -> str:
+        compactor_blocks_retention_period_config = str(
+            self.config["compactor_blocks_retention_period"]
+        )
+        return (
+            compactor_blocks_retention_period_config
+            if is_valid_timespec(compactor_blocks_retention_period_config)
+            else "1d"
         )
 
     # TODO: use the coordinated_workers method
