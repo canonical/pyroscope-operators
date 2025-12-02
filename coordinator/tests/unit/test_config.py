@@ -9,6 +9,7 @@ from charm import PyroscopeCoordinatorCharm
 
 
 DEFAULT_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "1d"
+DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "0"
 VALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "7d"
 INVALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "invalid"
 
@@ -68,6 +69,21 @@ def state_with_invalid_compactor_blocks_retention_period_config(
         leader=True,
         config={
             "compactor_blocks_retention_period": INVALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG
+        },
+        relations=[all_worker, s3, peers],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+    )
+    return state
+
+
+@pytest.fixture
+def state_with_disabled_compactor_blocks_retention_period_config(
+    all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
+):
+    state = State(
+        leader=True,
+        config={
+            "compactor_blocks_retention_period": DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG
         },
         relations=[all_worker, s3, peers],
         containers=[nginx_container, nginx_prometheus_exporter_container],
@@ -276,6 +292,10 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
         (
             "state_with_invalid_compactor_blocks_retention_period_config",
             DEFAULT_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG,
+        ),
+        (
+            "state_with_disabled_compactor_blocks_retention_period_config",
+            DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG,
         ),
     ],
     indirect=["state"],
