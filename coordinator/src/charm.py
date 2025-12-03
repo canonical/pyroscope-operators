@@ -66,15 +66,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
-        self._compactor_blocks_retention_period = str(
-            self.config["compactor_blocks_retention_period"]
-        )
         self.pyroscope = Pyroscope(
             external_url=self._most_external_http_url,
-            compactor_blocks_retention_period=(
-                self._compactor_blocks_retention_period if is_valid_timespec(self._compactor_blocks_retention_period)
-                else "0"
-            )
+            retention_period=self._retention_period if is_valid_timespec(self._retention_period) else "0",
         )
         self.profiling_provider = ProfilingEndpointProvider(
             self.model.relations["profiling"], self.app
@@ -232,11 +226,15 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ),
         )
 
+    @property
+    def _retention_period(self) -> str:
+        return str(self.config["retention_period"])
+
     def _on_collect_unit_status(self, event: CollectStatusEvent):
         event.add_status(ActiveStatus())
-        if not is_valid_timespec(self._compactor_blocks_retention_period):
-            logger.warning(f"Suspending data deletion due to invalid option set in config: {self._compactor_blocks_retention_period}. To resume data deletion, please reset value to a valid option.")
-            event.add_status(BlockedStatus(f"Invalid config option (see debug-log): retention_period={self._compactor_blocks_retention_period}"))
+        if not is_valid_timespec(self._retention_period):
+            logger.warning(f"Suspending data deletion due to invalid option set in config: {self._retention_period}. To resume data deletion, please reset value to a valid option.")
+            event.add_status(BlockedStatus(f"Invalid config option (see debug-log): retention_period={self._retention_period}"))
 
     # TODO: use the coordinated_workers method
     # cfr https://github.com/canonical/cos-coordinated-workers/issues/54

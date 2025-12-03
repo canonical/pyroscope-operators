@@ -40,6 +40,7 @@ module "pyroscope_coordinator" {
   model       = var.model
   channel     = var.channel
   revision    = var.coordinator_revision
+  config      = var.coordinator_config
   units       = var.coordinator_units
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=pyroscope,anti-pod.topology-key=kubernetes.io/hostname" : null
 }

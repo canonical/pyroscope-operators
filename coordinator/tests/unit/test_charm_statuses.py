@@ -153,9 +153,7 @@ def test_blocked_status_when_invalid_compactor_blocks_retention_period(
             ],
             containers=[nginx_container, nginx_prometheus_exporter_container],
             leader=True,
-            config={
-                "compactor_blocks_retention_period": "invalid"
-            },
+            config={"retention_period": "invalid"},
         ),
     )
     assert state_out.unit_status.name == "blocked"

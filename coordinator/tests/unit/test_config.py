@@ -8,10 +8,10 @@ from ops.testing import State
 from charm import PyroscopeCoordinatorCharm
 
 
-DEFAULT_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "1d"
-DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = 0
-VALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "7d"
-INVALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG = "invalid"
+DEFAULT_RETENTION_PERIOD_CONFIG = "1d"
+DISABLED_RETENTION_PERIOD_CONFIG = 0
+VALID_RETENTION_PERIOD_CONFIG = "7d"
+INVALID_RETENTION_PERIOD_CONFIG = "invalid"
 
 
 def get_worker_unit_data(unit_no):
@@ -47,14 +47,12 @@ def state_with_s3_and_workers(
 
 
 @pytest.fixture
-def state_with_valid_compactor_blocks_retention_period_config(
+def state_with_valid_retention_period_config(
     all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
 ):
     state = State(
         leader=True,
-        config={
-            "compactor_blocks_retention_period": VALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG
-        },
+        config={"retention_period": VALID_RETENTION_PERIOD_CONFIG},
         relations=[all_worker, s3, peers],
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
@@ -62,14 +60,12 @@ def state_with_valid_compactor_blocks_retention_period_config(
 
 
 @pytest.fixture
-def state_with_invalid_compactor_blocks_retention_period_config(
+def state_with_invalid_retention_period_config(
     all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
 ):
     state = State(
         leader=True,
-        config={
-            "compactor_blocks_retention_period": INVALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG
-        },
+        config={"retention_period": INVALID_RETENTION_PERIOD_CONFIG},
         relations=[all_worker, s3, peers],
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
@@ -77,14 +73,12 @@ def state_with_invalid_compactor_blocks_retention_period_config(
 
 
 @pytest.fixture
-def state_with_disabled_compactor_blocks_retention_period_config(
+def state_with_disabled_retention_period_config(
     all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
 ):
     state = State(
         leader=True,
-        config={
-            "compactor_blocks_retention_period": str(DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG)
-        },
+        config={"retention_period": str(DISABLED_RETENTION_PERIOD_CONFIG)},
         relations=[all_worker, s3, peers],
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
@@ -284,23 +278,23 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
 @pytest.mark.parametrize(
     "state, expected_config_value",
     [
-        ("state_with_s3_and_workers", DEFAULT_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG),
+        ("state_with_s3_and_workers", DEFAULT_RETENTION_PERIOD_CONFIG),
         (
-            "state_with_valid_compactor_blocks_retention_period_config",
-            VALID_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG,
+            "state_with_valid_retention_period_config",
+            VALID_RETENTION_PERIOD_CONFIG,
         ),
         (
-            "state_with_invalid_compactor_blocks_retention_period_config",
-            DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG,
+            "state_with_invalid_retention_period_config",
+            DISABLED_RETENTION_PERIOD_CONFIG,
         ),
         (
-            "state_with_disabled_compactor_blocks_retention_period_config",
-            DISABLED_COMPACTOR_BLOCKS_RETENTION_PERIOD_CONFIG,
+            "state_with_disabled_retention_period_config",
+            DISABLED_RETENTION_PERIOD_CONFIG,
         ),
     ],
     indirect=["state"],
 )
-def test_compactor_blocks_retention_period_config(
+def test_retention_period_config(
     context, state, expected_config_value
 ):
     with context(context.on.config_changed(), state) as mgr:

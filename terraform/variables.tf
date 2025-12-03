@@ -60,6 +60,12 @@ variable "anti_affinity" {
   default     = true
 }
 
+variable "coordinator_config" {
+  description = "Map of the pyroscope coordinator charm configuration options"
+  type        = map(string)
+  default     = {}
+}
+
 # -------------- # App Names --------------
 
 variable "querier_name" {

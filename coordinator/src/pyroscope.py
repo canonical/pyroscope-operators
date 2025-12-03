@@ -24,10 +24,10 @@ class Pyroscope:
     http_server_port = 4040
 
     def __init__(
-        self, external_url: str, compactor_blocks_retention_period: str = "1d"
+        self, external_url: str, retention_period: str = "1d"
     ):
         self._external_url = external_url
-        self._compactor_blocks_retention_period = compactor_blocks_retention_period
+        self._retention_period = retention_period
 
     def config(
         self,
@@ -100,8 +100,8 @@ class Pyroscope:
 
     def _build_limits_config(self):
         return pyroscope_config.Limits(
-            compactor_blocks_retention_period=0 if self._compactor_blocks_retention_period == "0"
-            else self._compactor_blocks_retention_period
+            compactor_blocks_retention_period=0 if self._retention_period == "0"
+            else self._retention_period
         )
 
     @staticmethod
