@@ -184,6 +184,8 @@ class Distributor(BaseModel):
 class Compactor(BaseModel):
     """Distributor schema."""
 
+    cleanup_interval: str = "15m"
+    deletion_delay: str | int = "12h"
     sharding_ring: ShardingRingCompactor
 
 

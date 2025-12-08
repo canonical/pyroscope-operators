@@ -8,10 +8,19 @@ from ops.testing import State
 from charm import PyroscopeCoordinatorCharm
 
 
-DEFAULT_RETENTION_PERIOD_CONFIG = "1d"
+DEFAULT_RETENTION_PERIOD_CONFIG = 0
 DISABLED_RETENTION_PERIOD_CONFIG = 0
 VALID_RETENTION_PERIOD_CONFIG = "7d"
 INVALID_RETENTION_PERIOD_CONFIG = "invalid"
+
+DEFAULT_DELETION_DELAY_CONFIG = 0
+DISABLED_DELETION_DELAY_CONFIG = 0
+VALID_DELETION_DELAY_CONFIG = "7d"
+INVALID_DELETION_DELAY_CONFIG = "invalid"
+
+DEFAULT_CLEANUP_INTERVAL_CONFIG = "15m"
+VALID_CLEANUP_INTERVAL_CONFIG = "30m"
+INVALID_CLEANUP_INTERVAL_CONFIG = "invalid"
 
 
 def get_worker_unit_data(unit_no):
@@ -276,33 +285,104 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
 
 
 @pytest.mark.parametrize(
-    "state, expected_config_value",
+    "charm_config, expected_pyroscope_config",
     [
-        ("state_with_s3_and_workers", DEFAULT_RETENTION_PERIOD_CONFIG),
-        (
-            "state_with_valid_retention_period_config",
-            VALID_RETENTION_PERIOD_CONFIG,
+        pytest.param(
+            {},
+            {
+                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+            },
+            id="default charm config",
         ),
-        (
-            "state_with_invalid_retention_period_config",
-            DISABLED_RETENTION_PERIOD_CONFIG,
+        pytest.param(
+            {
+                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
+            },
+            {
+                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
+            },
+            id="non-default valid charm config",
         ),
-        (
-            "state_with_disabled_retention_period_config",
-            DISABLED_RETENTION_PERIOD_CONFIG,
+        pytest.param(
+            {
+                "retention_period": INVALID_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
+            },
+            {
+                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+            },
+            id="invalid retention_period charm config",
+        ),
+        pytest.param(
+            {
+                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": INVALID_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
+            },
+            {
+                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+            },
+            id="invalid cleanup_interval charm config",
+        ),
+        pytest.param(
+            {
+                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": INVALID_DELETION_DELAY_CONFIG,
+            },
+            {
+                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
+                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+            },
+            id="invalid deletion_delay charm config",
         ),
     ],
-    indirect=["state"],
 )
 def test_retention_period_config(
-    context, state, expected_config_value
+    context,
+    all_worker,
+    s3,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    peers,
+    charm_config,
+    expected_pyroscope_config,
 ):
+    state = State(
+        leader=True,
+        config=charm_config,
+        relations=[all_worker, s3, peers],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+    )
     with context(context.on.config_changed(), state) as mgr:
         charm: PyroscopeCoordinatorCharm = mgr.charm
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
-        expected_config = {
-            "compactor_blocks_retention_period": expected_config_value,
+        actual_limits_config = actual_config_dict["limits"]
+        actual_compactor_config = actual_config_dict["compactor"]
+        expected_limits_config = {
+            "compactor_blocks_retention_period": expected_pyroscope_config[
+                "retention_period"
+            ],
         }
-        assert "limits" in actual_config_dict
-        assert actual_config_dict["limits"] == expected_config
+        assert actual_limits_config == expected_limits_config
+        assert (
+            actual_compactor_config["cleanup_interval"]
+            == expected_pyroscope_config["cleanup_interval"]
+        )
+        assert (
+            actual_compactor_config["cleanup_interval"]
+            == expected_pyroscope_config["cleanup_interval"]
+        )

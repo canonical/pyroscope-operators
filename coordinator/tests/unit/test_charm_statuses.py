@@ -107,9 +107,7 @@ def test_happy_status_message(
             leader=True,
         ),
     )
-    assert (
-        state_out.unit_status.message == "[degraded] UI ready at http://foo.com:8080"
-    )
+    assert state_out.unit_status.message == "[degraded] UI ready at http://foo.com:8080"
 
 
 @k8s_patch(status=ops.BlockedStatus("`juju trust` this application"))
@@ -157,6 +155,10 @@ def test_blocked_status_when_invalid_compactor_blocks_retention_period(
         ),
     )
     assert state_out.unit_status.name == "blocked"
+    assert (
+        state_out.unit_status.message
+        == "The following configurations are not valid: ['retention_period']"
+    )
 
 
 @k8s_patch(status=ops.WaitingStatus("waiting"))

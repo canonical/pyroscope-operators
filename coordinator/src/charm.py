@@ -14,18 +14,28 @@ from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvi
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
-from ops import ActiveStatus, BlockedStatus, CollectStatusEvent
+from ops import BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
 
 import nginx_config
 import traefik_config
+from charm_config import (
+    CharmConfig,
+    CharmConfigInvalidError,
+    PyroscopeCoordinatorConfigModel,
+)
 from peers import Peers, PEERS_RELATION_ENDPOINT_NAME
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
 from cosl.reconciler import all_events, observe_events
-from cosl.time_validation import is_valid_timespec
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CHARM_CONFIG = CharmConfig(
+    pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
+        **{"retention_period": "0", "deletion_delay": "0", "cleanup_interval": "15m"}
+    )
+)
 
 
 class PyroscopeCoordinator(Coordinator):
@@ -47,6 +57,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self.framework.observe(
+            self.on.collect_unit_status, self._on_collect_unit_status
+        )
         self._ingress_prefix = f"/{self.model.name}-{self.app.name}"
         self._peers = Peers(
             self.model.get_relation(PEERS_RELATION_ENDPOINT_NAME),
@@ -66,9 +79,13 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
+        try:
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError:
+            self._charm_config = DEFAULT_CHARM_CONFIG
         self.pyroscope = Pyroscope(
             external_url=self._most_external_http_url,
-            retention_period=self._retention_period if is_valid_timespec(self._retention_period) else "0",
+            charm_config=self._charm_config,
         )
         self.profiling_provider = ProfilingEndpointProvider(
             self.model.relations["profiling"], self.app
@@ -112,7 +129,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
         # do this regardless of what event we are processing
         observe_events(self, all_events, self._reconcile)
-        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
 
     ######################
     # UTILITY PROPERTIES #
@@ -226,15 +242,13 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ),
         )
 
-    @property
-    def _retention_period(self) -> str:
-        return str(self.config["retention_period"])
-
     def _on_collect_unit_status(self, event: CollectStatusEvent):
-        event.add_status(ActiveStatus())
-        if not is_valid_timespec(self._retention_period):
-            logger.warning(f"Suspending data deletion due to invalid option set in config: {self._retention_period}. To resume data deletion, please reset value to a valid option.")
-            event.add_status(BlockedStatus(f"Invalid config option (see debug-log): retention_period={self._retention_period}"))
+        try:
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError as exc:
+            self._charm_config = DEFAULT_CHARM_CONFIG
+            event.add_status(BlockedStatus(exc.msg))
+            return
 
     # TODO: use the coordinated_workers method
     # cfr https://github.com/canonical/cos-coordinated-workers/issues/54

@@ -11,6 +11,7 @@ import yaml
 from coordinated_workers.coordinator import Coordinator
 
 import pyroscope_config
+from charm_config import CharmConfig
 
 
 class Pyroscope:
@@ -24,10 +25,12 @@ class Pyroscope:
     http_server_port = 4040
 
     def __init__(
-        self, external_url: str, retention_period: str = "1d"
+        self,
+        external_url: str,
+        charm_config: CharmConfig,
     ):
         self._external_url = external_url
-        self._retention_period = retention_period
+        self._charm_config = charm_config
 
     def config(
         self,
@@ -100,8 +103,9 @@ class Pyroscope:
 
     def _build_limits_config(self):
         return pyroscope_config.Limits(
-            compactor_blocks_retention_period=0 if self._retention_period == "0"
-            else self._retention_period
+            compactor_blocks_retention_period=0
+            if self._charm_config.retention_period == "0"
+            else self._charm_config.retention_period
         )
 
     @staticmethod
@@ -110,12 +114,17 @@ class Pyroscope:
             backend="s3", s3=pyroscope_config.S3Storage(**s3_config)
         )
 
-    @staticmethod
-    def _build_compactor_config():
+    def _build_compactor_config(self):
         return pyroscope_config.Compactor(
+            cleanup_interval=self._charm_config.cleanup_interval,
+            deletion_delay=(
+                0
+                if self._charm_config.deletion_delay == "0"
+                else self._charm_config.deletion_delay
+            ),
             sharding_ring=pyroscope_config.ShardingRingCompactor(
                 kvstore=pyroscope_config.Kvstore(store="memberlist")
-            )
+            ),
         )
 
     def _build_pyroscope_db(self):
