@@ -56,45 +56,6 @@ def state_with_s3_and_workers(
 
 
 @pytest.fixture
-def state_with_valid_retention_period_config(
-    all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
-):
-    state = State(
-        leader=True,
-        config={"retention_period": VALID_RETENTION_PERIOD_CONFIG},
-        relations=[all_worker, s3, peers],
-        containers=[nginx_container, nginx_prometheus_exporter_container],
-    )
-    return state
-
-
-@pytest.fixture
-def state_with_invalid_retention_period_config(
-    all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
-):
-    state = State(
-        leader=True,
-        config={"retention_period": INVALID_RETENTION_PERIOD_CONFIG},
-        relations=[all_worker, s3, peers],
-        containers=[nginx_container, nginx_prometheus_exporter_container],
-    )
-    return state
-
-
-@pytest.fixture
-def state_with_disabled_retention_period_config(
-    all_worker, s3, nginx_container, nginx_prometheus_exporter_container, peers
-):
-    state = State(
-        leader=True,
-        config={"retention_period": str(DISABLED_RETENTION_PERIOD_CONFIG)},
-        relations=[all_worker, s3, peers],
-        containers=[nginx_container, nginx_prometheus_exporter_container],
-    )
-    return state
-
-
-@pytest.fixture
 def state_with_ingress(
     all_worker, s3, nginx_container, nginx_prometheus_exporter_container, ingress, peers
 ):
