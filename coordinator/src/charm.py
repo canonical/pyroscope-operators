@@ -31,7 +31,7 @@ from cosl.reconciler import all_events, observe_events
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CHARM_CONFIG = CharmConfig(
+DISABLED_DATA_CLEANUP_CHARM_CONFIG = CharmConfig(
     pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
         **{"retention_period": "0", "deletion_delay": "0", "cleanup_interval": "15m"}
     )
@@ -57,9 +57,6 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.framework.observe(
-            self.on.collect_unit_status, self._on_collect_unit_status
-        )
         self._ingress_prefix = f"/{self.model.name}-{self.app.name}"
         self._peers = Peers(
             self.model.get_relation(PEERS_RELATION_ENDPOINT_NAME),
@@ -81,8 +78,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
         )
         try:
             self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
-        except CharmConfigInvalidError:
-            self._charm_config = DEFAULT_CHARM_CONFIG
+        except CharmConfigInvalidError as e:
+            logger.warning(f"{e.msg}\nDisabling profiles cleanup to prevent data loss.")
+            self._charm_config = DISABLED_DATA_CLEANUP_CHARM_CONFIG
         self.pyroscope = Pyroscope(
             external_url=self._most_external_http_url,
             charm_config=self._charm_config,
@@ -129,6 +127,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
         # do this regardless of what event we are processing
         observe_events(self, all_events, self._reconcile)
+        self.framework.observe(
+            self.on.collect_unit_status, self._on_collect_unit_status
+        )
 
     ######################
     # UTILITY PROPERTIES #
@@ -246,7 +247,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         try:
             self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
         except CharmConfigInvalidError as exc:
-            self._charm_config = DEFAULT_CHARM_CONFIG
+            self._charm_config = DISABLED_DATA_CLEANUP_CHARM_CONFIG
             event.add_status(BlockedStatus(exc.msg))
             return
 

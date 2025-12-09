@@ -14,9 +14,10 @@ from pydantic import (  # pylint: disable=no-name-in-module,import-error
     StrictStr,
     ValidationError,
 )
-from typing import ClassVar
 
 logger = logging.getLogger(__name__)
+
+TIMESPEC_REGEXP = r"^(0|[0-9]+(y|w|d|h|m|s|ms))$"
 
 
 class CharmConfigInvalidError(Exception):
@@ -34,11 +35,9 @@ class CharmConfigInvalidError(Exception):
 class PyroscopeCoordinatorConfigModel(BaseModel):  # pylint: disable=too-few-public-methods
     """Represent the Pyroscope Coordinator charm's configuration options."""
 
-    timespec_regexp: ClassVar[str] = r"^(0|[0-9]+(y|w|d|h|m|s|ms))$"
-
-    retention_period: StrictStr = Field(default="0", pattern=timespec_regexp)
-    deletion_delay: StrictStr = Field(default="0", pattern=timespec_regexp)
-    cleanup_interval: StrictStr = Field(default="15m", pattern=timespec_regexp)
+    retention_period: StrictStr = Field(default="1d", pattern=TIMESPEC_REGEXP)
+    deletion_delay: StrictStr = Field(default="12h", pattern=TIMESPEC_REGEXP)
+    cleanup_interval: StrictStr = Field(default="15m", pattern=TIMESPEC_REGEXP)
 
 
 @dataclasses.dataclass

@@ -151,7 +151,7 @@ config:
         Defaults to 0 (disabled).
         Supported units: d, w, m, y, h, s, ms or 0 for no limit (disable).
       type: string
-      default: "0"
+      default: "1d"
     deletion_delay:
       description: |
         Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion 
@@ -160,7 +160,7 @@ config:
         Defaults to 0 (disabled).
         Supported units: d, w, m, y, h, s, ms or 0 for no delay (disable).
       type: string
-      default: "0"
+      default: "12h"
     cleanup_interval:
       description: |
         How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index.

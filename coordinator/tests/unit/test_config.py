@@ -8,12 +8,12 @@ from ops.testing import State
 from charm import PyroscopeCoordinatorCharm
 
 
-DEFAULT_RETENTION_PERIOD_CONFIG = 0
+DEFAULT_RETENTION_PERIOD_CONFIG = "1d"
 DISABLED_RETENTION_PERIOD_CONFIG = 0
 VALID_RETENTION_PERIOD_CONFIG = "7d"
 INVALID_RETENTION_PERIOD_CONFIG = "invalid"
 
-DEFAULT_DELETION_DELAY_CONFIG = 0
+DEFAULT_DELETION_DELAY_CONFIG = "12h"
 DISABLED_DELETION_DELAY_CONFIG = 0
 VALID_DELETION_DELAY_CONFIG = "7d"
 INVALID_DELETION_DELAY_CONFIG = "invalid"
@@ -277,9 +277,9 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
                 "deletion_delay": VALID_DELETION_DELAY_CONFIG,
             },
             {
-                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "retention_period": DISABLED_RETENTION_PERIOD_CONFIG,
                 "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+                "deletion_delay": DISABLED_DELETION_DELAY_CONFIG,
             },
             id="invalid retention_period charm config",
         ),
@@ -290,9 +290,9 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
                 "deletion_delay": VALID_DELETION_DELAY_CONFIG,
             },
             {
-                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "retention_period": DISABLED_RETENTION_PERIOD_CONFIG,
                 "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+                "deletion_delay": DISABLED_DELETION_DELAY_CONFIG,
             },
             id="invalid cleanup_interval charm config",
         ),
@@ -303,9 +303,9 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
                 "deletion_delay": INVALID_DELETION_DELAY_CONFIG,
             },
             {
-                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
+                "retention_period": DISABLED_RETENTION_PERIOD_CONFIG,
                 "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
+                "deletion_delay": DISABLED_DELETION_DELAY_CONFIG,
             },
             id="invalid deletion_delay charm config",
         ),
