@@ -145,3 +145,26 @@ config:
         e.g. "1Gi". Default is unset (no limit). This is DEPRECATED and will be removed in track 3.
         The right way to do this now is to set constraints using the juju API.
       type: string
+    retention_period:
+      description: |
+        Delete blocks containing samples older than the specified retention period.
+        Defaults to "1d".
+        Supported units: d, w, m, y, h, s, ms or 0 for no limit (disable).
+      type: string
+      default: "1d"
+    deletion_delay:
+      description: |
+        Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion 
+        and compactor component will permanently delete blocks marked for deletion from the bucket. If 0, 
+        blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures.
+        Defaults to "12h".
+        Supported units: d, w, m, y, h, s, ms or 0 for no delay (disable).
+      type: string
+      default: "12h"
+    cleanup_interval:
+      description: |
+        How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index.
+        Defaults to "15m".
+        Supported units: d, w, m, y, h, s, ms.
+      type: string
+      default: "15m"

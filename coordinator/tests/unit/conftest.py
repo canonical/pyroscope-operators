@@ -9,6 +9,7 @@ from ops import ActiveStatus
 from ops.testing import Container, Context, Relation, PeerRelation, Exec
 
 from charm import PyroscopeCoordinatorCharm
+from charm_config import CharmConfig, PyroscopeCoordinatorConfigModel
 
 
 @contextmanager
@@ -150,7 +151,7 @@ def peers():
 def nginx_container():
     return Container(
         "nginx",
-        execs={Exec(['update-ca-certificates', '--fresh'])},
+        execs={Exec(["update-ca-certificates", "--fresh"])},
         can_connect=True,
     )
 
@@ -159,6 +160,17 @@ def nginx_container():
 def nginx_prometheus_exporter_container():
     return Container(
         "nginx-prometheus-exporter",
-        execs={Exec(['update-ca-certificates', '--fresh'])},
+        execs={Exec(["update-ca-certificates", "--fresh"])},
         can_connect=True,
+    )
+
+
+@pytest.fixture(scope="function")
+def coordinator_charm_config():
+    return CharmConfig(
+        pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
+            retention_period="1d",
+            deletion_delay="2h",
+            cleanup_interval="15m",
+        )
     )

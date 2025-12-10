@@ -14,16 +14,28 @@ from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvi
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
+from ops import BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
 
 import nginx_config
 import traefik_config
+from charm_config import (
+    CharmConfig,
+    CharmConfigInvalidError,
+    PyroscopeCoordinatorConfigModel,
+)
 from peers import Peers, PEERS_RELATION_ENDPOINT_NAME
 from pyroscope import Pyroscope
 from pyroscope_config import PYROSCOPE_ROLES_CONFIG
 from cosl.reconciler import all_events, observe_events
 
 logger = logging.getLogger(__name__)
+
+DISABLED_DATA_CLEANUP_CHARM_CONFIG = CharmConfig(
+    pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
+        **{"retention_period": "0", "deletion_delay": "0", "cleanup_interval": "15m"}
+    )
+)
 
 
 class PyroscopeCoordinator(Coordinator):
@@ -64,7 +76,15 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
         )
-        self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
+        try:
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError as e:
+            logger.warning(f"{e.msg}\nDisabling profiles cleanup to prevent data loss.")
+            self._charm_config = DISABLED_DATA_CLEANUP_CHARM_CONFIG
+        self.pyroscope = Pyroscope(
+            external_url=self._most_external_http_url,
+            charm_config=self._charm_config,
+        )
         self.profiling_provider = ProfilingEndpointProvider(
             self.model.relations["profiling"], self.app
         )
@@ -107,6 +127,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
 
         # do this regardless of what event we are processing
         observe_events(self, all_events, self._reconcile)
+        self.framework.observe(
+            self.on.collect_unit_status, self._on_collect_unit_status
+        )
 
     ######################
     # UTILITY PROPERTIES #
@@ -219,6 +242,14 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 "Allows you to collect, store, query, and visualize profiles from your distributed deployment."
             ),
         )
+
+    def _on_collect_unit_status(self, event: CollectStatusEvent):
+        try:
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError as exc:
+            self._charm_config = DISABLED_DATA_CLEANUP_CHARM_CONFIG
+            event.add_status(BlockedStatus(exc.msg))
+            return
 
     # TODO: use the coordinated_workers method
     # cfr https://github.com/canonical/cos-coordinated-workers/issues/54

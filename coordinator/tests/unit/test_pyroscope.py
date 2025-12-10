@@ -5,9 +5,9 @@ from pyroscope import Pyroscope
 
 
 @pytest.mark.parametrize("url", ("/", None, "foo.com"))
-def test_pyroscope(url):
+def test_pyroscope(url, coordinator_charm_config):
     # this test was added for the one and only purpose to achieve 100% coverage.
-    cfg = Pyroscope(url)
+    cfg = Pyroscope(url, coordinator_charm_config)
     mm = MagicMock()
     mm.cluster.gather_addresses.return_value = ("192.0.2.0", "192.0.2.1")
     mm.cluster.gather_addresses_by_role.return_value = {

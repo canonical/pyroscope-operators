@@ -1,5 +1,5 @@
 resource "juju_secret" "pyroscope_s3_credentials_secret" {
-  model = var.model
+  model = var.model_uuid
   name  = "pyroscope_s3_credentials"
   value = {
     access-key = var.s3_access_key
@@ -9,7 +9,7 @@ resource "juju_secret" "pyroscope_s3_credentials_secret" {
 }
 
 resource "juju_access_secret" "pyroscope_s3_secret_access" {
-  model = var.model
+  model = var.model_uuid
   applications = [
     juju_application.s3_integrator.name
   ]
@@ -19,7 +19,7 @@ resource "juju_access_secret" "pyroscope_s3_secret_access" {
 # TODO: Replace s3_integrator resource to use its remote terraform module once available
 resource "juju_application" "s3_integrator" {
   name  = var.s3_integrator_name
-  model = var.model
+  model = var.model_uuid
   trust = true
 
   charm {
@@ -37,9 +37,10 @@ resource "juju_application" "s3_integrator" {
 
 module "pyroscope_coordinator" {
   source      = "git::https://github.com/canonical/pyroscope-operators//coordinator/terraform"
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   revision    = var.coordinator_revision
+  config      = var.coordinator_config
   units       = var.coordinator_units
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=pyroscope,anti-pod.topology-key=kubernetes.io/hostname" : null
 }
@@ -47,7 +48,7 @@ module "pyroscope_coordinator" {
 module "pyroscope_querier" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.querier_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.querier_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -64,7 +65,7 @@ module "pyroscope_querier" {
 module "pyroscope_query_frontend" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.query_frontend_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.query_frontend_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -81,7 +82,7 @@ module "pyroscope_query_frontend" {
 module "pyroscope_ingester" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.ingester_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.ingester_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -98,7 +99,7 @@ module "pyroscope_ingester" {
 module "pyroscope_distributor" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.distributor_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.distributor_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -115,7 +116,7 @@ module "pyroscope_distributor" {
 module "pyroscope_compactor" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.compactor_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.compactor_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -132,7 +133,7 @@ module "pyroscope_compactor" {
 module "pyroscope_query_scheduler" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.query_scheduler_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.query_scheduler_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -150,7 +151,7 @@ module "pyroscope_query_scheduler" {
 module "pyroscope_store_gateway" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.store_gateway_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.store_gateway_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -167,7 +168,7 @@ module "pyroscope_store_gateway" {
 module "pyroscope_tenant_settings" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.tenant_settings_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.tenant_settings_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -184,7 +185,7 @@ module "pyroscope_tenant_settings" {
 module "pyroscope_ad_hoc_profiles" {
   source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
   app_name    = var.ad_hoc_profiles_name
-  model       = var.model
+  model_uuid  = var.model_uuid
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.ad_hoc_profiles_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
@@ -201,7 +202,7 @@ module "pyroscope_ad_hoc_profiles" {
 #Integrations
 
 resource "juju_integration" "coordinator_to_s3_integrator" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = juju_application.s3_integrator.name
@@ -215,7 +216,7 @@ resource "juju_integration" "coordinator_to_s3_integrator" {
 }
 
 resource "juju_integration" "coordinator_to_querier" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -229,7 +230,7 @@ resource "juju_integration" "coordinator_to_querier" {
 }
 
 resource "juju_integration" "coordinator_to_query_frontend" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -243,7 +244,7 @@ resource "juju_integration" "coordinator_to_query_frontend" {
 }
 
 resource "juju_integration" "coordinator_to_ingester" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -257,7 +258,7 @@ resource "juju_integration" "coordinator_to_ingester" {
 }
 
 resource "juju_integration" "coordinator_to_distributor" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -271,7 +272,7 @@ resource "juju_integration" "coordinator_to_distributor" {
 }
 
 resource "juju_integration" "coordinator_to_compactor" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -285,7 +286,7 @@ resource "juju_integration" "coordinator_to_compactor" {
 }
 
 resource "juju_integration" "coordinator_to_query_scheduler" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -299,7 +300,7 @@ resource "juju_integration" "coordinator_to_query_scheduler" {
 }
 
 resource "juju_integration" "coordinator_to_store_gateway" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -313,7 +314,7 @@ resource "juju_integration" "coordinator_to_store_gateway" {
 }
 
 resource "juju_integration" "coordinator_to_tenant_settings" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -327,7 +328,7 @@ resource "juju_integration" "coordinator_to_tenant_settings" {
 }
 
 resource "juju_integration" "coordinator_to_ad_hoc_profiles" {
-  model = var.model
+  model = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name

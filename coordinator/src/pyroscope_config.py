@@ -184,6 +184,8 @@ class Distributor(BaseModel):
 class Compactor(BaseModel):
     """Distributor schema."""
 
+    cleanup_interval: str = "15m"
+    deletion_delay: str | int = "12h"
     sharding_ring: ShardingRingCompactor
 
 
@@ -191,6 +193,12 @@ class DB(BaseModel):
     """Pyroscope DB schema."""
 
     data_path: str
+
+
+class Limits(BaseModel):
+    """Limits schema."""
+
+    compactor_blocks_retention_period: str | int = "1d"
 
 
 class PyroscopeConfig(BaseModel):
@@ -202,6 +210,7 @@ class PyroscopeConfig(BaseModel):
     ingester: Ingester
     store_gateway: StoreGateway
     memberlist: Memberlist
+    limits: Limits
     storage: Storage
     compactor: Compactor
     pyroscopedb: DB

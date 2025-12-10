@@ -1,4 +1,4 @@
-variable "model" {
+variable "model_uuid" {
   description = "Reference to an existing model resource or data source for the model to deploy to"
   type        = string
 }
@@ -58,6 +58,12 @@ variable "anti_affinity" {
   description = "Enable anti-affinity constraints"
   type        = bool
   default     = true
+}
+
+variable "coordinator_config" {
+  description = "Map of the pyroscope coordinator charm configuration options"
+  type        = map(string)
+  default     = {}
 }
 
 # -------------- # App Names --------------
