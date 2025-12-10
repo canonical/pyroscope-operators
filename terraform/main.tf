@@ -1,5 +1,5 @@
 resource "juju_secret" "pyroscope_s3_credentials_secret" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
   name  = "pyroscope_s3_credentials"
   value = {
     access-key = var.s3_access_key
@@ -9,7 +9,7 @@ resource "juju_secret" "pyroscope_s3_credentials_secret" {
 }
 
 resource "juju_access_secret" "pyroscope_s3_secret_access" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
   applications = [
     juju_application.s3_integrator.name
   ]
@@ -19,7 +19,7 @@ resource "juju_access_secret" "pyroscope_s3_secret_access" {
 # TODO: Replace s3_integrator resource to use its remote terraform module once available
 resource "juju_application" "s3_integrator" {
   name  = var.s3_integrator_name
-  model = var.model_uuid
+  model_uuid = var.model_uuid
   trust = true
 
   charm {
@@ -202,7 +202,7 @@ module "pyroscope_ad_hoc_profiles" {
 #Integrations
 
 resource "juju_integration" "coordinator_to_s3_integrator" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = juju_application.s3_integrator.name
@@ -216,7 +216,7 @@ resource "juju_integration" "coordinator_to_s3_integrator" {
 }
 
 resource "juju_integration" "coordinator_to_querier" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -230,7 +230,7 @@ resource "juju_integration" "coordinator_to_querier" {
 }
 
 resource "juju_integration" "coordinator_to_query_frontend" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -244,7 +244,7 @@ resource "juju_integration" "coordinator_to_query_frontend" {
 }
 
 resource "juju_integration" "coordinator_to_ingester" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -258,7 +258,7 @@ resource "juju_integration" "coordinator_to_ingester" {
 }
 
 resource "juju_integration" "coordinator_to_distributor" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -272,7 +272,7 @@ resource "juju_integration" "coordinator_to_distributor" {
 }
 
 resource "juju_integration" "coordinator_to_compactor" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -286,7 +286,7 @@ resource "juju_integration" "coordinator_to_compactor" {
 }
 
 resource "juju_integration" "coordinator_to_query_scheduler" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -300,7 +300,7 @@ resource "juju_integration" "coordinator_to_query_scheduler" {
 }
 
 resource "juju_integration" "coordinator_to_store_gateway" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -314,7 +314,7 @@ resource "juju_integration" "coordinator_to_store_gateway" {
 }
 
 resource "juju_integration" "coordinator_to_tenant_settings" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
@@ -328,7 +328,7 @@ resource "juju_integration" "coordinator_to_tenant_settings" {
 }
 
 resource "juju_integration" "coordinator_to_ad_hoc_profiles" {
-  model = var.model_uuid
+  model_uuid = var.model_uuid
 
   application {
     name     = module.pyroscope_coordinator.app_name
