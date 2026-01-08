@@ -1,5 +1,5 @@
 import json
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from pathlib import Path
 from shutil import rmtree
 from unittest.mock import MagicMock, patch
@@ -14,15 +14,21 @@ from charm_config import CharmConfig, PyroscopeCoordinatorConfigModel
 
 @contextmanager
 def k8s_patch(status=ActiveStatus(), is_ready=True):
-    with patch("lightkube.core.client.GenericSyncClient"):
-        with patch.multiple(
-            "coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
-            _namespace="test-namespace",
-            _patch=lambda _: None,
-            get_status=MagicMock(return_value=status),
-            is_ready=MagicMock(return_value=is_ready),
-        ) as patcher:
-            yield patcher
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch("coordinated_workers.coordinator.reconcile_charm_labels")
+        )
+        stack.enter_context(patch("lightkube.core.client.GenericSyncClient"))
+        patcher = stack.enter_context(
+            patch.multiple(
+                "coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
+                _namespace="test-namespace",
+                _patch=lambda _: None,
+                get_status=MagicMock(return_value=status),
+                is_ready=MagicMock(return_value=is_ready),
+            )
+        )
+        yield patcher
 
 
 @contextmanager

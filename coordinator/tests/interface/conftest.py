@@ -85,6 +85,9 @@ k8s_resource_patch_ready = MagicMock(return_value=True)
 @pytest.fixture(autouse=True, scope="module")
 def patch_all():
     with ExitStack() as stack:
+        stack.enter_context(
+            patch("coordinated_workers.coordinator.reconcile_charm_labels")
+        )
         stack.enter_context(patch("lightkube.core.client.GenericSyncClient"))
         stack.enter_context(
             patch(

@@ -577,6 +577,7 @@ version = "0.1"
 source = { virtual = "." }
 dependencies = [
     { name = "coordinated-workers" },
+    { name = "pytest" },
 ]
 
 [package.optional-dependencies]
@@ -599,6 +600,7 @@ requires-dist = [
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },
+    { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.3.1" },
