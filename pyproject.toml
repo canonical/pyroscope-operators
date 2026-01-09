@@ -19,6 +19,8 @@ dev = [
     "grpcio",
     "protobuf",
     "opentelemetry-proto",
+    # for service mesh (istio-beacon lib requirement)
+    "lightkube-extensions",
 ]
 
 
