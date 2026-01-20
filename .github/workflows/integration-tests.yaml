@@ -185,16 +185,16 @@ jobs:
             run: |
               coord_relative_path="$(find ./coordinator -maxdepth 1 -name '*.charm' | tail -n1)"
               worker_relative_path="$(find ./worker -maxdepth 1 -name '*.charm' | tail -n1)"
-              channel="2/edge"
+              pyro_channel="dev/edge"
               if [ "${{ matrix.mode }}" = "local-coordinator" ]; then
                   COORDINATOR_CHARM_PATH="$(realpath "$coord_relative_path")"
                   export COORDINATOR_CHARM_PATH
-                  WORKER_CHARM_CHANNEL="$channel"
+                  WORKER_CHARM_CHANNEL="$pyro_channel"
                   export WORKER_CHARM_CHANNEL
               elif [ "${{ matrix.mode }}" = "local-worker" ]; then
                   WORKER_CHARM_PATH="$(realpath "$worker_relative_path")"
                   export WORKER_CHARM_PATH
-                  COORDINATOR_CHARM_CHANNEL="$channel"
+                  COORDINATOR_CHARM_CHANNEL="$pyro_channel"
                   export COORDINATOR_CHARM_CHANNEL
               elif [ "${{ matrix.mode }}" = "local-both" ]; then
                   COORDINATOR_CHARM_PATH="$(realpath "$coord_relative_path")"
@@ -206,3 +206,9 @@ jobs:
                   exit 1
               fi
               uvx tox -e integration -- -k "${{ matrix.suite }}"
+          - name: Open SSH session on failure
+            if: ${{ failure() && (runner.debug == '1') }}
+            uses: mxschmitt/action-tmate@v3
+            with:
+              timeout-minutes: 30
+              limit-access-to-actor: true
