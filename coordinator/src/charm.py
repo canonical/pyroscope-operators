@@ -36,6 +36,7 @@ DISABLED_DATA_CLEANUP_CHARM_CONFIG = CharmConfig(
         **{"retention_period": "0", "deletion_delay": "0", "cleanup_interval": "15m"}
     )
 )
+PYROSCOPE_GRAFANA_DATASOURCE_TYPE = "grafana-pyroscope-datasource"
 
 
 class PyroscopeCoordinator(Coordinator):
@@ -74,7 +75,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             "ingress",
         )
         self.grafana_source = GrafanaSourceProvider(
-            self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
+            self,
+            source_type=PYROSCOPE_GRAFANA_DATASOURCE_TYPE,
+            is_ingress_per_app=self._is_ingressed,
         )
         try:
             self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)

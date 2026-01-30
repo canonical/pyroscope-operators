@@ -18,6 +18,7 @@ from tenacity import (
 from requests.auth import HTTPBasicAuth
 from pytest_bdd import given, then
 
+from coordinator.src.charm import PYROSCOPE_GRAFANA_DATASOURCE_TYPE
 from helpers import (
     deploy_distributed_cluster,
     ALL_WORKERS,
@@ -259,7 +260,7 @@ def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
     """Verify that the pyroscope datasource is registered in grafana."""
     graf_ip = get_unit_ip_address(juju, GRAFANA_APP, 0)
     res = requests.get(f"http://{grafana_admin_creds}@{graf_ip}:3000/api/datasources")
-    assert "pyroscope" in {ds["type"] for ds in res.json()}
+    assert PYROSCOPE_GRAFANA_DATASOURCE_TYPE in {ds["type"] for ds in res.json()}
 
 
 @then("alert rules are sent to prometheus")
