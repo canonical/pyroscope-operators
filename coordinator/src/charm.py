@@ -25,6 +25,8 @@ from cosl.reconciler import all_events, observe_events
 
 logger = logging.getLogger(__name__)
 
+PYROSCOPE_GRAFANA_DATASOURCE_TYPE = "grafana-pyroscope-datasource"
+
 
 class PyroscopeCoordinator(Coordinator):
     def __init__(self, *args, active_status_msg: str = "ready", **kwargs):
@@ -62,7 +64,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
             "ingress",
         )
         self.grafana_source = GrafanaSourceProvider(
-            self, source_type="pyroscope", is_ingress_per_app=self._is_ingressed
+            self,
+            source_type=PYROSCOPE_GRAFANA_DATASOURCE_TYPE,
+            is_ingress_per_app=self._is_ingressed,
         )
         self.pyroscope = Pyroscope(external_url=self._most_external_http_url)
         self.profiling_provider = ProfilingEndpointProvider(
