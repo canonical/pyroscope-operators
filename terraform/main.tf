@@ -18,9 +18,9 @@ resource "juju_access_secret" "pyroscope_s3_secret_access" {
 
 # TODO: Replace s3_integrator resource to use its remote terraform module once available
 resource "juju_application" "s3_integrator" {
-  name  = var.s3_integrator_name
+  name       = var.s3_integrator_name
   model_uuid = var.model_uuid
-  trust = true
+  trust      = true
 
   charm {
     name     = "s3-integrator"
@@ -32,17 +32,19 @@ resource "juju_application" "s3_integrator" {
     bucket      = var.s3_bucket
     credentials = "secret:${juju_secret.pyroscope_s3_credentials_secret.secret_id}"
   }
-  units = 1
+  storage_directives = var.s3_integrator_storage_directives
+  units              = 1
 }
 
 module "pyroscope_coordinator" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//coordinator/terraform"
-  model_uuid  = var.model_uuid
-  channel     = var.channel
-  revision    = var.coordinator_revision
-  config      = var.coordinator_config
-  units       = var.coordinator_units
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=pyroscope,anti-pod.topology-key=kubernetes.io/hostname" : null
+  source             = "git::https://github.com/canonical/pyroscope-operators//coordinator/terraform"
+  model_uuid         = var.model_uuid
+  channel            = var.channel
+  revision           = var.coordinator_revision
+  config             = var.coordinator_config
+  storage_directives = var.coordinator_storage_directives
+  units              = var.coordinator_units
+  constraints        = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=pyroscope,anti-pod.topology-key=kubernetes.io/hostname" : null
 }
 
 module "pyroscope_querier" {
@@ -55,8 +57,9 @@ module "pyroscope_querier" {
     role-all     = false
     role-querier = true
   }
-  revision = var.worker_revision
-  units    = var.querier_units
+  revision           = var.worker_revision
+  storage_directives = var.querier_worker_storage_directives
+  units              = var.querier_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -73,6 +76,7 @@ module "pyroscope_query_frontend" {
     role-query-frontend = true
   }
   revision = var.worker_revision
+  storage_directives = var.query_frontend_worker_storage_directives
   units    = var.query_frontend_units
   depends_on = [
     module.pyroscope_coordinator
@@ -90,6 +94,7 @@ module "pyroscope_ingester" {
     role-ingester = true
   }
   revision = var.worker_revision
+  storage_directives = var.ingester_worker_storage_directives
   units    = var.ingester_units
   depends_on = [
     module.pyroscope_coordinator
@@ -107,6 +112,7 @@ module "pyroscope_distributor" {
     role-distributor = true
   }
   revision = var.worker_revision
+  storage_directives = var.distributor_worker_storage_directives
   units    = var.distributor_units
   depends_on = [
     module.pyroscope_coordinator
@@ -124,6 +130,7 @@ module "pyroscope_compactor" {
     role-compactor = true
   }
   revision = var.worker_revision
+  storage_directives = var.compactor_worker_storage_directives
   units    = var.compactor_units
   depends_on = [
     module.pyroscope_coordinator
@@ -141,6 +148,7 @@ module "pyroscope_query_scheduler" {
     role-query-scheduler = true
   }
   revision = var.worker_revision
+  storage_directives = var.query_scheduler_worker_storage_directives
   units    = var.query_scheduler_units
   depends_on = [
     module.pyroscope_coordinator
@@ -159,6 +167,7 @@ module "pyroscope_store_gateway" {
     role-store-gateway = true
   }
   revision = var.worker_revision
+  storage_directives = var.store_gateway_worker_storage_directives
   units    = var.store_gateway_units
   depends_on = [
     module.pyroscope_coordinator
@@ -176,6 +185,7 @@ module "pyroscope_tenant_settings" {
     role-tenant-settings = true
   }
   revision = var.worker_revision
+  storage_directives = var.tenant_settings_worker_storage_directives
   units    = var.tenant_settings_units
   depends_on = [
     module.pyroscope_coordinator
@@ -193,6 +203,7 @@ module "pyroscope_ad_hoc_profiles" {
     role-ad-hoc-profiles = true
   }
   revision = var.worker_revision
+  storage_directives = var.ad_hoc_profiles_worker_storage_directives
   units    = var.ad_hoc_profiles_units
   depends_on = [
     module.pyroscope_coordinator
