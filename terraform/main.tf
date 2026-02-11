@@ -1,6 +1,6 @@
 resource "juju_secret" "pyroscope_s3_credentials_secret" {
   model_uuid = var.model_uuid
-  name  = "pyroscope_s3_credentials"
+  name       = "pyroscope_s3_credentials"
   value = {
     access-key = var.s3_access_key
     secret-key = var.s3_secret_key
@@ -75,9 +75,9 @@ module "pyroscope_query_frontend" {
     role-all            = false
     role-query-frontend = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.query_frontend_worker_storage_directives
-  units    = var.query_frontend_units
+  units              = var.query_frontend_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -93,9 +93,9 @@ module "pyroscope_ingester" {
     role-all      = false
     role-ingester = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.ingester_worker_storage_directives
-  units    = var.ingester_units
+  units              = var.ingester_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -111,9 +111,9 @@ module "pyroscope_distributor" {
     role-all         = false
     role-distributor = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.distributor_worker_storage_directives
-  units    = var.distributor_units
+  units              = var.distributor_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -129,9 +129,9 @@ module "pyroscope_compactor" {
     role-all       = false
     role-compactor = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.compactor_worker_storage_directives
-  units    = var.compactor_units
+  units              = var.compactor_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -147,9 +147,9 @@ module "pyroscope_query_scheduler" {
     role-all             = false
     role-query-scheduler = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.query_scheduler_worker_storage_directives
-  units    = var.query_scheduler_units
+  units              = var.query_scheduler_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -166,9 +166,9 @@ module "pyroscope_store_gateway" {
     role-all           = false
     role-store-gateway = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.store_gateway_worker_storage_directives
-  units    = var.store_gateway_units
+  units              = var.store_gateway_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -184,9 +184,9 @@ module "pyroscope_tenant_settings" {
     role-all             = false
     role-tenant-settings = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.tenant_settings_worker_storage_directives
-  units    = var.tenant_settings_units
+  units              = var.tenant_settings_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -202,9 +202,9 @@ module "pyroscope_ad_hoc_profiles" {
     role-all             = false
     role-ad-hoc-profiles = true
   }
-  revision = var.worker_revision
+  revision           = var.worker_revision
   storage_directives = var.ad_hoc_profiles_worker_storage_directives
-  units    = var.ad_hoc_profiles_units
+  units              = var.ad_hoc_profiles_units
   depends_on = [
     module.pyroscope_coordinator
   ]
