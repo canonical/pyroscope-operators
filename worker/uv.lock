@@ -603,7 +603,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
-    { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.3.1" },
+    { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.4.1" },
     { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = "~=1.0" },
     { name = "ruff", marker = "extra == 'dev'" },
 ]
@@ -641,7 +641,7 @@ wheels = [
 
 [[package]]
 name = "pytest-interface-tester"
-version = "3.3.1"
+version = "3.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops-scenario" },
@@ -649,9 +649,9 @@ dependencies = [
     { name = "pytest" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/e1/9ef461c4c0845b253b3bfb45ad36e3d9ad851e5baf9c2ac259310887676e/pytest_interface_tester-3.3.1.tar.gz", hash = "sha256:0bf4ca6404420fb23035e4dc46f16e8e619d279abd210d7c9ced2b40e89be14f", size = 27655, upload-time = "2025-02-13T09:21:46.546Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/ca/55ec97b38985e63c5f46ed65da4a1dcf76b9a7e67450e7fb7bd7110bbea5/pytest_interface_tester-3.4.1.tar.gz", hash = "sha256:95af07733981adf3891aeb4d0178582dd790ec78ee8dc23e1cd9498e3dea4200", size = 21474, upload-time = "2026-02-11T08:14:10.688Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/2d/846a7cd30d6802ab4f230443c967d48aa33b8a251e1d1815dd6ac8587183/pytest_interface_tester-3.3.1-py3-none-any.whl", hash = "sha256:385a8f9d111787d7ab80b90988d3411de31c12640701e3fa41b01a17b192477f", size = 21766, upload-time = "2025-02-13T09:21:45.508Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/d1/7f909a9b530c92afc109ffb81a3c0b18de1724a763dfc14fae49fc417ca7/pytest_interface_tester-3.4.1-py3-none-any.whl", hash = "sha256:1d1f346d04d78c4f5a18ee8d7ac8d7f288e1b5f5feafa72dd543bbc7af5cb031", size = 22192, upload-time = "2026-02-11T08:14:09.35Z" },
 ]
 
 [[package]]
