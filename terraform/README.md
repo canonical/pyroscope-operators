@@ -21,25 +21,36 @@ This module requires a `juju` model to be available. Refer to the [usage section
 ### Inputs
 The module offers the following configurable inputs:
 
-| Name | Type | Description | Default |
-| - | - | - | - |
-| `channel`| string | Channel that the charms are deployed from |  |
-| `compactor_units`| number | Number of pyroscope worker units with compactor role | 1 |
-| `distributor_units`| number | Number of pyroscope worker units with distributor role | 1 |
-| `ingester_units`| number | Number of pyroscope worker units with ingester role | 1 |
-| `query_scheduler_units`| number | Number of pyroscope worker units with query-scheduler role | 1 |
-| `model`| string | Name of the model that the charm is deployed on |  |
-| `querier_units`| number | Number of pyroscope worker units with querier role | 1 |
-| `query_frontend_units`| number | Number of pyroscope worker units with query-frontend role | 1 |
-| `store_gateway_units`| number | Number of pyroscope worker units with store-gateway role | 1 |
-| `tenant_settings_units`| number | Number of pyroscope worker units with tenant-settings role | 1 |
-| `ad_hoc_profiles_units`| number | Number of pyroscope worker units with ad-hoc-profiles role | 1 |
-| `coordinator_units`| number | Number of pyroscope coordinator units | 1 |
-| `s3_integrator_name` | string | Name of the s3-integrator app | 1 |
-| `s3_bucket` | string | Name of the bucket in which pyroscope stores traces | 1 |
-| `s3_access_key` | string | Access key credential to connect to the S3 provider | 1 |
-| `s3_secret_key` | string | Secret key credential to connect to the S3 provider | 1 |
-| `s3_endpoint` | string | Endpoint of the S3 provider | 1 |
+| Name                                        | Type        | Description                                                                                              | Default |
+|---------------------------------------------|-------------|----------------------------------------------------------------------------------------------------------|---------|
+| `model`                                     | string      | Name of the model that the charm is deployed on                                                          |         |
+| `channel`                                   | string      | Channel that the charms are deployed from                                                                |         |
+| `coordinator_units`                         | number      | Number of pyroscope coordinator units                                                                    | 1       |
+| `coordinator_strorage_directives`           | map(string) | Map of storage used by the coordinator application, which defaults to 1 GB, allocated by Juju            | {}      |
+| `ad_hoc_profiles_units`                     | number      | Number of pyroscope worker units with ad-hoc-profiles role                                               | 1       |
+| `ad_hoc_profiles_worker_storage_directives` | map(string) | Map of storage used by the ad-hoc-profiles worker application, which defaults to 1 GB, allocated by Juju | {}      |
+| `compactor_units`                           | number      | Number of pyroscope worker units with compactor role                                                     | 1       |
+| `compactor_worker_storage_directives`       | map(string) | Map of storage used by the compactor worker application, which defaults to 1 GB, allocated by Juju       | {}      |
+| `distributor_units`                         | number      | Number of pyroscope worker units with distributor role                                                   | 1       |
+| `distributor_worker_storage_directives`     | map(string) | Map of storage used by the distributor worker application, which defaults to 1 GB, allocated by Juju     | {}      |
+| `ingester_units`                            | number      | Number of pyroscope worker units with ingester role                                                      | 1       |
+| `ingester_worker_storage_directives`        | map(string) | Map of storage used by the ingester worker application, which defaults to 1 GB, allocated by Juju        | {}      |
+| `querier_units`                             | number      | Number of pyroscope worker units with querier role                                                       | 1       |
+| `querier_worker_storage_directives`         | map(string) | Map of storage used by the querier worker application, which defaults to 1 GB, allocated by Juju         | {}      |
+| `query_frontend_units`                      | number      | Number of pyroscope worker units with query-frontend role                                                | 1       |
+| `query_frontend_worker_storage_directives`  | map(string) | Map of storage used by the query-frontend worker application, which defaults to 1 GB, allocated by Juju  | {}      |
+| `query_scheduler_units`                     | number      | Number of pyroscope worker units with query-scheduler role                                               | 1       |
+| `query_scheduler_worker_storage_directives` | map(string) | Map of storage used by the query-scheduler worker application, which defaults to 1 GB, allocated by Juju | {}      |
+| `store_gateway_units`                       | number      | Number of pyroscope worker units with store-gateway role                                                 | 1       |
+| `store_gateway_worker_storage_directives`   | map(string) | Map of storage used by the store-gateway worker application, which defaults to 1 GB, allocated by Juju   | {}      |
+| `tenant_settings_units`                     | number      | Number of pyroscope worker units with tenant-settings role                                               | 1       |
+| `tenant_settings_worker_storage_directives` | map(string) | Map of storage used by the tenant-settings worker application, which defaults to 1 GB, allocated by Juju | {}      |
+| `s3_integrator_name`                        | string      | Name of the s3-integrator app                                                                            | 1       |
+| `s3_integrator_storage_directives`          | map(string) | Map of storage used by the s3-integrator application, which defaults to 1 GB, allocated by Juju          | {}      |
+| `s3_bucket`                                 | string      | Name of the bucket in which pyroscope stores traces                                                      | 1       |
+| `s3_access_key`                             | string      | Access key credential to connect to the S3 provider                                                      | 1       |
+| `s3_secret_key`                             | string      | Secret key credential to connect to the S3 provider                                                      | 1       |
+| `s3_endpoint`                               | string      | Endpoint of the S3 provider                                                                              | 1       |
 
 
 ### Outputs

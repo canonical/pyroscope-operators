@@ -128,6 +128,75 @@ variable "s3_integrator_name" {
   default     = "pyroscope-s3-integrator"
 }
 
+
+# -------------- # Storage directives --------------
+
+variable "coordinator_storage_directives" {
+  description = "Map of storage used by the coordinator application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "ad_hoc_profiles_worker_storage_directives" {
+  description = "Map of storage used by the ad-hoc-profiles worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "compactor_worker_storage_directives" {
+  description = "Map of storage used by the compactor worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "distributor_worker_storage_directives" {
+  description = "Map of storage used by the distributor worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "ingester_worker_storage_directives" {
+  description = "Map of storage used by the ingester worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "querier_worker_storage_directives" {
+  description = "Map of storage used by the querier worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "query_frontend_worker_storage_directives" {
+  description = "Map of storage used by the query-frontend worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "query_scheduler_worker_storage_directives" {
+  description = "Map of storage used by the query-scheduler worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "store_gateway_worker_storage_directives" {
+  description = "Map of storage used by the store-gateway worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "tenant_settings_worker_storage_directives" {
+  description = "Map of storage used by the tenant-settings worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "s3_integrator_storage_directives" {
+  description = "Map of storage used by the s3-integrator application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
 # -------------- # Units Per App --------------
 
 variable "compactor_units" {
