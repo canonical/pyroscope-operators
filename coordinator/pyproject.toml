@@ -20,8 +20,15 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant",
+    "pytest-jubilant~=1.0",
     "minio",
+    "requests",
+    "tenacity",
+    "pytest-bdd",
+    # for scripts/profilegen.py
+    "grpcio",
+    "protobuf",
+    "opentelemetry-proto",
 
 #   LINTING
     "pyright",
