@@ -6,13 +6,18 @@ import os
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Literal, Optional, Sequence, Union
+from typing import Literal, Optional, Sequence
 
 import jubilant
-import yaml
 from jubilant import Juju
 from minio import Minio
-from pytest_jubilant import pack
+from pytest_jubilant import get_resources, pack
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+CI_TRUE_VALUES = {"1", "true", "yes"}
+COORDINATOR_CHARM_FILENAME = "pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm"
+WORKER_CHARM_FILENAME = "pyroscope-worker-k8s_ubuntu@24.04-amd64.charm"
 
 # Application names used uniformly across the tests
 ACCESS_KEY = "accesskey"
@@ -44,11 +49,26 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
-PROFILEGEN_SCRIPT_PATH = (
-    Path(__file__).parent.parent.parent / "scripts" / "profilegen.py"
-)
+PROFILEGEN_SCRIPT_PATH = REPO_ROOT / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
+
+
+def _ci_enabled() -> bool:
+    return os.getenv("CI", "").strip().lower() in CI_TRUE_VALUES
+
+
+def _set_ci_charm_paths_if_unset() -> None:
+    if not _ci_enabled():
+        return
+
+    coordinator_path = Path.cwd() / COORDINATOR_CHARM_FILENAME
+    worker_path = Path.cwd() / WORKER_CHARM_FILENAME
+
+    if coordinator_path.is_file() and not os.getenv("COORDINATOR_CHARM_PATH"):
+        os.environ["COORDINATOR_CHARM_PATH"] = str(coordinator_path)
+    if worker_path.is_file() and not os.getenv("WORKER_CHARM_PATH"):
+        os.environ["WORKER_CHARM_PATH"] = str(worker_path)
 
 
 def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
@@ -59,35 +79,40 @@ def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
 def charm_and_channel_and_resources(
     role: Literal["coordinator", "worker"], charm_path_key: str, charm_channel_key: str
 ):
-    """Pyrosocope coordinator or worker charm used for integration testing.
+    """Pyroscope coordinator or worker charm used for integration testing.
 
     Build once per session and reuse it in all integration tests to save some minutes/hours.
     """
+    _set_ci_charm_paths_if_unset()
     # deploy charm from charmhub
     if channel_from_env := os.getenv(charm_channel_key):
         charm = f"pyroscope-{role}-k8s"
-        logger.info(f"Using published {charm} charm from {channel_from_env}")
+        logger.info("Using published %s charm from %s", charm, channel_from_env)
         return charm, channel_from_env, None
     # else deploy from a charm packed locally
-    elif path_from_env := os.getenv(charm_path_key):
+    if path_from_env := os.getenv(charm_path_key):
         charm_path = Path(path_from_env).absolute()
-        logger.info("Using local {role} charm: %s", charm_path)
+        logger.info("Using local %s charm: %s", role, charm_path)
+        # Ensure we read resources from the charm source directory for the
+        # requested role, rather than from the parent of a packed charm file
+        # which may be the repository root and contain a different charm's
+        # metadata.
         return (
             charm_path,
             None,
-            _get_resources(charm_path.parent),
+            get_resources(REPO_ROOT / role),
         )
     # else try to pack the charm
     for _ in range(3):
-        logger.info(f"packing Pyroscope {role} charm...")
+        logger.info("packing Pyroscope %s charm...", role)
         try:
-            pth = pack(Path() / role)
+            pth = pack(REPO_ROOT / role)
         except subprocess.CalledProcessError:
-            logger.warning(f"Failed to build Pyroscope {role}. Trying again!")
+            logger.warning("Failed to build Pyroscope %s. Trying again!", role)
             continue
         os.environ[charm_path_key] = str(pth)
-        return pth, None, _get_resources(Path().parent / role)
-    raise subprocess.CalledProcessError
+        return pth, None, get_resources(REPO_ROOT / role)
+    raise subprocess.CalledProcessError(1, f"pack {role}")
 
 
 def deploy_distributed_cluster(
@@ -192,15 +217,6 @@ def _deploy_cluster(
             successes=3,
         )
     return [coordinator_app, *workers, S3_APP, MINIO_APP]
-
-
-def _get_resources(path: Union[str, Path]):
-    meta = yaml.safe_load((Path(path) / "charmcraft.yaml").read_text())
-    resources_meta = meta.get("resources", {})
-    return {
-        res_name: res_meta["upstream-source"]
-        for res_name, res_meta in resources_meta.items()
-    }
 
 
 def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):

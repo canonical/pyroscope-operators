@@ -18,7 +18,7 @@ from tenacity import (
 from requests.auth import HTTPBasicAuth
 from pytest_bdd import given, then
 
-from helpers import (
+from tests.integration.helpers import (
     deploy_distributed_cluster,
     ALL_WORKERS,
     PYROSCOPE_APP,

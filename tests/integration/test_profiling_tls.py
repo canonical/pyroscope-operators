@@ -5,7 +5,7 @@
 import pytest
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
-from helpers import (
+from tests.integration.helpers import (
     deploy_monolithic_cluster,
     emit_profile,
     PYROSCOPE_APP,
@@ -13,7 +13,7 @@ from helpers import (
     SSC_APP,
     WORKER_APP,
 )
-from assertions import assert_profile_is_ingested
+from tests.integration.assertions import assert_profile_is_ingested
 
 from pytest_bdd import given, when, then
 
