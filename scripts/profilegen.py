@@ -24,19 +24,16 @@ def _build_profile() -> profiles_pb2.Profile:
     )
 
     sample = profiles_pb2.Sample(
-        locations_start_index=0,
-        locations_length=1,
-        value=[100],  # 1 nanosecond
+        stack_index=0,  # index into ProfilesDictionary.stack_table
+        values=[100],  # 100 nanoseconds
         attribute_indices=[0],
     )
 
     return profiles_pb2.Profile(
-        sample_type=[sample_type],
-        sample=[sample],
-        location_indices=[0],
+        sample_type=sample_type,
+        samples=[sample],
         period_type=sample_type,
         period=1,
-        default_sample_type_index=0,
     )
 
 
@@ -47,6 +44,7 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         "cpu",
         "nanoseconds",
         "profilegen-main-function",
+        "service.name",
     ]
 
     function = profiles_pb2.Function(
@@ -55,15 +53,19 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
 
     location = profiles_pb2.Location(
         mapping_index=0,
-        line=[
+        lines=[
             profiles_pb2.Line(
-                function_index=0,  # refers to first function in Profile.function
+                function_index=0,  # refers to first function in function_table
             )
         ],
     )
 
-    attribute = common_pb2.KeyValue(
-        key="service.name",
+    stack = profiles_pb2.Stack(
+        location_indices=[0],  # refers to first location in location_table
+    )
+
+    attribute = profiles_pb2.KeyValueAndUnit(
+        key_strindex=4,  # "service.name"
         value=common_pb2.AnyValue(string_value=service_name),
     )
 
@@ -72,6 +74,7 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         location_table=[location],
         function_table=[function],
         mapping_table=[profiles_pb2.Mapping()],
+        stack_table=[stack],
         attribute_table=[attribute],
     )
 
