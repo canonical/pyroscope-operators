@@ -21,6 +21,7 @@ dev = [
 #   INTEGRATION TESTS
     "jubilant",
     "pytest-jubilant",
+    "minio",
 
 #   LINTING
     "pyright",
