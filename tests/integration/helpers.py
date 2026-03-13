@@ -48,7 +48,7 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
-OTLP_ADAPTER_SCRIPT_PATH = REPO_ROOT / "scripts" / "otlp_adapter.py"
+OTLP_ADAPTER_SCRIPT_PATH = REPO_ROOT / "tests" / "integration" / "otlp_adapter.py"
 
 logger = logging.getLogger(__name__)
 

@@ -29,19 +29,16 @@ def _build_profile() -> profiles_pb2.Profile:
         unit_strindex=2,  # "nanoseconds"
     )
 
-    # location_indices is a flat array of location indices shared across all samples.
-    # Each Sample references a slice of it via locations_start_index + locations_length.
+    # stack_index refers to the Stack entry in ProfilesDictionary.stack_table.
     sample = profiles_pb2.Sample(
-        locations_start_index=0,
-        locations_length=1,
-        value=[100],
+        stack_index=0,
+        values=[100],
         attribute_indices=[0],
     )
 
     return profiles_pb2.Profile(
-        sample_type=[sample_type],
-        sample=[sample],
-        location_indices=[0],
+        sample_type=sample_type,
+        samples=[sample],
         period_type=sample_type,
         period=1,
     )
@@ -54,6 +51,8 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         "cpu",
         "nanoseconds",
         "otlp-adapter-function",
+        "service.name",
+        service_name,
     ]
 
     function = profiles_pb2.Function(
@@ -62,11 +61,15 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
 
     location = profiles_pb2.Location(
         mapping_index=0,
-        line=[profiles_pb2.Line(function_index=0)],
+        lines=[profiles_pb2.Line(function_index=0)],
     )
 
-    attribute = common_pb2.KeyValue(
-        key="service.name",
+    # stack_table[0] references location_table[0]
+    stack = profiles_pb2.Stack(location_indices=[0])
+
+    # attribute_table uses KeyValueAndUnit; key and unit are string-table indices
+    attribute = profiles_pb2.KeyValueAndUnit(
+        key_strindex=4,  # "service.name"
         value=common_pb2.AnyValue(string_value=service_name),
     )
 
@@ -76,6 +79,7 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         function_table=[function],
         mapping_table=[profiles_pb2.Mapping()],
         attribute_table=[attribute],
+        stack_table=[stack],
     )
 
 
@@ -122,7 +126,9 @@ def emit_profile(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--endpoint", required=True, help="gRPC endpoint (host:port)")
-    parser.add_argument("--service-name", default="otlp-adapter", help="Service name for the profile")
+    parser.add_argument(
+        "--service-name", default="otlp-adapter", help="Service name for the profile"
+    )
     parser.add_argument(
         "--insecure",
         action="store_true",
