@@ -7,7 +7,7 @@ from jubilant import Juju
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
     deploy_monolithic_cluster,
-    emit_profile_via_profilecli,
+    emit_profile,
     PYROSCOPE_APP,
     get_unit_ip_address,
 )
@@ -23,7 +23,8 @@ def test_deploy_pyroscope(juju: Juju):
 
 @when("we emit a profile to pyroscope using otlp grpc")
 def test_emit_profile(juju: Juju):
-    emit_profile_via_profilecli(juju)
+    pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
+    emit_profile(endpoint=f"{pyroscope_ip}:42424")
 
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))

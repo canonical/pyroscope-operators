@@ -25,7 +25,7 @@ dev = [
     "requests",
     "tenacity",
     "pytest-bdd",
-    # for scripts/otlp_adapter.py
+    # for scripts/profilegen.py
     "grpcio",
     "protobuf",
     "opentelemetry-proto",

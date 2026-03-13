@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Literal, Optional, Sequence
@@ -48,7 +49,7 @@ S3_CREDENTIALS = {
     "secret-key": SECRET_KEY,
 }
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
-OTLP_ADAPTER_SCRIPT_PATH = REPO_ROOT / "tests" / "integration" / "otlp_adapter.py"
+PROFILEGEN_SCRIPT_PATH = REPO_ROOT / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
 
@@ -291,45 +292,24 @@ def emit_profile(
     ca_path: Optional[str] = None,
     server_name: Optional[str] = None,
 ):
-    """Send an OTLP profile to the given gRPC endpoint via the otlp_adapter script.
+    env = os.environ.copy()
 
-    Use this for scenarios that specifically require OTLP delivery, such as
-    pushing through an OTel Collector or over a TLS-secured OTLP port.
-    For direct non-TLS pushes to Pyroscope, prefer emit_profile_via_profilecli().
-    """
-    cmd = [
-        "python",
-        str(OTLP_ADAPTER_SCRIPT_PATH),
-        "--endpoint",
-        endpoint,
-        "--service-name",
-        service_name,
-    ]
-    if not tls:
-        cmd.append("--insecure")
+    profilegen_env = {
+        "PROFILEGEN_SERVICE": service_name,
+        "PROFILEGEN_ENDPOINT": endpoint,
+        "PROFILEGEN_INSECURE": str(not tls),
+    }
     if ca_path:
-        cmd += ["--ca-path", ca_path]
+        profilegen_env["PROFILEGEN_CA_PATH"] = ca_path
     if server_name:
-        cmd += ["--server-name", server_name]
+        profilegen_env["PROFILEGEN_SERVER_NAME"] = server_name
 
-    logger.info(f"running otlp_adapter: {cmd!r}")
-    out = subprocess.run(cmd, text=True, capture_output=True, check=True)
-    logger.info(f"otlp_adapter completed; stdout={out.stdout!r}")
+    env.update(profilegen_env)
 
+    cmd = f"python {str(PROFILEGEN_SCRIPT_PATH)}"
 
-def emit_profile_via_profilecli(juju: Juju, service_name: str = "profilegen"):
-    """Push a profile to Pyroscope using profilecli inside the pyroscope workload container.
-
-    Fetches a 1-second CPU pprof from Pyroscope's own debug endpoint, then uses
-    profilecli to push it to the local HTTP API.  This exercises the pprof HTTP
-    ingestion path rather than OTLP gRPC, and avoids any dependency on the test
-    machine having OTLP client libraries installed.
-    """
-    worker_unit = f"{WORKER_APP}/0"
-    cmd = (
-        "curl -sS 'http://localhost:4040/debug/pprof/profile?seconds=1' -o /tmp/profile.pprof && "
-        f"profilecli push --url http://localhost:4040 --service-name {service_name} /tmp/profile.pprof"
+    logger.info(f"running profilegen with env: {profilegen_env!r}")
+    out = subprocess.run(
+        shlex.split(cmd), text=True, capture_output=True, check=True, env=env
     )
-    logger.info(f"running profilecli in {worker_unit} container=pyroscope")
-    out = juju.ssh(worker_unit, cmd, container="pyroscope")
-    logger.info(f"profilecli completed; output={out!r}")
+    logger.info(f"profilegen completed; stdout={out.stdout!r}")
