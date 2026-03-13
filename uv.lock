@@ -210,14 +210,14 @@ wheels = [
 
 [[package]]
 name = "opentelemetry-proto"
-version = "1.40.0"
+version = "1.39.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/77/dd38991db037fdfce45849491cb61de5ab000f49824a00230afb112a4392/opentelemetry_proto-1.40.0.tar.gz", hash = "sha256:03f639ca129ba513f5819810f5b1f42bcb371391405d99c168fe6937c62febcd", size = 45667, upload-time = "2026-03-04T14:17:31.194Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/1d/f25d76d8260c156c40c97c9ed4511ec0f9ce353f8108ca6e7561f82a06b2/opentelemetry_proto-1.39.1.tar.gz", hash = "sha256:6c8e05144fc0d3ed4d22c2289c6b126e03bcd0e6a7da0f16cedd2e1c2772e2c8", size = 46152, upload-time = "2025-12-11T13:32:48.681Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/b2/189b2577dde745b15625b3214302605b1353436219d42b7912e77fa8dc24/opentelemetry_proto-1.40.0-py3-none-any.whl", hash = "sha256:266c4385d88923a23d63e353e9761af0f47a6ed0d486979777fe4de59dc9b25f", size = 72073, upload-time = "2026-03-04T14:17:16.673Z" },
+    { url = "https://files.pythonhosted.org/packages/51/95/b40c96a7b5203005a0b03d8ce8cd212ff23f1793d5ba289c87a097571b18/opentelemetry_proto-1.39.1-py3-none-any.whl", hash = "sha256:22cdc78efd3b3765d09e68bfbd010d4fc254c9818afd0b6b423387d9dee46007", size = 72535, upload-time = "2025-12-11T13:32:33.866Z" },
 ]
 
 [[package]]
@@ -335,7 +335,7 @@ requires-dist = [
     { name = "grpcio", marker = "extra == 'dev'" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "minio", marker = "extra == 'dev'" },
-    { name = "opentelemetry-proto", marker = "extra == 'dev'" },
+    { name = "opentelemetry-proto", marker = "extra == 'dev'", specifier = ">=1.36.0,<1.40.0" },
     { name = "protobuf", marker = "extra == 'dev'" },
     { name = "pytest-bdd", marker = "extra == 'dev'" },
     { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = "~=1.0" },
@@ -380,15 +380,15 @@ wheels = [
 
 [[package]]
 name = "pytest-jubilant"
-version = "1.2.0"
+version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jubilant" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/bd/36767aac16f831fd4a415903b9b00832f68b372b1eb00a008d0754e8cd7e/pytest_jubilant-1.2.0.tar.gz", hash = "sha256:5f7dcbe2c73a3add79042897f48dcf025d52b6724dd3b7530e2366f3bc1ad3a4", size = 12204, upload-time = "2026-03-11T02:02:29.627Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/31/2726f3a38c94036434e5744fd727e517495814692aa79f5200444dd5d18a/pytest_jubilant-1.3.0.tar.gz", hash = "sha256:93e05233172e33a76f96e162fd9aeb5161f453abd7de521183631857bb77a8ea", size = 12752, upload-time = "2026-03-13T02:04:14.435Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/30/327b1996df3e652a99badb593ae18ebb1a0bba511ef900f4f4a35d96307c/pytest_jubilant-1.2.0-py3-none-any.whl", hash = "sha256:5809b5c2498b67fede742827d0df2fe71ee447a9894e2ce9ed60af9f201d738b", size = 11893, upload-time = "2026-03-11T02:02:28.141Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/85/07093962c95599bc27ee35734951466fcb367f2ce24f8a9cac6f297a789a/pytest_jubilant-1.3.0-py3-none-any.whl", hash = "sha256:520c04f5a4a5d1d9e3729424d4f8bd6b01153c0284fb3e2fda8fe90fae79cc4a", size = 11831, upload-time = "2026-03-13T02:04:13.131Z" },
 ]
 
 [[package]]

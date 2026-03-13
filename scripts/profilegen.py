@@ -23,15 +23,19 @@ def _build_profile() -> profiles_pb2.Profile:
         unit_strindex=2,  # "nanoseconds"
     )
 
+    # location_indices is a flat array of location indices shared across all samples.
+    # Each Sample references a slice of it via locations_start_index + locations_length.
     sample = profiles_pb2.Sample(
-        stack_index=0,
-        values=[100],  # 1 nanosecond
+        locations_start_index=0,
+        locations_length=1,
+        value=[100],  # 1 nanosecond
         attribute_indices=[0],
     )
 
     return profiles_pb2.Profile(
-        sample_type=sample_type,
-        samples=[sample],
+        sample_type=[sample_type],
+        sample=[sample],
+        location_indices=[0],  # flat array: sample 0 references location_table[0]
         period_type=sample_type,
         period=1,
     )
@@ -44,7 +48,6 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         "cpu",
         "nanoseconds",
         "profilegen-main-function",
-        "service.name",
     ]
 
     function = profiles_pb2.Function(
@@ -53,15 +56,16 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
 
     location = profiles_pb2.Location(
         mapping_index=0,
-        lines=[
+        line=[
             profiles_pb2.Line(
-                function_index=0,  # refers to first function in Profile.function
+                function_index=0,  # refers to first function in function_table
             )
         ],
     )
 
-    attribute = profiles_pb2.KeyValueAndUnit(
-        key_strindex=4,  # "service.name"
+    # attribute_table entries are KeyValue (key is a plain string, not a string_table index)
+    attribute = common_pb2.KeyValue(
+        key="service.name",
         value=common_pb2.AnyValue(string_value=service_name),
     )
 
@@ -71,7 +75,6 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         function_table=[function],
         mapping_table=[profiles_pb2.Mapping()],
         attribute_table=[attribute],
-        stack_table=[profiles_pb2.Stack(location_indices=[0])],
     )
 
 
