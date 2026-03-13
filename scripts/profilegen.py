@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """Utility script to generate a mock CPU profile and export it using OTLP gRPC to a profiling backend (i.e. Pyroscope/Otel Collector)."""
 
 import os
@@ -24,8 +24,8 @@ def _build_profile() -> profiles_pb2.Profile:
     )
 
     sample = profiles_pb2.Sample(
-        stack_index=0,  # index into ProfilesDictionary.stack_table
-        values=[100],  # 100 nanoseconds
+        stack_index=0,
+        values=[100],  # 1 nanosecond
         attribute_indices=[0],
     )
 
@@ -55,13 +55,9 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         mapping_index=0,
         lines=[
             profiles_pb2.Line(
-                function_index=0,  # refers to first function in function_table
+                function_index=0,  # refers to first function in Profile.function
             )
         ],
-    )
-
-    stack = profiles_pb2.Stack(
-        location_indices=[0],  # refers to first location in location_table
     )
 
     attribute = profiles_pb2.KeyValueAndUnit(
@@ -74,8 +70,8 @@ def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDiction
         location_table=[location],
         function_table=[function],
         mapping_table=[profiles_pb2.Mapping()],
-        stack_table=[stack],
         attribute_table=[attribute],
+        stack_table=[profiles_pb2.Stack(location_indices=[0])],
     )
 
 
