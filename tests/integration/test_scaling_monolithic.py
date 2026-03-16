@@ -6,7 +6,7 @@ import jubilant
 import pytest
 from jubilant import Juju, all_blocked
 
-from helpers import deploy_monolithic_cluster, PYROSCOPE_APP, S3_APP
+from tests.integration.helpers import deploy_monolithic_cluster, PYROSCOPE_APP, S3_APP
 
 
 @pytest.mark.setup

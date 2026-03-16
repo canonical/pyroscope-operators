@@ -12,7 +12,7 @@ import jubilant
 import pytest
 from jubilant import Juju
 
-from helpers import (
+from tests.integration.helpers import (
     PYROSCOPE_APP,
     WORKER_APP,
     deploy_monolithic_cluster,

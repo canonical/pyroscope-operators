@@ -20,7 +20,15 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant",
+    "pytest-jubilant~=1.0",
+    "minio",
+    "requests",
+    "tenacity",
+    "pytest-bdd",
+    # for scripts/profilegen.py
+    "grpcio",
+    "protobuf",
+    "opentelemetry-proto",
 
 #   LINTING
     "pyright",
@@ -47,6 +55,7 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 90
 
 [tool.pytest.ini_options]
 minversion = "6.0"
