@@ -24,6 +24,7 @@ dev = [
     "minio",
     "requests",
     "tenacity",
+    "sh",
     "pytest-bdd",
     # for scripts/profilegen.py
     "grpcio",
