@@ -1,0 +1,19 @@
+name: Pyroscope - coordinated-workers deployment validator
+probes:
+  - name: Cluster consistency
+    type: scriptlet
+    url: github://canonical/cos-coordinated-workers//probes/cluster_consistency.py
+    with:
+      - worker_charm: pyroscope-worker-k8s
+        recommended_deployment:
+          querier: 3
+          query-frontend: 2
+          query-scheduler: 2
+          ingester: 3
+          distributor: 2
+          compactor: 3
+          store-gateway: 3
+          tenant-settings: 1
+          ad-hoc-profiles: 1
+        meta_roles:
+          all: [querier, query-frontend, query-scheduler, ingester, distributor, compactor, store-gateway, tenant-settings, ad-hoc-profiles]
