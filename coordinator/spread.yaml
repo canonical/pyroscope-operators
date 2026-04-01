@@ -1,0 +1,58 @@
+# Spread configuration for pyroscope-coordinator-k8s.
+#
+# FINDINGS FROM TASK 0 SPIKE (charmcraft test investigation):
+#
+# 1. LOCATION: spread.yaml must live in the charm directory (same dir as
+#    charmcraft.yaml). `charmcraft test` is invoked from the charm directory
+#    and reads spread.yaml from there.
+#
+# 2. CRAFT BACKEND: charmcraft auto-injects the `craft:` backend at runtime.
+#    The system name must match the host distro string produced by
+#    craft_platforms.DistroBase (e.g. "ubuntu-24.04").  On CI the name is
+#    detected automatically; locally an `lxd-vm` backend is used instead.
+#    Only `systems:` is needed here — all other backend fields are injected.
+#
+# 3. PATH / ENV: charmcraft processes this file into a temporary spread.yaml
+#    that hard-codes:
+#      path:           /root/proj
+#      PROJECT_PATH:   /root/proj
+#      CRAFT_ARTIFACT: $PROJECT_PATH/<packed-charm-filename>
+#    Do not declare these here; they are injected unconditionally.
+#
+# 4. REROOT: charmcraft adds `reroot: ".."` so spread resolves all suite/task
+#    paths relative to the charm directory (parent of the temp dir it creates).
+#    Suite keys such as `spread/hello/` map to coordinator/spread/hello/.
+#
+# 5. EXTENSION SCRIPT: craft_application generates allocate/discard/prepare/
+#    restore hooks that call `spread/.extension` with the backend name
+#    (`lxd-vm` locally, `ci` in CI).  The script lives at
+#    coordinator/spread/.extension.
+#
+# 6. TASK STRUCTURE: Each suite directory contains task *subdirectories*, each
+#    holding a task.yaml.  A task.yaml placed directly at the suite root is
+#    NOT discovered by spread.
+#      Correct:  spread/<suite>/<task>/task.yaml
+#      Wrong:    spread/<suite>/task.yaml  ← silently ignored
+#
+# 7. SUITE SYSTEMS REQUIRED: Every suite must list at least one system.
+#    An omitted `systems:` serialises as `systems: []` which causes
+#    "nothing matches provider filter" at runtime.
+
+project: pyroscope-coordinator-k8s
+
+backends:
+  craft:
+    systems:
+      - ubuntu-24.04
+
+suites:
+  spread/hello/:
+    summary: Trivial smoke test — Task 0 spike
+    systems:
+      - ubuntu-24.04
+
+exclude:
+  - .git
+  - .tox
+  - .venv
+  - ".*_cache"
