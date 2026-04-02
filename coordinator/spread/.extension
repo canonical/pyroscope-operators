@@ -112,6 +112,10 @@ prepare() {
         systemctl stop unattended-upgrades.service
         systemctl mask unattended-upgrades.service
     fi
+
+    # Install tools required by the unit/interface test suites.
+    apt-get install -y tox
+    snap install astral-uv --classic
 }
 
 restore() {

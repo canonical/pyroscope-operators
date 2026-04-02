@@ -1,0 +1,5 @@
+summary: Run all unit tests (coordinator + worker)
+
+execute: |
+  cd "$PROJECT_PATH"
+  tox -e unit

@@ -17,13 +17,74 @@ LLM agent with minimal ambiguity.
 | 0 | Validate `charmcraft test` invocation (spike) | ✅ Done |
 | 1 | Create project-level `spread.yaml` | ✅ Done |
 | 2 | Create `spread/.extension` helper script | ✅ Done |
-| 3 | Create unit-tests spread suite | ⬜ Pending |
+| 3 | Create unit-tests spread suite | ✅ Done |
 | 4 | Create integration-tests spread suite (scaffold) | ⬜ Pending |
 | 5 | Create `task.yaml` for each integration test file | ⬜ Pending |
 | 6 | Create `task.yaml` for interface tests | ⬜ Pending |
 | 7 | Update GitHub Actions CI to use `charmcraft test` | ⬜ Pending |
 | 8 | Verify full spread run (end-to-end) | ⬜ Pending |
 | 9 | Documentation updates | ⬜ Pending |
+
+## Verification policy
+
+> Each task must be verified with `charmcraft test <suite>` **before** being
+> marked Done.  Do not defer verification to Task 8.  Catching failures
+> close to the task that introduced them is far cheaper than debugging a
+> pile of broken tasks at the end.
+
+Practical notes:
+- Run `charmcraft test` from `coordinator/` (where `spread.yaml` lives).
+- LXD VMs are available locally; the `lxd-vm` backend in `spread/.extension`
+  handles allocation.
+- `backend-prepare` installs `tox` (apt) and `astral-uv` (snap `--classic`);
+  no extra setup should be needed in individual `task.yaml` files.
+
+---
+
+## Performance comparison
+
+These numbers reflect wall-clock time measured on the local development machine
+(LXD VM backend).  The spread column includes every phase: VM allocation, OS
+boot, `backend-prepare`, `prepare-each`, the actual test run, `restore-each`,
+`restore`, and VM discard.  Update this table whenever a new suite is verified.
+
+### Unit tests
+
+| Phase | Duration |
+|-------|----------|
+| VM allocation + boot | ~44 s |
+| `backend-prepare` (apt update, install tox + uv) | ~73 s |
+| `prepare-each` | <1 s |
+| Test execution (`tox -e unit`, coordinator + worker) | ~30 s |
+| `restore` + VM discard | ~1 s |
+| **Total (`charmcraft test spread/unit/`)** | **~3 m 02 s** |
+| **Direct `tox -e unit` (host, warm env)** | **~24 s** |
+
+Spread adds roughly **2 m 38 s** of infrastructure overhead per run.  Most of
+that cost is paid once per suite invocation (VM boot + OS setup), not per
+task — so suites with many tasks will see a proportionally smaller overhead
+ratio.  In CI the VM is already provisioned by the runner, so the `backend-prepare`
+cost becomes the dominant overhead (~1 m) rather than VM boot.
+
+### Integration tests
+
+Baseline and spread timing will be recorded here once Task 4 (suite scaffold)
+and Task 5 (per-test `task.yaml` files) are verified with `charmcraft test
+spread/integration/`.
+
+Expected cost drivers (for future comparison):
+
+| Phase | Expected order of magnitude |
+|-------|-----------------------------|
+| VM allocation + boot | ~1 min |
+| `backend-prepare` (tox, uv, MicroK8s, Juju snap install) | ~5–10 min |
+| `prepare` (MicroK8s enable + Juju bootstrap) | ~5–10 min |
+| `prepare-each` (add Juju model) | ~30 s |
+| Test execution per task | 5–90 min (varies by test) |
+| `restore-each` (destroy Juju model) | ~2 min |
+| `restore` (destroy Juju controller) | ~2 min |
+| **Total per spread run** | **TBD — fill in after Task 5** |
+| **Direct `tox -e integration` (host)** | **TBD — fill in after Task 4** |
 
 ---
 
@@ -197,6 +258,8 @@ suites:
 ---
 
 ### Task 3 — Create the **unit-tests** spread suite
+
+> **Status: ✅ Done.** Files: `coordinator/spread/unit/all/task.yaml`, `coordinator/spread/.extension` (updated to install tox + uv).
 
 **Goal**: Wrap the existing `tox -e unit` invocation in a spread task so that unit tests can be run via `charmcraft test spread/unit/`.
 
