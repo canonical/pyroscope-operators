@@ -10,6 +10,23 @@ LLM agent with minimal ambiguity.
 
 ---
 
+## Status
+
+| Task | Description | State |
+|------|-------------|-------|
+| 0 | Validate `charmcraft test` invocation (spike) | ✅ Done |
+| 1 | Create project-level `spread.yaml` | ✅ Done |
+| 2 | Create `spread/.extension` helper script | ✅ Done |
+| 3 | Create unit-tests spread suite | ⬜ Pending |
+| 4 | Create integration-tests spread suite (scaffold) | ⬜ Pending |
+| 5 | Create `task.yaml` for each integration test file | ⬜ Pending |
+| 6 | Create `task.yaml` for interface tests | ⬜ Pending |
+| 7 | Update GitHub Actions CI to use `charmcraft test` | ⬜ Pending |
+| 8 | Verify full spread run (end-to-end) | ⬜ Pending |
+| 9 | Documentation updates | ⬜ Pending |
+
+---
+
 ## Context
 
 | Aspect | Current state |
@@ -18,7 +35,7 @@ LLM agent with minimal ambiguity.
 | **Interface tests** | Run inside `tox -e unit` for coordinator, separate `tox -e interface` for worker. Uses `InterfaceTester`. |
 | **Integration tests** | `tox -e integration` → pytest in `tests/integration/`. 8 test files; 2 active (`test_ingress.py`, `test_scaling_monolithic.py`), 6 skipped (profiling / retention / self-monitoring, Issues #291 and #315). 6 BDD feature files already exist. |
 | **CI** | GitHub Actions using `canonical/observability` reusable workflows (`charm-pull-request.yaml`, `charm-quality-gates.yaml`). No spread today. |
-| **Spread** | Not configured. No `spread.yaml`, no `spread/` directory. |
+| **Spread** | `coordinator/spread.yaml` present. `coordinator/spread/.extension` present. Smoke suite (`spread/hello/`) verified passing. |
 | **charmcraft** | v4.0.1 installed; `charmcraft test` available (wraps spread with a managed craft backend). |
 
 ### Key reference
@@ -30,6 +47,8 @@ LLM agent with minimal ambiguity.
 ## Task Breakdown
 
 ### Task 0 — Validate `charmcraft test` invocation (spike)
+
+> **Status: ✅ Done.** Findings documented below and in `coordinator/spread.yaml`.
 
 **Goal**: Confirm the minimum viable `spread.yaml` that `charmcraft test` accepts for this charm and understand the craft-managed backend behaviour.
 
@@ -46,58 +65,122 @@ LLM agent with minimal ambiguity.
 
 **Acceptance**: `charmcraft test` succeeds on at least one trivial task and the behaviour is understood.
 
+**Findings** (also recorded in `coordinator/spread.yaml`):
+
+1. **Location**: `spread.yaml` must live in the charm directory (same dir as
+   `charmcraft.yaml`). `charmcraft test` is invoked from the charm directory
+   and reads `spread.yaml` from there. A repo-root `spread.yaml` is not used.
+
+2. **Craft backend**: charmcraft auto-injects the `craft:` backend at runtime.
+   The system name must match the host distro string produced by
+   `craft_platforms.DistroBase` (e.g. `ubuntu-24.04`). Only `systems:` is
+   needed in `spread.yaml` — all other backend fields are injected.
+
+3. **Path / env**: charmcraft processes `spread.yaml` into a temporary file
+   that hard-codes `path: /root/proj`, `PROJECT_PATH: /root/proj`, and
+   `CRAFT_ARTIFACT: $PROJECT_PATH/<charm-filename>`.
+   Do **not** declare `path:`, `PROJECT_PATH:`, or a top-level `environment:`
+   block — charmcraft injects them unconditionally and the validator rejects
+   the extra keys (`Extra inputs are not permitted`).
+
+4. **Reroot**: charmcraft adds `reroot: ".."` so spread resolves all suite/task
+   paths relative to the charm directory. Suite keys such as `spread/hello/`
+   map to `coordinator/spread/hello/`.
+
+5. **Extension script**: `craft_application` generates allocate/discard/prepare/
+   restore hooks that call `spread/.extension` with the backend name
+   (`lxd-vm` locally, `ci` in CI). The script lives at
+   `coordinator/spread/.extension`.
+
+6. **Task structure**: each suite directory contains task *subdirectories*, each
+   holding a `task.yaml`. A `task.yaml` placed directly at the suite root is
+   **not** discovered by spread.
+   - Correct: `spread/<suite>/<task>/task.yaml`
+   - Wrong: `spread/<suite>/task.yaml` ← silently ignored
+
+7. **Suite systems required**: every suite must list at least one system.
+   An omitted `systems:` serialises as `systems: []` which causes
+   "nothing matches provider filter" at runtime.
+
+8. **Backend isolation**: using bare system names (e.g. `ubuntu-24.04`) causes
+   spread to run the suite on **all** backends that publish that system. Adding
+   a `ci` adhoc backend to `spread.yaml` therefore makes the CI allocator run
+   during local `charmcraft test` runs, causing failures. The `ci` backend is
+   intentionally omitted from `spread.yaml`; it is added by the GitHub Actions
+   workflow (Task 7). Backend-qualified system names
+   (`craft:ubuntu-24.04`) are rejected by `CraftSpreadYaml` and cannot be used
+   as a workaround.
+
 ---
 
 ### Task 1 — Create project-level `spread.yaml`
 
+> **Status: ✅ Done.** File: `coordinator/spread.yaml`.
+
 **Goal**: Add the spread project configuration that all suites will use.
 
-**Deliverables** — a new file `spread.yaml` (at repo root *or* per-charm, depending on findings from Task 0).
+**Deliverables** — `coordinator/spread.yaml` (per-charm, per Finding 1 above).
 
-**Contents** (adapt after Task 0):
+**Deviations from original plan template**:
+- `path:` and `PROJECT_PATH:` omitted (injected by charmcraft — Finding 3).
+- Top-level `environment:` omitted (rejected by `CraftSpreadYaml` — Finding 3).
+  Per-suite `environment:` blocks are permitted and used for the integration suite.
+- `ci` backend omitted (would trigger CI allocator locally — Finding 8).
+  It will be added in the GitHub Actions workflow (Task 7).
+- `lxd-vm` backend omitted for the same reason; can be added locally by developers
+  who have LXD available.
+- Suite `systems:` use bare names (`ubuntu-24.04`) since backend-qualified names
+  are rejected by the validator (Finding 8).
+
+**Actual content** (see `coordinator/spread.yaml` for the canonical copy):
 ```yaml
-project: pyroscope-operators
-
-path: /root/spread-project   # or wherever charmcraft mounts
-
-environment:
-  PROJECT_PATH: /root/spread-project
-  PYTHONPATH: $PROJECT_PATH
-  PY_COLORS: "1"
+project: pyroscope-coordinator-k8s
 
 exclude:
   - .git
   - .tox
   - .venv
-  - .*_cache
+  - ".*_cache"
 
 backends:
-  # 'craft' backend is auto-managed by `charmcraft test`.
-  # Optionally add 'ci' adhoc backend for GitHub Actions direct spread runs.
-  ci:
-    type: adhoc
+  craft:
     systems:
-      - ubuntu-24.04-64:
-          workers: 1
-    allocate: ADDRESS $(./spread/.extension allocate ci)
-    discard:  ./spread/.extension discard ci
+      - ubuntu-24.04
 
 suites:
+  spread/hello/:
+    summary: Trivial smoke test (Task 0 spike)
+    manual: true
+    systems:
+      - ubuntu-24.04
+
   spread/unit/:
-    summary: Unit tests
+    summary: Unit tests (coordinator + worker)
+    systems:
+      - ubuntu-24.04
+
+  spread/interface/:
+    summary: Interface compliance tests
+    systems:
+      - ubuntu-24.04
+
   spread/integration/:
     summary: Integration tests
     kill-timeout: 120m
+    systems:
+      - ubuntu-24.04
+    environment:
+      COORDINATOR_CHARM_PATH: "$PROJECT_PATH/coordinator"
+      WORKER_CHARM_PATH: "$PROJECT_PATH/worker"
+      COORDINATOR_CHARM_CHANNEL: "latest/edge"
+      WORKER_CHARM_CHANNEL: "latest/edge"
 ```
-
-**Agent instructions**:
-- Use the `canonical/charmcraft` `spread.yaml` as a structural reference.
-- The `ci` backend should reuse the `spread/.extension` pattern (Task 2).
-- Keep the file minimal; suites are fleshed out in later tasks.
 
 ---
 
 ### Task 2 — Create `spread/.extension` helper script
+
+> **Status: ✅ Done.** File: `coordinator/spread/.extension`.
 
 **Goal**: Provide the allocate / discard / prepare / restore shell helper for the adhoc CI backend, following the `canonical/charmcraft` pattern.
 

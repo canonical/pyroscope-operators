@@ -37,22 +37,62 @@
 # 7. SUITE SYSTEMS REQUIRED: Every suite must list at least one system.
 #    An omitted `systems:` serialises as `systems: []` which causes
 #    "nothing matches provider filter" at runtime.
+#
+# 8. BACKEND ISOLATION: Using bare system names (e.g. `ubuntu-24.04`) causes
+#    spread to run the suite on ALL backends that publish that system, which
+#    makes the `ci` backend run locally and the `craft` backend run in CI.
+#    Use backend-qualified names (`craft:ubuntu-24.04`, `ci:ubuntu-24.04`)
+#    to restrict each suite to the backends it is meant for.
 
 project: pyroscope-coordinator-k8s
 
-backends:
-  craft:
-    systems:
-      - ubuntu-24.04
-
-suites:
-  spread/hello/:
-    summary: Trivial smoke test — Task 0 spike
-    systems:
-      - ubuntu-24.04
+# NOTE: `path:`, `PROJECT_PATH`, and top-level `environment:` are not
+# permitted by CraftSpreadYaml — charmcraft injects them unconditionally.
+# Per-suite environment blocks are allowed (see integration suite below).
 
 exclude:
   - .git
   - .tox
   - .venv
   - ".*_cache"
+
+backends:
+  # craft: auto-managed by `charmcraft test` — only systems: is needed.
+  # The ci adhoc backend (for GitHub Actions direct spread runs) is added
+  # in the CI workflow (Task 7) and intentionally omitted here to prevent
+  # spread from trying to allocate a CI machine during local charmcraft test runs.
+  craft:
+    systems:
+      - ubuntu-24.04
+
+
+suites:
+  # Task 0 smoke test — kept for quick sanity checks.
+  spread/hello/:
+    summary: Trivial smoke test (Task 0 spike)
+    manual: true
+    systems:
+      - ubuntu-24.04
+
+  # Task 3 — unit + interface tests (no Juju required).
+  spread/unit/:
+    summary: Unit tests (coordinator + worker)
+    systems:
+      - ubuntu-24.04
+
+  spread/interface/:
+    summary: Interface compliance tests
+    systems:
+      - ubuntu-24.04
+
+  # Task 4/5 — integration tests (requires Juju + MicroK8s).
+  spread/integration/:
+    summary: Integration tests
+    kill-timeout: 120m
+    systems:
+      - ubuntu-24.04
+    environment:
+      COORDINATOR_CHARM_PATH: "$PROJECT_PATH/coordinator"
+      WORKER_CHARM_PATH: "$PROJECT_PATH/worker"
+      COORDINATOR_CHARM_CHANNEL: "latest/edge"
+      WORKER_CHARM_CHANNEL: "latest/edge"
