@@ -11,12 +11,11 @@ jobs:
         charm-path:
           - coordinator
           - worker
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@5275b2844cd7073dfdf843ea920d8aa406e1f404 # feat/spread-integration-tests
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@main
     secrets: inherit
     with:
       charm-path: ${{ matrix.charm-path }}
-      enable-integration: false
-      enable-spread-integration: ${{ matrix.charm-path == 'coordinator' }}
+      enable-integration: ${{ matrix.charm-path == 'coordinator' }}
       juju-channel: 3.6/candidate
   interfaces:
     strategy:
