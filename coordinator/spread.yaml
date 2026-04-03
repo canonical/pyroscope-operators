@@ -79,6 +79,10 @@ suites:
     summary: Unit tests (coordinator + worker)
     systems:
       - ubuntu-24.04
+    prepare: |
+      # Install tools required by the unit/interface test suites.
+      apt install -y tox
+      snap install astral-uv --classic
 
   spread/interface/:
     summary: Interface compliance tests
@@ -92,7 +96,62 @@ suites:
     systems:
       - ubuntu-24.04
     environment:
-      COORDINATOR_CHARM_PATH: "$PROJECT_PATH/coordinator"
-      WORKER_CHARM_PATH: "$PROJECT_PATH/worker"
-      COORDINATOR_CHARM_CHANNEL: "latest/edge"
-      WORKER_CHARM_CHANNEL: "latest/edge"
+      # Use the charm built and packed by charmcraft for the coordinator.
+      # COORDINATOR_CHARM_CHANNEL must NOT be set here: helpers.py checks
+      # channel before path, so setting both would silently deploy from
+      # charmhub instead of the locally built artifact.
+      COORDINATOR_CHARM_PATH: "$CRAFT_ARTIFACT"
+      # Worker is not built in this spread run; deploy it from charmhub.
+      WORKER_CHARM_CHANNEL: "2/edge"
+    prepare: |
+      # Free memory and avoid apt/snap lock contention from background services
+      # (mirrors the charm-dev multipass blueprint).
+      systemctl disable --now man-db.timer man-db.service || true
+      systemctl disable --now apport.service apport-autoreport.service || true
+      systemctl disable --now apt-daily.service apt-daily.timer || true
+      systemctl disable --now apt-daily-upgrade.service apt-daily-upgrade.timer || true
+      systemctl disable --now motd-news.service motd-news.timer || true
+
+      # Disable swap inside the VM so memory pressure causes fast OOM-kills
+      # rather than slow swapping that propagates pressure to the host.
+      swapoff -a || true
+      sysctl -w vm.swappiness=0
+
+      snap install microk8s --channel=1.32/stable --classic
+      snap install juju --channel=3.6/stable
+      snap install astral-uv --classic
+
+      microk8s status --wait-ready --timeout 360
+
+      # Enable each addon and wait for it to be fully ready before proceeding;
+      # racing Juju bootstrap against unready addons is the main cause of hangs.
+      microk8s enable dns
+      microk8s kubectl rollout status deployments/coredns -n kube-system --timeout=300s
+
+      microk8s enable hostpath-storage
+      microk8s kubectl rollout status deployments/hostpath-provisioner -n kube-system --timeout=300s
+
+      microk8s enable registry
+      microk8s kubectl rollout status deployment/registry -n container-registry --timeout=300s
+
+      # MetalLB is required for LoadBalancer services (e.g. Traefik in the ingress test).
+      apt-get install -y -q jq
+      IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+      microk8s enable metallb:"${IPADDR}-${IPADDR}"
+      microk8s kubectl rollout status daemonset/speaker -n metallb-system --timeout=300s
+
+      # The strictly-confined Juju snap cannot create ~/.local on its own.
+      mkdir -p /root/.local/share/juju
+
+      # Bootstrap Juju controller on top of MicroK8s.
+      microk8s config | juju add-k8s my-k8s --client
+      juju bootstrap my-k8s test-controller --config bootstrap-timeout=600
+    restore-each: |
+      # pytest_jubilant (invoked for active tests) destroys the model itself
+      # during the execute step.  This restore-each acts as a safety net for
+      # tests that fail/time-out before their own teardown can run.
+      # --no-wait avoids blocking the next task while Kubernetes garbage-collects
+      # the namespace; the suite-level restore destroys the whole controller.
+      juju destroy-model --force --no-prompt --destroy-storage --no-wait "test-${SPREAD_TASK##*/}" || true
+    restore: |
+      juju destroy-controller --force --destroy-all-models --destroy-storage --no-prompt --no-wait test-controller || true

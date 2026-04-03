@@ -93,8 +93,13 @@ allocate_lxdvm() {
 }
 
 discard_lxdvm() {
-    instance_name="$(lxc ls -f csv | grep ",$SPREAD_SYSTEM_ADDRESS " | cut -f1 -d",")"
-    lxc delete -f "$instance_name"
+    # When MicroK8s is running inside the VM, Calico adds a second interface,
+    # causing lxc to quote the IPv4 field and wrap it across two lines in CSV
+    # output.  The original pattern (,$IP ) no longer matches because the comma
+    # precedes the opening quote, not the IP itself.  Matching on just "$IP "
+    # (without the leading comma) picks up the correct line in both cases.
+    instance_name="$(lxc ls -f csv | grep "$SPREAD_SYSTEM_ADDRESS " | cut -f1 -d",")"
+    [ -n "$instance_name" ] && lxc delete -f "$instance_name"
 }
 
 # ---------------------------------------------------------------------------
@@ -113,9 +118,6 @@ prepare() {
         systemctl mask unattended-upgrades.service
     fi
 
-    # Install tools required by the unit/interface test suites.
-    apt-get install -y tox
-    snap install astral-uv --classic
 }
 
 restore() {

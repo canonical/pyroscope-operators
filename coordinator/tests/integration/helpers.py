@@ -93,6 +93,13 @@ def charm_and_channel_and_resources(
     if path_from_env := os.getenv(charm_path_key):
         charm_path = Path(path_from_env).absolute()
         logger.info("Using local %s charm: %s", role, charm_path)
+        if charm_path.suffix == ".charm":
+            # Pre-built .charm file (e.g. CRAFT_ARTIFACT from charmcraft test).
+            # OCI image resources are not embedded in the .charm archive — Juju
+            # needs their upstream-source URIs at deploy time.  Read them from
+            # charmcraft.yaml in the same directory as the packed charm file,
+            # which is the charm source root both locally and in the spread VM.
+            return charm_path, None, get_resources(charm_path.parent)
         # Ensure we read resources from the charm source directory for the
         # requested role, rather than from the parent of a packed charm file
         # which may be the repository root and contain a different charm's

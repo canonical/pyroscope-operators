@@ -1,0 +1,8 @@
+summary: Test COS integrations (metrics, logging, tracing, dashboards)
+kill-timeout: 90m
+priority: 90
+
+execute: |
+  cd "$PROJECT_PATH"
+  uv run --frozen --isolated --all-extras \
+    pytest --exitfirst --model="test-${SPREAD_TASK##*/}" tests/integration/test_self_monitoring.py -v

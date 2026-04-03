@@ -1,0 +1,8 @@
+summary: Test OTLP gRPC profile ingestion through OTel Collector with TLS
+kill-timeout: 90m
+priority: 100
+
+execute: |
+  cd "$PROJECT_PATH"
+  uv run --frozen --isolated --all-extras \
+    pytest --exitfirst --model="test-${SPREAD_TASK##*/}" tests/integration/test_profiling_with_collector_tls.py -v
