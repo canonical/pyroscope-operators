@@ -84,31 +84,37 @@ def charm_and_channel_and_resources(
     Build once per session and reuse it in all integration tests to save some minutes/hours.
     """
     _set_ci_charm_paths_if_unset()
+    # If a local path is set and the file/directory exists, prefer it over charmhub.
+    # When the path is set but the file is absent (e.g. worker not pre-packed),
+    # fall through to the channel check so the charm is fetched from charmhub instead.
+    if path_from_env := os.getenv(charm_path_key):
+        charm_path = Path(path_from_env).absolute()
+        if charm_path.exists():
+            logger.info("Using local %s charm: %s", role, charm_path)
+            if charm_path.suffix == ".charm":
+                # Pre-built .charm file (e.g. CRAFT_ARTIFACT from charmcraft test).
+                # OCI image resources are not embedded in the .charm archive — Juju
+                # needs their upstream-source URIs at deploy time.  Read them from
+                # charmcraft.yaml in the same directory as the packed charm file,
+                # which is the charm source root both locally and in the spread VM.
+                return charm_path, None, get_resources(charm_path.parent)
+            # Ensure we read resources from the charm source directory for the
+            # requested role, rather than from the parent of a packed charm file
+            # which may be the repository root and contain a different charm's
+            # metadata.
+            return (
+                charm_path,
+                None,
+                get_resources(REPO_ROOT / role),
+            )
+        logger.info(
+            "Local %s charm not found at %s; falling back to charmhub.", role, charm_path
+        )
     # deploy charm from charmhub
     if channel_from_env := os.getenv(charm_channel_key):
         charm = f"pyroscope-{role}-k8s"
         logger.info("Using published %s charm from %s", charm, channel_from_env)
         return charm, channel_from_env, None
-    # else deploy from a charm packed locally
-    if path_from_env := os.getenv(charm_path_key):
-        charm_path = Path(path_from_env).absolute()
-        logger.info("Using local %s charm: %s", role, charm_path)
-        if charm_path.suffix == ".charm":
-            # Pre-built .charm file (e.g. CRAFT_ARTIFACT from charmcraft test).
-            # OCI image resources are not embedded in the .charm archive — Juju
-            # needs their upstream-source URIs at deploy time.  Read them from
-            # charmcraft.yaml in the same directory as the packed charm file,
-            # which is the charm source root both locally and in the spread VM.
-            return charm_path, None, get_resources(charm_path.parent)
-        # Ensure we read resources from the charm source directory for the
-        # requested role, rather than from the parent of a packed charm file
-        # which may be the repository root and contain a different charm's
-        # metadata.
-        return (
-            charm_path,
-            None,
-            get_resources(REPO_ROOT / role),
-        )
     # else try to pack the charm
     for _ in range(3):
         logger.info("packing Pyroscope %s charm...", role)

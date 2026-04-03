@@ -67,28 +67,6 @@ backends:
 
 
 suites:
-  # Task 0 smoke test — kept for quick sanity checks.
-  spread/hello/:
-    summary: Trivial smoke test (Task 0 spike)
-    manual: true
-    systems:
-      - ubuntu-24.04
-
-  # Task 3 — unit + interface tests (no Juju required).
-  spread/unit/:
-    summary: Unit tests (coordinator + worker)
-    systems:
-      - ubuntu-24.04
-    prepare: |
-      # Install tools required by the unit/interface test suites.
-      apt install -y tox
-      snap install astral-uv --classic
-
-  spread/interface/:
-    summary: Interface compliance tests
-    systems:
-      - ubuntu-24.04
-
   # Task 4/5 — integration tests (requires Juju + MicroK8s).
   spread/integration/:
     summary: Integration tests
@@ -96,13 +74,18 @@ suites:
     systems:
       - ubuntu-24.04
     environment:
-      # Use the charm built and packed by charmcraft for the coordinator.
-      # COORDINATOR_CHARM_CHANNEL must NOT be set here: helpers.py checks
-      # channel before path, so setting both would silently deploy from
-      # charmhub instead of the locally built artifact.
+      # Coordinator: always use the charm packed by charmcraft for this run.
       COORDINATOR_CHARM_PATH: "$CRAFT_ARTIFACT"
-      # Worker is not built in this spread run; deploy it from charmhub.
-      WORKER_CHARM_CHANNEL: "2/edge"
+      # Worker: use a locally pre-packed charm when available, otherwise fall
+      # back to charmhub.  helpers.py checks PATH first (existence-gated) and
+      # only falls through to CHANNEL when the file is absent.
+      #
+      # To test with a locally built worker charm, run:
+      #   coordinator/scripts/pack-worker.sh
+      # That script packs worker/ into coordinator/.worker-charm/ (gitignored)
+      # and copies worker/charmcraft.yaml there for OCI-resource lookups.
+      WORKER_CHARM_PATH: "$PROJECT_PATH/.worker-charm/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm"
+      WORKER_CHARM_CHANNEL: "dev/edge"
     prepare: |
       # Free memory and avoid apt/snap lock contention from background services
       # (mirrors the charm-dev multipass blueprint).

@@ -14,13 +14,10 @@ LLM agent with minimal ambiguity.
 
 | Task | Description | State |
 |------|-------------|-------|
-| 0 | Validate `charmcraft test` invocation (spike) | ✅ Done |
 | 1 | Create project-level `spread.yaml` | ✅ Done |
 | 2 | Create `spread/.extension` helper script | ✅ Done |
-| 3 | Create unit-tests spread suite | ✅ Done |
 | 4 | Create integration-tests spread suite (scaffold) | ✅ Done |
 | 5 | Create `task.yaml` for each integration test file | ✅ Done |
-| 6 | Create `task.yaml` for interface tests | ⬜ Pending |
 | 7 | Update GitHub Actions CI to use `charmcraft test` | ⬜ Pending |
 | 8 | Verify full spread run (end-to-end) | ✅ Done |
 | 9 | Documentation updates | ⬜ Pending |
@@ -50,24 +47,6 @@ These numbers reflect wall-clock time measured on the local development machine
 (LXD VM backend).  The spread column includes every phase: VM allocation, OS
 boot, `backend-prepare`, `prepare-each`, the actual test run, `restore-each`,
 `restore`, and VM discard.  Update this table whenever a new suite is verified.
-
-### Unit tests
-
-| Phase | Duration |
-|-------|----------|
-| VM allocation + boot | ~44 s |
-| `backend-prepare` (apt update, install tox + uv) | ~73 s |
-| `prepare-each` | <1 s |
-| Test execution (`tox -e unit`, coordinator + worker) | ~30 s |
-| `restore` + VM discard | ~1 s |
-| **Total (`charmcraft test spread/unit/`)** | **~3 m 02 s** |
-| **Direct `tox -e unit` (host, warm env)** | **~24 s** |
-
-Spread adds roughly **2 m 38 s** of infrastructure overhead per run.  Most of
-that cost is paid once per suite invocation (VM boot + OS setup), not per
-task — so suites with many tasks will see a proportionally smaller overhead
-ratio.  In CI the VM is already provisioned by the runner, so the `backend-prepare`
-cost becomes the dominant overhead (~1 m) rather than VM boot.
 
 ### Integration tests
 
@@ -102,7 +81,7 @@ Active tests (ingress: ~6 m, scaling-monolithic: ~12 m) dominate the runtime.
 | **Interface tests** | Run inside `tox -e unit` for coordinator, separate `tox -e interface` for worker. Uses `InterfaceTester`. |
 | **Integration tests** | `tox -e integration` → pytest in `coordinator/tests/integration/` (moved from repo root `tests/integration/` to live inside the coordinator directory tree, which is the unit charmcraft syncs to the spread VM; repo-root symlink maintained for `tox` compatibility). 8 test files; 2 active (`test_ingress.py`, `test_scaling_monolithic.py`), 6 skipped (profiling / retention / self-monitoring, Issues #291 and #315). 6 BDD feature files already exist. |
 | **CI** | GitHub Actions using `canonical/observability` reusable workflows (`charm-pull-request.yaml`, `charm-quality-gates.yaml`). No spread today. |
-| **Spread** | `coordinator/spread.yaml` present. `coordinator/spread/.extension` present. Smoke suite (`spread/hello/`) verified passing. Unit suite (`spread/unit/`) verified passing. Integration suite fully verified: `charmcraft test spread/integration/` passes all 8 tasks (6 skipped, 2 active). |
+| **Spread** | `coordinator/spread.yaml` present. `coordinator/spread/.extension` present. Integration suite fully verified: `charmcraft test spread/integration/` passes all 8 tasks (6 skipped, 2 active). |
 | **charmcraft** | v4.0.1 installed; `charmcraft test` available (wraps spread with a managed craft backend). |
 
 ### Key reference
@@ -112,73 +91,6 @@ Active tests (ingress: ~6 m, scaling-monolithic: ~12 m) dominate the runtime.
 ---
 
 ## Task Breakdown
-
-### Task 0 — Validate `charmcraft test` invocation (spike)
-
-> **Status: ✅ Done.** Findings documented below and in `coordinator/spread.yaml`.
-
-**Goal**: Confirm the minimum viable `spread.yaml` that `charmcraft test` accepts for this charm and understand the craft-managed backend behaviour.
-
-**Steps**:
-1. In either `coordinator/` or at the repo root, create a minimal `spread.yaml` with:
-   - A single `craft` backend (the one `charmcraft test` injects automatically) *or* a `ci` adhoc backend matching the pattern in `canonical/charmcraft`.
-   - One trivial suite (`spread/hello/`) with a `task.yaml` that runs `echo hello`.
-2. Run `charmcraft test` from the charm directory and observe:
-   - Does it require a `spread.yaml` at the project root, or inside each charm dir?
-   - Does it synthesise its own backend or expect one in `spread.yaml`?
-   - What is the working directory inside the spread environment?
-3. Document findings in a short comment at the top of `spread.yaml`.
-4. Clean up the hello-world task (or keep it as a `manual: true` smoke test).
-
-**Acceptance**: `charmcraft test` succeeds on at least one trivial task and the behaviour is understood.
-
-**Findings** (also recorded in `coordinator/spread.yaml`):
-
-1. **Location**: `spread.yaml` must live in the charm directory (same dir as
-   `charmcraft.yaml`). `charmcraft test` is invoked from the charm directory
-   and reads `spread.yaml` from there. A repo-root `spread.yaml` is not used.
-
-2. **Craft backend**: charmcraft auto-injects the `craft:` backend at runtime.
-   The system name must match the host distro string produced by
-   `craft_platforms.DistroBase` (e.g. `ubuntu-24.04`). Only `systems:` is
-   needed in `spread.yaml` — all other backend fields are injected.
-
-3. **Path / env**: charmcraft processes `spread.yaml` into a temporary file
-   that hard-codes `path: /root/proj`, `PROJECT_PATH: /root/proj`, and
-   `CRAFT_ARTIFACT: $PROJECT_PATH/<charm-filename>`.
-   Do **not** declare `path:`, `PROJECT_PATH:`, or a top-level `environment:`
-   block — charmcraft injects them unconditionally and the validator rejects
-   the extra keys (`Extra inputs are not permitted`).
-
-4. **Reroot**: charmcraft adds `reroot: ".."` so spread resolves all suite/task
-   paths relative to the charm directory. Suite keys such as `spread/hello/`
-   map to `coordinator/spread/hello/`.
-
-5. **Extension script**: `craft_application` generates allocate/discard/prepare/
-   restore hooks that call `spread/.extension` with the backend name
-   (`lxd-vm` locally, `ci` in CI). The script lives at
-   `coordinator/spread/.extension`.
-
-6. **Task structure**: each suite directory contains task *subdirectories*, each
-   holding a `task.yaml`. A `task.yaml` placed directly at the suite root is
-   **not** discovered by spread.
-   - Correct: `spread/<suite>/<task>/task.yaml`
-   - Wrong: `spread/<suite>/task.yaml` ← silently ignored
-
-7. **Suite systems required**: every suite must list at least one system.
-   An omitted `systems:` serialises as `systems: []` which causes
-   "nothing matches provider filter" at runtime.
-
-8. **Backend isolation**: using bare system names (e.g. `ubuntu-24.04`) causes
-   spread to run the suite on **all** backends that publish that system. Adding
-   a `ci` adhoc backend to `spread.yaml` therefore makes the CI allocator run
-   during local `charmcraft test` runs, causing failures. The `ci` backend is
-   intentionally omitted from `spread.yaml`; it is added by the GitHub Actions
-   workflow (Task 7). Backend-qualified system names
-   (`craft:ubuntu-24.04`) are rejected by `CraftSpreadYaml` and cannot be used
-   as a workaround.
-
----
 
 ### Task 1 — Create project-level `spread.yaml`
 
@@ -215,22 +127,6 @@ backends:
       - ubuntu-24.04
 
 suites:
-  spread/hello/:
-    summary: Trivial smoke test (Task 0 spike)
-    manual: true
-    systems:
-      - ubuntu-24.04
-
-  spread/unit/:
-    summary: Unit tests (coordinator + worker)
-    systems:
-      - ubuntu-24.04
-
-  spread/interface/:
-    summary: Interface compliance tests
-    systems:
-      - ubuntu-24.04
-
   spread/integration/:
     summary: Integration tests
     kill-timeout: 120m
@@ -260,38 +156,6 @@ suites:
 - `backend-restore`: clean up `$PROJECT_PATH`.
 - `backend-prepare-each` / `backend-restore-each`: no-op for now.
 - Mark the file `chmod +x`.
-
----
-
-### Task 3 — Create the **unit-tests** spread suite
-
-> **Status: ✅ Done.** Files: `coordinator/spread/unit/all/task.yaml`, `coordinator/spread/.extension` (updated to install tox + uv).
-
-**Goal**: Wrap the existing `tox -e unit` invocation in a spread task so that unit tests can be run via `charmcraft test spread/unit/`.
-
-**Directory layout**:
-```
-spread/
-  unit/
-    all/
-      task.yaml
-```
-
-**`spread/unit/all/task.yaml`**:
-```yaml
-summary: Run all unit tests (coordinator + worker)
-
-execute: |
-  cd "$PROJECT_PATH"
-  tox -e unit
-```
-
-**Agent instructions**:
-- The `prepare` / `restore` at suite level should ensure tox and uv are available (they should be from Task 2).
-- No Juju or K8s dependencies.
-- Optionally split into `spread/unit/coordinator/task.yaml` and `spread/unit/worker/task.yaml` if independent runs are desired. This would enable parallel execution.
-
-**Acceptance**: `charmcraft test spread/unit/` runs and all unit tests pass.
 
 ---
 
@@ -470,40 +334,6 @@ execute: |
 
 ---
 
-### Task 6 — Create `task.yaml` for interface tests
-
-**Goal**: Wrap interface tests in spread tasks.
-
-**Directory layout**:
-```
-spread/
-  interface/
-    coordinator/task.yaml
-    worker/task.yaml
-```
-
-**Example — `spread/interface/coordinator/task.yaml`**:
-```yaml
-summary: Run coordinator interface compliance tests
-
-execute: |
-  cd "$PROJECT_PATH/coordinator"
-  tox -e unit  # interface tests are bundled into the unit env
-```
-
-*(Or, if split out)*:
-```yaml
-execute: |
-  cd "$PROJECT_PATH/coordinator"
-  uv run --frozen --isolated pytest tests/interface -v
-```
-
-**Agent instructions**:
-- Interface tests are lightweight (no Juju needed) — keep prepare/restore minimal.
-- Review `coordinator/tox.ini` and `worker/tox.ini` to determine the exact invocation.
-
----
-
 ### Task 7 — Update GitHub Actions CI to use `charmcraft test`
 
 **Goal**: Add (or replace) CI workflow steps that invoke `charmcraft test`.
@@ -570,24 +400,17 @@ Three bugs were found and fixed during the full-suite run:
 ## Dependency Graph
 
 ```
-Task 0  (spike: validate charmcraft test)
-  │
-  ▼
 Task 1  (spread.yaml)  ──►  Task 2  (spread/.extension)
   │                              │
   ├──────────────────────────────┤
   │                              │
   ▼                              ▼
-Task 3  (unit suite)       Task 4  (integration suite scaffold)
-  │                              │
-  │                              ▼
-  │                        Task 5  (integration task.yaml files)
-  │                              │
-  ▼                              │
-Task 6  (interface suite)        │
-  │                              │
-  ├──────────────────────────────┤
-  ▼                              ▼
+Task 4  (integration suite scaffold)
+  │
+  ▼
+Task 5  (integration task.yaml files)
+  │
+  ▼
 Task 7  (CI workflow)
   │
   ▼
@@ -597,8 +420,7 @@ Task 8  (E2E verification)
 Task 9  (Documentation)
 ```
 
-Tasks 3, 4, and 6 can be worked on in **parallel** once Tasks 1 and 2 are done.
-Tasks 5 depends on Task 4. Tasks 7–9 are sequential.
+Tasks 4 and 5 are sequential. Tasks 7–9 follow after Task 5.
 
 ---
 
@@ -608,7 +430,6 @@ Tasks 5 depends on Task 4. Tasks 7–9 are sequential.
 |------|------|
 | `spread.yaml` | 1 |
 | `spread/.extension` | 2 |
-| `spread/unit/all/task.yaml` (or per-charm split) | 3 |
 | `spread/integration/ingress/task.yaml` | 5 |
 | `spread/integration/profiling/task.yaml` | 5 |
 | `spread/integration/profiling-tls/task.yaml` | 5 |
@@ -617,8 +438,6 @@ Tasks 5 depends on Task 4. Tasks 7–9 are sequential.
 | `spread/integration/retention/task.yaml` | 5 |
 | `spread/integration/scaling-monolithic/task.yaml` | 5 |
 | `spread/integration/self-monitoring/task.yaml` | 5 |
-| `spread/interface/coordinator/task.yaml` | 6 |
-| `spread/interface/worker/task.yaml` | 6 |
 | `.github/workflows/spread-tests.yaml` | 7 |
 
 ## Files to modify (summary)
