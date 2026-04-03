@@ -11,7 +11,7 @@ jobs:
         charm-path:
           - coordinator
           - worker
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@feat/spread-integration-tests
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@5275b2844cd7073dfdf843ea920d8aa406e1f404 # feat/spread-integration-tests
     secrets: inherit
     with:
       charm-path: ${{ matrix.charm-path }}
