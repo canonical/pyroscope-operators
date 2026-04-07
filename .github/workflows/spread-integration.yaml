@@ -99,7 +99,7 @@ jobs:
       - name: Setup LXD
         uses: canonical/setup-lxd@main
       - name: Install charmcraft
-        run: sudo snap install charmcraft --classic --channel="3.x/candidate"
+        run: sudo snap install charmcraft --classic
       - name: Run spread test
         env:
           SUITE: "${{ matrix.suite }}"
