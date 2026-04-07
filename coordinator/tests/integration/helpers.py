@@ -108,7 +108,9 @@ def charm_and_channel_and_resources(
                 get_resources(REPO_ROOT / role),
             )
         logger.info(
-            "Local %s charm not found at %s; falling back to charmhub.", role, charm_path
+            "Local %s charm not found at %s; falling back to charmhub.",
+            role,
+            charm_path,
         )
     # deploy charm from charmhub
     if channel_from_env := os.getenv(charm_channel_key):
