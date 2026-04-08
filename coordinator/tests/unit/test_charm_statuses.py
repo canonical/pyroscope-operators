@@ -1,185 +1,128 @@
 import ops
+import pytest
 from conftest import k8s_patch
 from ops.testing import PeerRelation, State
+from pytest_bdd import given, parsers, scenarios, then, when
+
+scenarios("charm_statuses.feature")
 
 
-def test_monolithic_status_no_s3_no_workers(
-    context, nginx_container, nginx_prometheus_exporter_container
-):
-    state_out = context.run(
-        context.on.start(),
-        State(
-            unit_status=ops.ActiveStatus(),
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            leader=True,
-        ),
+# --- shared mutable state fixture ---
+
+
+@pytest.fixture
+def state_params():
+    """Accumulates state inputs set by Given steps, consumed by When steps."""
+    return {"relations": [], "config": {}}
+
+
+@pytest.fixture
+def k8s_override_status():
+    """Default: no k8s patch override; overridden by specific Given steps."""
+    return None
+
+
+# --- Given steps ---
+
+
+@given("the coordinator has no peer units")
+def no_peers(state_params):
+    pass  # absence step: documents that no peer relation is added
+
+
+@given("the coordinator has peer units")
+def has_peers(state_params):
+    state_params["relations"].append(PeerRelation("peers", peers_data={1: {}, 2: {}}))
+
+
+@given("the coordinator has an S3 relation")
+def has_s3(state_params, s3):
+    state_params["relations"].append(s3)
+
+
+@given("the coordinator has a worker relation")
+def has_worker(state_params, all_worker):
+    state_params["relations"].append(all_worker)
+
+
+@given("the Kubernetes resource patch reports blocked status", target_fixture="k8s_override_status")
+def k8s_blocked():
+    return ops.BlockedStatus("`juju trust` this application")
+
+
+@given("the Kubernetes resource patch reports waiting status", target_fixture="k8s_override_status")
+def k8s_waiting():
+    return ops.WaitingStatus("waiting")
+
+
+@given(parsers.parse('the retention_period config is "{value}"'))
+def config_retention(state_params, value):
+    state_params["config"]["retention_period"] = value
+
+
+# --- When steps ---
+
+
+@when("the charm starts", target_fixture="state_out")
+def charm_starts(context, state_params, nginx_container, nginx_prometheus_exporter_container):
+    state = State(
+        relations=state_params["relations"],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        unit_status=ops.ActiveStatus(),
+        leader=True,
+        config=state_params["config"],
     )
-    assert state_out.unit_status.name == "blocked"
+    return context.run(context.on.start(), state)
 
 
-def test_scaled_status_no_s3(
-    context, nginx_container, nginx_prometheus_exporter_container
-):
-    state_out = context.run(
-        context.on.start(),
-        State(
-            relations=[PeerRelation("peers", peers_data={1: {}, 2: {}})],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-        ),
-    )
-    assert state_out.unit_status.name == "blocked"
-
-
-def test_scaled_status_no_workers(
-    context, nginx_container, nginx_prometheus_exporter_container
-):
-    state_out = context.run(
-        context.on.start(),
-        State(
-            relations=[PeerRelation("peers", peers_data={1: {}, 2: {}})],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-        ),
-    )
-    assert state_out.unit_status.name == "blocked"
-
-
-def test_scaled_status_with_s3_and_workers(
-    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
-):
-    state_out = context.run(
-        context.on.start(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
-    )
-    assert state_out.unit_status.name == "active"
-
-
-def test_happy_status(
+@when("an update-status event is processed", target_fixture="state_out")
+def update_status(
     context,
-    s3,
-    all_worker,
+    state_params,
     nginx_container,
     nginx_prometheus_exporter_container,
+    k8s_override_status,
 ):
-    state_out = context.run(
-        context.on.start(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
+    state = State(
+        relations=state_params["relations"],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        unit_status=ops.ActiveStatus(),
+        leader=True,
+        config=state_params["config"],
     )
-    assert state_out.unit_status.name == "active"
+    if k8s_override_status is not None:
+        with k8s_patch(status=k8s_override_status):
+            return context.run(context.on.update_status(), state)
+    return context.run(context.on.update_status(), state)
 
 
-def test_happy_status_message(
-    context,
-    s3,
-    all_worker,
-    nginx_container,
-    nginx_prometheus_exporter_container,
+@when("a config-changed event is processed", target_fixture="state_out")
+def config_changed(
+    context, state_params, nginx_container, nginx_prometheus_exporter_container
 ):
-    state_out = context.run(
-        context.on.start(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
+    state = State(
+        relations=state_params["relations"],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        unit_status=ops.ActiveStatus(),
+        leader=True,
+        config=state_params["config"],
     )
-    assert state_out.unit_status.message == "[degraded] UI ready at http://foo.com:8080"
+    return context.run(context.on.config_changed(), state)
 
 
-@k8s_patch(status=ops.BlockedStatus("`juju trust` this application"))
-def test_k8s_patch_failed(
-    context,
-    s3,
-    all_worker,
-    nginx_container,
-    nginx_prometheus_exporter_container,
-):
-    state_out = context.run(
-        context.on.update_status(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
-    )
-    assert state_out.unit_status == ops.BlockedStatus("`juju trust` this application")
+# --- Then steps ---
 
 
-def test_blocked_status_when_invalid_compactor_blocks_retention_period(
-    context,
-    s3,
-    all_worker,
-    nginx_container,
-    nginx_prometheus_exporter_container,
-):
-    state_out = context.run(
-        context.on.config_changed(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            leader=True,
-            config={"retention_period": "invalid"},
-        ),
-    )
-    assert state_out.unit_status.name == "blocked"
-    assert (
-        state_out.unit_status.message
-        == "The following configurations are not valid: ['retention_period']"
-    )
+@then(parsers.parse('the charm unit status is "{status}"'))
+def check_status(state_out, status):
+    assert state_out.unit_status.name == status
 
 
-@k8s_patch(status=ops.WaitingStatus("waiting"))
-def test_k8s_patch_waiting(
-    context,
-    s3,
-    all_worker,
-    nginx_container,
-    nginx_prometheus_exporter_container,
-):
-    state_out = context.run(
-        context.on.update_status(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
-    )
-    assert state_out.unit_status == ops.WaitingStatus("waiting")
+@then(parsers.parse('the status message contains "{text}"'))
+def check_message_contains(state_out, text):
+    assert text in state_out.unit_status.message
+
+
+@then(parsers.parse('the status message is "{message}"'))
+def check_message_exact(state_out, message):
+    assert state_out.unit_status.message == message
