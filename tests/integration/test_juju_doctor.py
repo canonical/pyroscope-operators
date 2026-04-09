@@ -4,16 +4,18 @@
 import pytest
 import sh
 from jubilant import Juju, all_active, all_blocked
+from pytest_bdd import scenarios, given, when, then
 
 from tests.integration.helpers import (
     ALL_ROLES,
     PYROSCOPE_APP,
-    WORKER_APP,
     deploy_s3,
     BUCKET_NAME,
     S3_APP,
     _deploy_and_configure_minio,
 )
+
+scenarios("juju-doctor.feature")
 
 
 def _deploy_worker(juju: Juju, worker_charm, role: str, scale: int):
@@ -33,25 +35,18 @@ def _deploy_worker(juju: Juju, worker_charm, role: str, scale: int):
     )
 
 
-@pytest.mark.setup
-def test_deploy_workers(juju: Juju, worker_charm):
-    # GIVEN an empty model
-
-    # WHEN deploying the workers with recommended scale
+@given("all worker roles are deployed")
+def deploy_workers(juju: Juju, worker_charm):
     for role in ALL_ROLES:
         _deploy_worker(juju, worker_charm, role, 1)
-
-    # THEN workers will be blocked because of missing coordinator integration
     juju.wait(
         lambda status: all_blocked(status, *ALL_ROLES),
         timeout=1000,
     )
 
 
-def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm):
-    # GIVEN a model with workers
-
-    # WHEN deploying and integrating the minimal pyroscope cluster
+@when("the coordinator and S3 are deployed and integrated with the workers")
+def deploy_coordinator_and_s3(juju: Juju, coordinator_charm):
     _deploy_and_configure_minio(juju)
     deploy_s3(juju, bucket_name=BUCKET_NAME, s3_integrator_app=S3_APP)
 
@@ -65,18 +60,21 @@ def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm)
     )
     juju.integrate(PYROSCOPE_APP + ":s3", S3_APP + ":s3-credentials")
     for role in ALL_ROLES:
-        juju.integrate(PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster")
+        juju.integrate(
+            PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster"
+        )
 
-    # THEN both the coordinator and the workers become active
+
+@then("the full cluster reaches active/idle")
+def cluster_active(juju: Juju):
     juju.wait(
         lambda status: all_active(status, PYROSCOPE_APP, *ALL_ROLES),
         timeout=5000,
     )
 
 
-def test_juju_doctor_probes(juju: Juju):
-    # GIVEN the full model
-    # THEN juju-doctor passes
+@then("the juju-doctor cluster-consistency probe passes")
+def juju_doctor_probe_passes(juju: Juju):
     try:
         sh.uvx(
             "juju-doctor",

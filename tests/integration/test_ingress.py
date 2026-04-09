@@ -11,6 +11,7 @@ from tenacity import wait_exponential as wexp, stop_after_attempt as satt
 import jubilant
 import pytest
 from jubilant import Juju
+from pytest_bdd import scenarios, given, when, then
 
 from tests.integration.helpers import (
     PYROSCOPE_APP,
@@ -26,6 +27,8 @@ NGINX_CONFIG_HTTP_SERVER_PORT = 8080
 NGINX_CONFIG_GRPC_SERVER_PORT = 42424
 
 logger = logging.getLogger(__name__)
+
+scenarios("ingress.feature")
 
 
 @tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))
@@ -60,30 +63,25 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
     assert "Welcome to nginx!" in proc.stdout
 
 
-@pytest.mark.setup
-def test_setup(juju: Juju):
-    # GIVEN an empty model
-    # WHEN deploying the pyroscope cluster and traefik
+@given("a pyroscope cluster is deployed alongside Traefik")
+def deploy_cluster_with_traefik(juju: Juju):
     juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="latest/stable", trust=True)
     deploy_monolithic_cluster(juju)
 
 
-def test_nginx_ui_route_before_ingress(juju: Juju):
-    """Verify that before we integrate ingress, we can hit the http endpoint through nginx."""
+@then("the HTTP endpoint is accessible directly through nginx")
+def http_accessible_via_nginx(juju: Juju):
     check_http_endpoint(juju, use_ingress=False)
 
 
-def test_nginx_grpc_server_route_before_ingress(juju: Juju):
-    """Verify that before we integrate ingress, we can hit the grpc endpoint through nginx."""
+@then("the gRPC endpoint is accessible directly through nginx")
+def grpc_accessible_via_nginx(juju: Juju):
     check_grpc_endpoint(juju, use_ingress=False)
 
 
-@pytest.mark.setup
-def test_add_ingress(juju):
-    # AND WHEN we integrate the pyroscope cluster with traefik over ingress
+@when("Traefik is integrated with pyroscope over ingress")
+def add_ingress_integration(juju: Juju):
     juju.integrate(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
-
-    # THEN the coordinator, worker, and traefik are all in active/idle state
     juju.wait(
         lambda status: jubilant.all_active(
             status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP
@@ -93,23 +91,19 @@ def test_add_ingress(juju):
     )
 
 
-def test_nginx_ui_route_with_ingress(juju: Juju):
-    """Verify that once we integrate ingress, we can hit the http endpoint through nginx."""
+@then("the HTTP endpoint is accessible via the ingress hostname")
+def http_accessible_via_ingress(juju: Juju):
     check_http_endpoint(juju, use_ingress=True)
 
 
-def test_nginx_grpc_server_route_with_ingress(juju: Juju):
-    """Verify that once we integrate ingress, we can hit the grpc endpoint through nginx."""
+@then("the gRPC endpoint is accessible via the ingress hostname")
+def grpc_accessible_via_ingress(juju: Juju):
     check_grpc_endpoint(juju, use_ingress=True)
 
 
-@pytest.mark.teardown
-def test_remove_ingress(juju: Juju):
-    # GIVEN a model with traefik and the pyroscope cluster integrated
-    # WHEN we remove the ingress relation
+@when("the ingress integration is removed")
+def remove_ingress_integration(juju: Juju):
     juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
-
-    # THEN the coordinator and worker are in active/idle state
     juju.wait(
         lambda status: jubilant.all_active(status, PYROSCOPE_APP, WORKER_APP),
         error=jubilant.any_error,
@@ -117,20 +111,8 @@ def test_remove_ingress(juju: Juju):
     )
 
 
-def test_nginx_ui_route_after_ingress(juju: Juju):
-    """Verify that after we remove ingress, we can once again hit the http endpoint through nginx."""
-    check_http_endpoint(juju, use_ingress=False)
-
-
-def test_nginx_grpc_server_route_after_ingress(juju: Juju):
-    """Verify that after we remove ingress, we can once again hit the grpc endpoint through nginx."""
-    check_grpc_endpoint(juju, use_ingress=False)
-
-
 @pytest.mark.teardown
 def test_teardown(juju: Juju):
-    # GIVEN a model with traefik and the pyroscope cluster
-    # WHEN we remove traefik, the coordinator, and the worker
     juju.remove_application(PYROSCOPE_APP)
     juju.remove_application(WORKER_APP)
     juju.remove_application(TRAEFIK_APP)

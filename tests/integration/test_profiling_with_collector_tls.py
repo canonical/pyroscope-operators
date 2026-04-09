@@ -23,20 +23,20 @@ from tests.integration.helpers import (
     SSC_APP,
 )
 from tests.integration.assertions import assert_profile_is_ingested
-from pytest_bdd import given, when, then
+from pytest_bdd import scenarios, given, when, then
+
+scenarios("profiling-with-collector-tls.feature")
 
 
-@pytest.mark.setup
 @given("a pyroscope cluster is deployed")
-def test_deploy_pyroscope(juju: Juju):
+def deploy_pyroscope(juju: Juju):
     deploy_monolithic_cluster(juju, wait_for_idle=False)
 
 
-@pytest.mark.setup
 @given(
     "an otel collector charm is deployed and integrated with pyroscope over profiling"
 )
-def test_deploy_and_integrate_collector(juju: Juju):
+def deploy_and_integrate_collector(juju: Juju):
     juju.deploy(
         "opentelemetry-collector-k8s",
         OTEL_COLLECTOR_APP,
@@ -55,9 +55,8 @@ def test_deploy_and_integrate_collector(juju: Juju):
     )
 
 
-@pytest.mark.setup
 @given("a certificates provider charm is deployed")
-def test_deploy_ssc(juju: Juju):
+def deploy_ssc(juju: Juju):
     juju.deploy("self-signed-certificates", SSC_APP)
     juju.wait(
         lambda status: all_active(status, SSC_APP),
@@ -65,9 +64,8 @@ def test_deploy_ssc(juju: Juju):
     )
 
 
-@pytest.mark.setup
 @given("the certificates provider charm is integrated with pyroscope over certificates")
-def test_integrate_ssc_pyroscope(juju: Juju):
+def integrate_ssc_pyroscope(juju: Juju):
     juju.integrate(f"{PYROSCOPE_APP}:certificates", SSC_APP)
     juju.wait(
         lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP, SSC_APP),
@@ -78,11 +76,10 @@ def test_integrate_ssc_pyroscope(juju: Juju):
     )
 
 
-@pytest.mark.setup
 @given(
     "the certificates provider charm is integrated with otel collector over receive-ca-cert"
 )
-def test_integrate_ssc_collector(juju: Juju):
+def integrate_ssc_collector(juju: Juju):
     juju.integrate(f"{OTEL_COLLECTOR_APP}:receive-ca-cert", SSC_APP)
     juju.wait(
         lambda status: all_active(status, OTEL_COLLECTOR_APP, SSC_APP),
@@ -94,7 +91,7 @@ def test_integrate_ssc_collector(juju: Juju):
 
 
 @when("we emit a profile to the otel collector using otlp grpc")
-def test_emit_profile_to_collector(juju: Juju):
+def emit_profile_to_collector(juju: Juju):
     collector_ip = get_unit_ip_address(juju, OTEL_COLLECTOR_APP, 0)
     emit_profile(
         endpoint=f"{collector_ip}:4317", service_name="profilegen-otel-collector"
@@ -103,7 +100,7 @@ def test_emit_profile_to_collector(juju: Juju):
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 @then("the profile should be ingested by pyroscope")
-def test_ingest_profile_from_collector(juju: Juju, ca_cert_path):
+def ingest_profile_from_collector(juju: Juju, ca_cert_path):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_profile_is_ingested(
         hostname=pyroscope_ip,

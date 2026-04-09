@@ -16,7 +16,7 @@ from tenacity import (
     wait_fixed,
 )
 from requests.auth import HTTPBasicAuth
-from pytest_bdd import given, then
+from pytest_bdd import scenarios, given, then
 
 from tests.integration.helpers import (
     deploy_distributed_cluster,
@@ -53,22 +53,19 @@ logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.skip
 
 
-@given("a pyroscope cluster is deployed with COS")
-@given("we integrate pyroscope and COS")
-@pytest.mark.setup
-def test_setup(juju: Juju):
-    # GIVEN an empty model
-    # WHEN we deploy a pyroscope cluster with distributed workers
-    # don't allow it to block so we can deploy all asynchronously
+scenarios("self-monitoring.feature")
+
+
+@pytest.fixture(scope="module")
+def _cos_cluster(juju: Juju):
+    """Deploy pyroscope with all COS components and integrations. Runs once per module."""
     pyro_apps = deploy_distributed_cluster(juju, ALL_ROLES, wait_for_idle=False)
 
-    # AND we deploy & integrate with loki
     juju.deploy(
         "loki-k8s", app=LOKI_APP, channel=INTEGRATION_TESTERS_CHANNEL, trust=True
     )
     juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
 
-    # AND prometheus
     juju.deploy(
         "prometheus-k8s",
         app=PROMETHEUS_APP,
@@ -79,7 +76,6 @@ def test_setup(juju: Juju):
         PYROSCOPE_APP + ":metrics-endpoint", PROMETHEUS_APP + ":metrics-endpoint"
     )
 
-    # AND tempo
     juju.deploy(
         "tempo-coordinator-k8s",
         app=TEMPO_APP,
@@ -98,7 +94,6 @@ def test_setup(juju: Juju):
     juju.integrate(PYROSCOPE_APP + ":charm-tracing", TEMPO_APP + ":tracing")
     juju.integrate(PYROSCOPE_APP + ":workload-tracing", TEMPO_APP + ":tracing")
 
-    # AND catalogue
     juju.deploy(
         "catalogue-k8s",
         CATALOGUE_APP,
@@ -106,7 +101,6 @@ def test_setup(juju: Juju):
     )
     juju.integrate(PYROSCOPE_APP, CATALOGUE_APP)
 
-    # AND grafana
     juju.deploy(
         "grafana-k8s",
         GRAFANA_APP,
@@ -116,7 +110,6 @@ def test_setup(juju: Juju):
     juju.integrate(PYROSCOPE_APP + ":grafana-dashboard", GRAFANA_APP)
     juju.integrate(PYROSCOPE_APP + ":grafana-source", GRAFANA_APP)
 
-    # THEN the pyroscope cluster and the cos components get to active/idle
     juju.wait(
         lambda status: all_active(status, *COS_COMPONENTS, *pyro_apps),
         timeout=3000,
@@ -125,16 +118,19 @@ def test_setup(juju: Juju):
     )
 
 
+@given("a pyroscope cluster is deployed and integrated with COS")
+def cluster_deployed_with_cos(_cos_cluster):
+    """Background step: asserts the COS cluster is deployed. Actual deployment is in _cos_cluster fixture."""
+
+
 @then("metrics are sent to prometheus")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_metrics_integration(juju: Juju):
-    # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
+def metrics_integration(juju: Juju):
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
-    # WHEN we query the metrics for the coordinator and each of the workers
     url = f"http://{address}:9090/api/v1/query"
+    # Verify per-app metrics for the coordinator and each worker
     for app in (PYROSCOPE_APP, *ALL_WORKERS):
         params = {"query": f"up{{juju_application='{app}'}}"}
-        # THEN we should get a successful response and at least one result
         try:
             response = requests.get(url, params=params)
             data = response.json()
@@ -142,30 +138,20 @@ def test_metrics_integration(juju: Juju):
             assert len(data["data"]["result"]) > 0, f"No metrics found for app '{app}'"
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
-
-
-@then("metrics are sent to prometheus")
-@retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_metrics_nginx_integration(juju: Juju):
-    # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
-    address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
-    # WHEN we query for a metric from nginx-prometheus-exporter in the coordinator
-    url = f"http://{address}:9090/api/v1/query"
-    app = PYROSCOPE_APP
-    params = {"query": f"nginx_up{{juju_application='{app}'}}"}
-    # THEN we should get a successful response and at least one result
+    # Also verify nginx-prometheus-exporter metrics from the coordinator
+    params = {"query": f"nginx_up{{juju_application='{PYROSCOPE_APP}'}}"}
     try:
         response = requests.get(url, params=params)
         data = response.json()
-        assert data["status"] == "success", f"Metrics query failed for app '{app}'"
-        assert len(data["data"]["result"]) > 0, f"No metrics found for app '{app}'"
+        assert data["status"] == "success", "Nginx metrics query failed"
+        assert len(data["data"]["result"]) > 0, "No nginx metrics found"
     except requests.exceptions.RequestException as e:
-        assert False, f"Request to Prometheus failed for app '{app}': {e}"
+        assert False, f"Request to Prometheus failed for nginx metrics: {e}"
 
 
 @then("charm traces are sent to tempo")
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
-def test_charm_tracing_integration(juju: Juju):
+def charm_tracing_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with tempo over charm-tracing
     address = get_unit_ip_address(juju, TEMPO_APP, 0)
     # WHEN we query the tags for all ingested traces in Tempo
@@ -181,7 +167,7 @@ def test_charm_tracing_integration(juju: Juju):
 
 @then("Pyroscope logs are sent to loki")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
-def test_logging_integration(juju: Juju):
+def logging_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki over logging
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query the logs for each worker
@@ -201,7 +187,7 @@ def test_logging_integration(juju: Juju):
 
 
 @then("catalogue items are provisioned")
-def test_catalogue_integration(juju: Juju):
+def catalogue_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with catalogue
     catalogue_unit = f"{CATALOGUE_APP}/0"
     # get Pyroscope's catalogue item URL
@@ -221,7 +207,7 @@ def test_catalogue_integration(juju: Juju):
 
 
 @then("Dashboards are provisioned")
-def test_dashboard_integration(juju: Juju):
+def dashboard_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with grafana
     address = get_unit_ip_address(juju, GRAFANA_APP, 0)
     grafana_unit = f"{GRAFANA_APP}/0"
@@ -255,7 +241,7 @@ def grafana_admin_creds(juju) -> str:
 @retry(
     wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True
 )
-def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
+def grafana_source_integration(juju: Juju, grafana_admin_creds):
     """Verify that the pyroscope datasource is registered in grafana."""
     graf_ip = get_unit_ip_address(juju, GRAFANA_APP, 0)
     res = requests.get(f"http://{grafana_admin_creds}@{graf_ip}:3000/api/datasources")
@@ -263,7 +249,7 @@ def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
 
 
 @then("alert rules are sent to prometheus")
-def test_alert_rules_integration(juju: Juju):
+def alert_rules_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with prometheus over metrics-endpoint
     address = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
     # WHEN we query for alert rules
@@ -289,7 +275,7 @@ def test_alert_rules_integration(juju: Juju):
 
 
 @then("loki alert rules are sent to loki")
-def test_loki_alert_rules_integration(juju: Juju):
+def loki_alert_rules_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query for alert rules
