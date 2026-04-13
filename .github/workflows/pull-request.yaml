@@ -11,7 +11,7 @@ jobs:
         charm-path:
           - coordinator
           - worker
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@main
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@24a038ccdd4104534f15ceb917451505ccea245f # main
     secrets: inherit
     with:
       charm-path: ${{ matrix.charm-path }}
@@ -24,7 +24,7 @@ jobs:
         charm:
           - pyroscope-coordinator-k8s
           - pyroscope-worker-k8s
-    uses: canonical/charmlibs/.github/workflows/interface-tests.yaml@interface-tests-v0
+    uses: canonical/charmlibs/.github/workflows/interface-tests.yaml@0954e6638760b134fb93013689553eadba3f9261 # interface-tests-v0
     with:
       charm: ${{ matrix.charm }}
       charm-repo: ${{ github.event.pull_request.head.repo.full_name }}
