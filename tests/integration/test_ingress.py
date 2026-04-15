@@ -28,7 +28,7 @@ NGINX_CONFIG_GRPC_SERVER_PORT = 42424
 
 logger = logging.getLogger(__name__)
 
-scenarios("ingress.feature")
+scenarios("common/ingress.feature")
 
 
 @tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))

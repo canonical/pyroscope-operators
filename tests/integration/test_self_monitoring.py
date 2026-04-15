@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.skip
 
 
-scenarios("self-monitoring.feature")
+scenarios("common/self-monitoring.feature")
 
 
 @pytest.fixture(scope="module")
