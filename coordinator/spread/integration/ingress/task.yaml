@@ -1,0 +1,7 @@
+summary: Test Traefik ingress integration
+kill-timeout: 60m
+
+execute: |
+  cd "$PROJECT_PATH"
+  uv run --frozen --isolated --all-extras \
+    pytest --exitfirst --model="test-${SPREAD_TASK##*/}" tests/integration/test_ingress.py -v

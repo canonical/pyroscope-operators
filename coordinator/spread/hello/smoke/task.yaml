@@ -1,0 +1,7 @@
+summary: Trivial smoke test (Task 0 spike)
+
+execute: |
+  echo "=== hello from spread ==="
+  echo "PROJECT_PATH=$PROJECT_PATH"
+  echo "CRAFT_ARTIFACT=$CRAFT_ARTIFACT"
+  ls "$PROJECT_PATH/" | head -10

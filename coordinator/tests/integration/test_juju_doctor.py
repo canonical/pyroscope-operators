@@ -8,7 +8,6 @@ from jubilant import Juju, all_active, all_blocked
 from tests.integration.helpers import (
     ALL_ROLES,
     PYROSCOPE_APP,
-    WORKER_APP,
     deploy_s3,
     BUCKET_NAME,
     S3_APP,
@@ -65,7 +64,9 @@ def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm)
     )
     juju.integrate(PYROSCOPE_APP + ":s3", S3_APP + ":s3-credentials")
     for role in ALL_ROLES:
-        juju.integrate(PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster")
+        juju.integrate(
+            PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster"
+        )
 
     # THEN both the coordinator and the workers become active
     juju.wait(

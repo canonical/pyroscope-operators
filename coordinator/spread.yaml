@@ -1,0 +1,140 @@
+# Spread configuration for pyroscope-coordinator-k8s.
+#
+# FINDINGS FROM TASK 0 SPIKE (charmcraft test investigation):
+#
+# 1. LOCATION: spread.yaml must live in the charm directory (same dir as
+#    charmcraft.yaml). `charmcraft test` is invoked from the charm directory
+#    and reads spread.yaml from there.
+#
+# 2. CRAFT BACKEND: charmcraft auto-injects the `craft:` backend at runtime.
+#    The system name must match the host distro string produced by
+#    craft_platforms.DistroBase (e.g. "ubuntu-24.04").  On CI the name is
+#    detected automatically; locally an `lxd-vm` backend is used instead.
+#    Only `systems:` is needed here — all other backend fields are injected.
+#
+# 3. PATH / ENV: charmcraft processes this file into a temporary spread.yaml
+#    that hard-codes:
+#      path:           /root/proj
+#      PROJECT_PATH:   /root/proj
+#      CRAFT_ARTIFACT: $PROJECT_PATH/<packed-charm-filename>
+#    Do not declare these here; they are injected unconditionally.
+#
+# 4. REROOT: charmcraft adds `reroot: ".."` so spread resolves all suite/task
+#    paths relative to the charm directory (parent of the temp dir it creates).
+#    Suite keys such as `spread/hello/` map to coordinator/spread/hello/.
+#
+# 5. EXTENSION SCRIPT: craft_application generates allocate/discard/prepare/
+#    restore hooks that call `spread/.extension` with the backend name
+#    (`lxd-vm` locally, `ci` in CI).  The script lives at
+#    coordinator/spread/.extension.
+#
+# 6. TASK STRUCTURE: Each suite directory contains task *subdirectories*, each
+#    holding a task.yaml.  A task.yaml placed directly at the suite root is
+#    NOT discovered by spread.
+#      Correct:  spread/<suite>/<task>/task.yaml
+#      Wrong:    spread/<suite>/task.yaml  ← silently ignored
+#
+# 7. SUITE SYSTEMS REQUIRED: Every suite must list at least one system.
+#    An omitted `systems:` serialises as `systems: []` which causes
+#    "nothing matches provider filter" at runtime.
+#
+# 8. BACKEND ISOLATION: Using bare system names (e.g. `ubuntu-24.04`) causes
+#    spread to run the suite on ALL backends that publish that system, which
+#    makes the `ci` backend run locally and the `craft` backend run in CI.
+#    Use backend-qualified names (`craft:ubuntu-24.04`, `ci:ubuntu-24.04`)
+#    to restrict each suite to the backends it is meant for.
+
+project: pyroscope-coordinator-k8s
+
+# NOTE: `path:`, `PROJECT_PATH`, and top-level `environment:` are not
+# permitted by CraftSpreadYaml — charmcraft injects them unconditionally.
+# Per-suite environment blocks are allowed (see integration suite below).
+
+exclude:
+  - .git
+  - .tox
+  - .venv
+  - ".*_cache"
+
+backends:
+  # craft: auto-managed by `charmcraft test` — only systems: is needed.
+  # The ci adhoc backend (for GitHub Actions direct spread runs) is added
+  # in the CI workflow (Task 7) and intentionally omitted here to prevent
+  # spread from trying to allocate a CI machine during local charmcraft test runs.
+  craft:
+    systems:
+      - ubuntu-24.04
+
+
+suites:
+  # Task 4/5 — integration tests (requires Juju + MicroK8s).
+  spread/integration/:
+    summary: Integration tests
+    kill-timeout: 120m
+    systems:
+      - ubuntu-24.04
+    environment:
+      # Coordinator: always use the charm packed by charmcraft for this run.
+      COORDINATOR_CHARM_PATH: "$CRAFT_ARTIFACT"
+      # Worker: use a locally pre-packed charm when available, otherwise fall
+      # back to charmhub.  helpers.py checks PATH first (existence-gated) and
+      # only falls through to CHANNEL when the file is absent.
+      #
+      # To test with a locally built worker charm, run:
+      #   coordinator/scripts/pack-worker.sh
+      # That script packs worker/ into coordinator/.worker-charm/ (gitignored)
+      # and copies worker/charmcraft.yaml there for OCI-resource lookups.
+      WORKER_CHARM_PATH: "$PROJECT_PATH/.worker-charm/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm"
+      WORKER_CHARM_CHANNEL: "dev/edge"
+    prepare: |
+      # Free memory and avoid apt/snap lock contention from background services
+      # (mirrors the charm-dev multipass blueprint).
+      systemctl disable --now man-db.timer man-db.service || true
+      systemctl disable --now apport.service apport-autoreport.service || true
+      systemctl disable --now apt-daily.service apt-daily.timer || true
+      systemctl disable --now apt-daily-upgrade.service apt-daily-upgrade.timer || true
+      systemctl disable --now motd-news.service motd-news.timer || true
+
+      # Disable swap inside the VM so memory pressure causes fast OOM-kills
+      # rather than slow swapping that propagates pressure to the host.
+      swapoff -a || true
+      sysctl -w vm.swappiness=0
+
+      snap install microk8s --channel=1.32/stable --classic
+      snap install juju --channel=3.6/stable
+      snap install astral-uv --classic
+
+      microk8s status --wait-ready --timeout 360
+
+      # Enable each addon and wait for it to be fully ready before proceeding;
+      # racing Juju bootstrap against unready addons is the main cause of hangs.
+      microk8s enable dns
+      microk8s kubectl rollout status deployments/coredns -n kube-system --timeout=300s
+
+      microk8s enable hostpath-storage
+      microk8s kubectl rollout status deployments/hostpath-provisioner -n kube-system --timeout=300s
+
+      microk8s enable registry
+      microk8s kubectl rollout status deployment/registry -n container-registry --timeout=300s
+
+      # MetalLB is required for LoadBalancer services (e.g. Traefik in the ingress test).
+      apt-get install -y -q jq
+      IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+      microk8s enable metallb:"${IPADDR}-${IPADDR}"
+      microk8s kubectl rollout status daemonset/speaker -n metallb-system --timeout=300s
+
+      # The strictly-confined Juju snap cannot create ~/.local on its own.
+      mkdir -p /root/.local/share/juju
+
+      # Bootstrap Juju controller on top of MicroK8s.
+      microk8s config | juju add-k8s my-k8s --client
+      juju bootstrap my-k8s test-controller --config bootstrap-timeout=600
+    restore-each: |
+      # pytest_jubilant (invoked for active tests) destroys the model itself
+      # during the execute step.  This restore-each acts as a safety net for
+      # tests that fail/time-out before their own teardown can run.
+      # --no-wait avoids blocking the next task while Kubernetes garbage-collects
+      # the namespace; the suite-level restore destroys the whole controller.
+      juju destroy-model --force --no-prompt --destroy-storage --no-wait "test-${SPREAD_TASK##*/}" || true
+    restore: |
+      juju destroy-controller --force --destroy-all-models --destroy-storage --no-prompt --no-wait test-controller || true

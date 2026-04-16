@@ -181,3 +181,7 @@ cython_debug/
 # Terraform
 .terraform*
 *.tfstate*
+
+# Spread
+**/.spread-reuse.*.yaml
+**/.craft-spread*/

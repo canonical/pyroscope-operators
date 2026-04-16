@@ -1,0 +1,7 @@
+summary: Test profile retention policy
+kill-timeout: 60m
+
+execute: |
+  cd "$PROJECT_PATH"
+  uv run --frozen --isolated --all-extras \
+    pytest --exitfirst --model="test-${SPREAD_TASK##*/}" tests/integration/test_retention.py -v

@@ -1,0 +1,173 @@
+#!/bin/bash
+# spread/.extension — allocate/discard/prepare/restore helper for charmcraft test.
+#
+# Called by the craft_application-generated spread backend with one of:
+#   allocate  <backend>          — print ADDRESS of the test instance (host side)
+#   discard   <backend>          — destroy the test instance (host side)
+#   backend-prepare  <backend>   — set up system dependencies (inside instance)
+#   backend-restore  <backend>   — clean up after tests (inside instance)
+#   backend-prepare-each <backend>
+#   backend-restore-each <backend>
+#
+# Supported backends: ci (localhost in GitHub Actions), lxd-vm (local dev).
+
+set -e
+
+usage() {
+    echo "usage: $(basename "$0") <command> <backend>"
+    echo "commands: allocate discard backend-prepare backend-restore"
+    echo "          backend-prepare-each backend-restore-each"
+    echo "backends: ci lxd-vm"
+}
+
+# ---------------------------------------------------------------------------
+# allocate / discard
+# ---------------------------------------------------------------------------
+
+allocate_ci() {
+    if [ -z "$CI" ]; then
+        echo "The 'ci' backend is intended for use in CI environments only." >&2
+        exit 1
+    fi
+    # Allow root SSH with password on the current host.
+    sudo sed -i \
+        's/^\s*#\?\s*\(PermitRootLogin\|PasswordAuthentication\)\>.*/\1 yes/' \
+        /etc/ssh/sshd_config
+    if [ -d /etc/ssh/sshd_config.d ]; then
+        printf 'PermitRootLogin yes\nPasswordAuthentication yes\n' \
+            | sudo tee /etc/ssh/sshd_config.d/00-spread.conf >/dev/null
+    fi
+    sudo systemctl daemon-reload
+    sudo systemctl restart ssh
+
+    echo "root:${SPREAD_PASSWORD}" | sudo chpasswd
+
+    # stdout fd 3 is used by spread to read the ADDRESS.
+    echo localhost >&3
+}
+
+discard_ci() {
+    true  # no-op — the CI runner is ephemeral
+}
+
+allocate_lxdvm() {
+    name=$(echo "$SPREAD_SYSTEM" | tr '[:punct:]' -)
+    system=$(echo "$SPREAD_SYSTEM" | tr / -)
+    if [[ "$system" =~ ^ubuntu- ]]; then
+        image="ubuntu:${system#ubuntu-}"
+    else
+        image="images:$(echo "$system" | tr - /)"
+    fi
+
+    VM_NAME="${VM_NAME:-spread-${name}-${RANDOM}}"
+    DISK="${DISK:-20}"
+    CPU="${CPU:-4}"
+    MEM="${MEM:-8}"
+
+    lxc launch --vm \
+        "${image}" \
+        "${VM_NAME}" \
+        -c limits.cpu="${CPU}" \
+        -c limits.memory="${MEM}GiB" \
+        -d root,size="${DISK}GiB"
+
+    while ! lxc exec "${VM_NAME}" -- true &>/dev/null; do sleep 0.5; done
+
+    # Enable root SSH with password.
+    lxc exec "${VM_NAME}" -- \
+        sed -i 's/^\s*#\?\s*\(PermitRootLogin\|PasswordAuthentication\)\>.*/\1 yes/' \
+        /etc/ssh/sshd_config
+    lxc exec "${VM_NAME}" -- bash -c \
+        "if [ -d /etc/ssh/sshd_config.d ]; then
+             printf 'PermitRootLogin yes\nPasswordAuthentication yes\n' \
+                 > /etc/ssh/sshd_config.d/00-spread.conf
+         fi"
+    lxc exec "${VM_NAME}" -- bash -c \
+        "echo root:${SPREAD_PASSWORD} | chpasswd || true"
+
+    ADDR=""
+    while [ -z "$ADDR" ]; do
+        ADDR=$(lxc ls -f csv | grep "^${VM_NAME}" | cut -d"," -f3 | cut -d" " -f1)
+    done
+    echo "$ADDR" >&3
+}
+
+discard_lxdvm() {
+    # When MicroK8s is running inside the VM, Calico adds a second interface,
+    # causing lxc to quote the IPv4 field and wrap it across two lines in CSV
+    # output.  The original pattern (,$IP ) no longer matches because the comma
+    # precedes the opening quote, not the IP itself.  Matching on just "$IP "
+    # (without the leading comma) picks up the correct line in both cases.
+    instance_name="$(lxc ls -f csv | grep "$SPREAD_SYSTEM_ADDRESS " | cut -f1 -d",")"
+    [ -n "$instance_name" ] && lxc delete -f "$instance_name"
+}
+
+# ---------------------------------------------------------------------------
+# backend-prepare / backend-restore (run inside the spread instance)
+# ---------------------------------------------------------------------------
+
+prepare() {
+    apt-get update -qq
+
+    snap wait system seed.loaded
+    snap refresh --hold
+
+    # Disable unattended upgrades to avoid apt lock contention.
+    if systemctl is-enabled unattended-upgrades.service 2>/dev/null; then
+        systemctl stop unattended-upgrades.service
+        systemctl mask unattended-upgrades.service
+    fi
+
+}
+
+restore() {
+    rm -rf "$PROJECT_PATH"
+    mkdir -p "$PROJECT_PATH"
+}
+
+prepare_each() {
+    true
+}
+
+restore_each() {
+    true
+}
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+
+CMD="${1:-}"
+BACKEND="${2:-}"
+
+if [ -z "$CMD" ]; then
+    usage
+    exit 0
+fi
+
+case "$CMD" in
+allocate)
+    exec 3>&1; exec 1>&2
+    case "$BACKEND" in
+    ci)      allocate_ci ;;
+    lxd-vm)  allocate_lxdvm ;;
+    *)       echo "unsupported backend: $BACKEND" >&2; exit 1 ;;
+    esac
+    ;;
+discard)
+    case "$BACKEND" in
+    ci)      discard_ci ;;
+    lxd-vm)  discard_lxdvm ;;
+    *)       echo "unsupported backend: $BACKEND" >&2; exit 1 ;;
+    esac
+    ;;
+backend-prepare)      prepare ;;
+backend-restore)      restore ;;
+backend-prepare-each) prepare_each ;;
+backend-restore-each) restore_each ;;
+*)
+    echo "unknown command: $CMD" >&2
+    usage
+    exit 1
+    ;;
+esac

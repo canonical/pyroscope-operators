@@ -3,23 +3,23 @@
 # See LICENSE file for licensing details.
 
 import pytest
+from jubilant import Juju
+from pytest_bdd import given, then, when
+from tenacity import retry, stop_after_attempt, wait_fixed
+
+from tests.integration.assertions import assert_profile_is_ingested
+from tests.integration.helpers import (
+    PYROSCOPE_APP,
+    deploy_monolithic_cluster,
+    emit_profile,
+    get_unit_ip_address,
+)
 
 pytestmark = [
     pytest.mark.skip(
         reason="Skipped due to https://github.com/canonical/pyroscope-operators/issues/315"
     ),
 ]
-
-from jubilant import Juju
-from tenacity import retry, stop_after_attempt, wait_fixed
-from tests.integration.helpers import (
-    deploy_monolithic_cluster,
-    emit_profile,
-    PYROSCOPE_APP,
-    get_unit_ip_address,
-)
-from tests.integration.assertions import assert_profile_is_ingested
-from pytest_bdd import given, when, then
 
 
 @pytest.mark.setup
