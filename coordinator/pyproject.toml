@@ -61,8 +61,8 @@ fail_under = 90
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
-markers = ["setup", "teardown"]
-bdd_features_base_dir = "../features/unit"
+markers = ["setup", "teardown", "unit", "integration"]
+bdd_features_base_dir = "../features"
 
 # Linting tools configuration
 [lint]

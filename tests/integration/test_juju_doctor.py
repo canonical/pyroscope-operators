@@ -15,7 +15,7 @@ from tests.integration.helpers import (
     _deploy_and_configure_minio,
 )
 
-scenarios("juju-doctor.feature")
+scenarios("common/juju-doctor.feature")
 
 
 def _deploy_worker(juju: Juju, worker_charm, role: str, scale: int):

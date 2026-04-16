@@ -6,7 +6,7 @@ from conftest import tls_patch
 from ops.testing import Model, State
 from pytest_bdd import given, parsers, scenarios, then, when
 
-scenarios("catalogue_item.feature")
+scenarios("catalogue.feature")
 
 
 @pytest.fixture

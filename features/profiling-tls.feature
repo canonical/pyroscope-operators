@@ -1,5 +1,6 @@
 Feature: profiling-tls
 
+  @integration
   Scenario: Pyroscope is able to ingest profiles via OTLP gRPC with TLS
     Given a pyroscope cluster is deployed
     * a certificates provider charm is deployed and integrated with pyroscope

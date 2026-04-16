@@ -1,5 +1,6 @@
 Feature: retention
 
+  @integration
   Scenario: Pyroscope removes profiles according to retention policy
     Given a pyroscope cluster is deployed
     When we configure retention policy to "1m" and emit a profile

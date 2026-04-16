@@ -8,10 +8,10 @@ from pytest_bdd import scenarios, given, when, then
 
 from tests.integration.helpers import deploy_monolithic_cluster, PYROSCOPE_APP, S3_APP, WORKER_APP
 
-scenarios("scaling.feature")
+scenarios("common/scaling.feature")
 
 
-@given("a pyroscope coordinator is deployed without S3 or workers")
+@given("a coordinator is deployed without S3 or workers")
 def deploy_coordinator_only(juju: Juju, coordinator_charm):
     url, channel, resources = coordinator_charm
     juju.deploy(url, PYROSCOPE_APP, channel=channel, resources=resources, trust=True)

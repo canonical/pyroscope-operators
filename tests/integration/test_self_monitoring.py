@@ -2,7 +2,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import json
 import logging
 import re
 from tenacity import retry, stop_after_delay
@@ -118,7 +117,7 @@ def _cos_cluster(juju: Juju):
     )
 
 
-@given("a pyroscope cluster is deployed and integrated with COS")
+@given("a cluster is deployed and integrated with COS")
 def cluster_deployed_with_cos(_cos_cluster):
     """Background step: asserts the COS cluster is deployed. Actual deployment is in _cos_cluster fixture."""
 
@@ -165,7 +164,7 @@ def charm_tracing_integration(juju: Juju):
         assert app in tags
 
 
-@then("Pyroscope logs are sent to loki")
+@then("Application logs are sent to loki")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def logging_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki over logging
@@ -184,26 +183,6 @@ def logging_integration(juju: Juju):
             assert len(data["data"]["result"]) > 0, f"No logs found for app '{app}'"
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Loki failed for app '{app}': {e}"
-
-
-@then("catalogue items are provisioned")
-def catalogue_integration(juju: Juju):
-    # GIVEN a pyroscope cluster integrated with catalogue
-    catalogue_unit = f"{CATALOGUE_APP}/0"
-    # get Pyroscope's catalogue item URL
-    out = juju.cli(
-        "show-unit", catalogue_unit, "--endpoint", "catalogue", "--format", "json"
-    )
-    pyroscope_app_databag = json.loads(out)[catalogue_unit]["relation-info"][0][
-        "application-data"
-    ]
-    url = pyroscope_app_databag["url"]
-    # WHEN we query the Pyroscope catalogue item URL
-    # query the url from inside the container in case the url is a K8s fqdn
-    response = juju.ssh(f"{PYROSCOPE_APP}/0", f"curl {url}")
-    # THEN we receive a 200 OK response (0 exit status)
-    # AND we confirm the response is from the Pyroscope UI (via the page title)
-    assert "<title>Grafana Pyroscope</title>" in response
 
 
 @then("Dashboards are provisioned")
@@ -237,7 +216,7 @@ def grafana_admin_creds(juju) -> str:
     return f"admin:{result.results['admin-password']}"
 
 
-@then("a pyroscope datasource is provisioned in grafana")
+@then("a datasource is provisioned in grafana")
 @retry(
     wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True
 )

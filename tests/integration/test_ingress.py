@@ -63,7 +63,7 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
     assert "Welcome to nginx!" in proc.stdout
 
 
-@given("a pyroscope cluster is deployed alongside Traefik")
+@given("a cluster is deployed alongside Traefik")
 def deploy_cluster_with_traefik(juju: Juju):
     juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="latest/stable", trust=True)
     deploy_monolithic_cluster(juju)
@@ -79,7 +79,7 @@ def grpc_accessible_via_nginx(juju: Juju):
     check_grpc_endpoint(juju, use_ingress=False)
 
 
-@when("Traefik is integrated with pyroscope over ingress")
+@when("Traefik is integrated with the cluster over ingress")
 def add_ingress_integration(juju: Juju):
     juju.integrate(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
     juju.wait(

@@ -26,7 +26,7 @@ dev = [
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
-markers = ["setup", "teardown"]
-bdd_features_base_dir = "features/integration"
+markers = ["setup", "teardown", "unit", "integration"]
+bdd_features_base_dir = "features"
 
 

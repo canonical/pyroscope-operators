@@ -1,5 +1,6 @@
 Feature: profiling-with-collector-tls
 
+  @integration
   Scenario: Pyroscope is able to ingest profiles via OTLP gRPC through an OTel Collector with TLS
     Given a pyroscope cluster is deployed
     * an otel collector charm is deployed and integrated with pyroscope over profiling

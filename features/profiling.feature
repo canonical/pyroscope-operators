@@ -1,5 +1,6 @@
 Feature: profiling
 
+  @integration
   Scenario: Pyroscope is able to ingest profiles via OTLP gRPC
     Given a pyroscope cluster is deployed
     When we emit a profile to pyroscope using otlp grpc
