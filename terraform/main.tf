@@ -37,7 +37,7 @@ resource "juju_application" "s3_integrator" {
 }
 
 module "pyroscope_coordinator" {
-  source             = "git::https://github.com/canonical/pyroscope-operators//coordinator/terraform"
+  source             = "../coordinator/terraform"
   model_uuid         = var.model_uuid
   channel            = var.channel
   revision           = var.coordinator_revision
@@ -48,7 +48,7 @@ module "pyroscope_coordinator" {
 }
 
 module "pyroscope_querier" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.querier_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -66,7 +66,7 @@ module "pyroscope_querier" {
 }
 
 module "pyroscope_query_frontend" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.query_frontend_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -84,7 +84,7 @@ module "pyroscope_query_frontend" {
 }
 
 module "pyroscope_ingester" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.ingester_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -102,7 +102,7 @@ module "pyroscope_ingester" {
 }
 
 module "pyroscope_distributor" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.distributor_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -120,7 +120,7 @@ module "pyroscope_distributor" {
 }
 
 module "pyroscope_compactor" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.compactor_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -138,7 +138,7 @@ module "pyroscope_compactor" {
 }
 
 module "pyroscope_query_scheduler" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.query_scheduler_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -157,7 +157,7 @@ module "pyroscope_query_scheduler" {
 
 
 module "pyroscope_store_gateway" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.store_gateway_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -175,7 +175,7 @@ module "pyroscope_store_gateway" {
 }
 
 module "pyroscope_tenant_settings" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.tenant_settings_name
   model_uuid  = var.model_uuid
   channel     = var.channel
@@ -193,7 +193,7 @@ module "pyroscope_tenant_settings" {
 }
 
 module "pyroscope_ad_hoc_profiles" {
-  source      = "git::https://github.com/canonical/pyroscope-operators//worker/terraform"
+  source      = "../worker/terraform"
   app_name    = var.ad_hoc_profiles_name
   model_uuid  = var.model_uuid
   channel     = var.channel
