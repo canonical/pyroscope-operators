@@ -9,7 +9,26 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Pyroscope is a distributed profiling backend by Grafana.
+  Pyroscope Worker K8s is a Juju charm that deploys and manages worker nodes in a
+  horizontally scalable Grafana Pyroscope cluster on Kubernetes. It is a core component
+  of the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  Each worker node runs one or more Pyroscope roles, as assigned by the
+  pyroscope-coordinator-k8s charm. Workers do not manage external integrations
+  directly — all configuration is distributed to them by the coordinator through the
+  pyroscope-cluster relation.
+
+  Key features:
+
+  - Runs any combination of Pyroscope roles to enable fine-grained cluster topology.
+  - Configurable roles via Juju config: all (default), querier, query-frontend,
+    query-scheduler, ingester, distributor, compactor, store-gateway, tenant-settings,
+    and ad-hoc-profiles.
+  - Scales horizontally — deploy multiple worker applications with different roles to
+    distribute load across nodes.
+  - Persistent local storage for profile data during ingestion.
+  - Configurable Kubernetes resource limits for CPU and memory.
 
 summary: |
   Pyroscope is a distributed profiling backend by Grafana.
