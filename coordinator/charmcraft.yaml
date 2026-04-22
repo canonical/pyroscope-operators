@@ -8,7 +8,32 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Pyroscope is a distributed profiling backend by Grafana.
+  Pyroscope Coordinator K8s is a Juju charm that deploys and manages the coordinator
+  component of a horizontally scalable Grafana Pyroscope cluster on Kubernetes. It is an
+  optional extra component of the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  Grafana Pyroscope is an open-source continuous profiling backend that collects and
+  stores CPU, memory, and other profiling data, enabling deep performance analysis of
+  distributed applications.
+
+  This charm follows the coordinated-workers pattern: the coordinator manages all
+  external integrations, distributes configuration to worker nodes, and runs an nginx
+  instance to route HTTP and gRPC traffic across the cluster. It must be deployed
+  alongside one or more pyroscope-worker-k8s charms to form a working cluster.
+
+  Key features:
+
+  - Horizontally scalable Pyroscope deployment using the coordinated-workers pattern.
+  - Nginx-based traffic routing for both HTTP and gRPC profiling ingestion endpoints.
+  - S3-compatible object storage backend for durable profile data retention.
+  - Configurable data retention period, deletion delay, and compaction schedule.
+  - Seamless integration with Grafana as a profiling datasource via Juju relations.
+  - Built-in Grafana dashboards and Prometheus alert rules for cluster self-monitoring.
+  - TLS support for securing internal and external communications.
+  - Distributed tracing support for both charm and workload traces via Tempo.
+  - Log forwarding to Loki for Pyroscope application logs.
+  - Catalogue integration for service discovery.
 
 summary: |
   Pyroscope is a distributed profiling backend by Grafana.
