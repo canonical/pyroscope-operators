@@ -9,8 +9,8 @@ assumes:
 
 description: |
   Pyroscope Coordinator K8s is a Juju charm that deploys and manages the coordinator
-  component of a horizontally scalable Grafana Pyroscope cluster on Kubernetes. It is a
-  core component of the Canonical Observability Stack (COS):
+  component of a horizontally scalable Grafana Pyroscope cluster on Kubernetes. It is an
+  optional extra component of the Canonical Observability Stack (COS):
   https://documentation.ubuntu.com/observability
 
   Grafana Pyroscope is an open-source continuous profiling backend that collects and
