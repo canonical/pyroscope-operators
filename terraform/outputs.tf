@@ -16,9 +16,17 @@ output "app_names" {
   )
 }
 
-output "endpoints" {
+output "provides" {
   value = {
-    # Requires
+    pyroscope_cluster = "pyroscope-cluster",
+    grafana_dashboard = "grafana-dashboard",
+    grafana_source    = "grafana-source",
+    metrics_endpoint  = "metrics-endpoint",
+  }
+}
+
+output "requires" {
+  value = {
     logging            = "logging",
     ingress            = "ingress",
     certificates       = "certificates",
@@ -28,11 +36,5 @@ output "endpoints" {
     workload_tracing   = "workload-tracing",
     charm_tracing      = "charm-tracing",
     s3                 = "s3",
-
-    # Provides
-    pyroscope_cluster = "pyroscope-cluster",
-    grafana_dashboard = "grafana-dashboard",
-    grafana_source    = "grafana-source",
-    metrics_endpoint  = "metrics-endpoint",
   }
 }
