@@ -157,5 +157,6 @@ See [pyroscope worker roles](https://discourse.charmhub.io/t/pyroscope-worker-ro
 | Name | Description |
 |------|-------------|
 | <a name="output_app_names"></a> [app\_names](#output\_app\_names) | n/a |
-| <a name="output_endpoints"></a> [endpoints](#output\_endpoints) | n/a |
+| <a name="output_provides"></a> [provides](#output\_provides) | n/a |
+| <a name="output_requires"></a> [requires](#output\_requires) | n/a |
 <!-- END_TF_DOCS -->
