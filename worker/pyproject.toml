@@ -20,7 +20,7 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant~=1.0",
+    "pytest-jubilant~=2.0",
     "minio",
     "requests",
     "tenacity",
