@@ -8,7 +8,7 @@ on:
 jobs:
     tiobe-scan:
         name: TiCs-scan
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@e8084e0cc6409cda380d42632a858a8a511c5e4b # v2
         with:
             coverage-folder: .cover
             tiobe-project-name: pyroscope-operators
