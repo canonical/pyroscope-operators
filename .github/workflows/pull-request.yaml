@@ -11,7 +11,7 @@ jobs:
         charm-path:
           - coordinator
           - worker
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@24a038ccdd4104534f15ceb917451505ccea245f # main
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v2
     secrets: inherit
     with:
       charm-path: ${{ matrix.charm-path }}
