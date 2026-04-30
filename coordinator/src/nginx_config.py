@@ -66,7 +66,7 @@ def upstreams(pyroscope_port: int) -> List[NginxUpstream]:
     upstreams = [NginxUpstream(role, pyroscope_port, role) for role in PyroscopeRole]
     # add a generic `worker` upstream that routes to all workers
     upstreams.append(
-        NginxUpstream("worker", pyroscope_port, ignore_address_lookup_key=True)
+        NginxUpstream("worker", pyroscope_port, "worker", ignore_address_lookup_key=True)
     )
     return upstreams
 
