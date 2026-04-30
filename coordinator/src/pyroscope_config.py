@@ -66,27 +66,10 @@ MINIMAL_DEPLOYMENT = {
 # The minimal set of roles that need to be allocated for the
 # deployment to be considered consistent (otherwise we set blocked).
 
-RECOMMENDED_DEPLOYMENT = {
-    PyroscopeRole.querier.value: 3,
-    PyroscopeRole.query_frontend.value: 2,
-    PyroscopeRole.query_scheduler.value: 2,
-    PyroscopeRole.ingester.value: 3,
-    PyroscopeRole.distributor.value: 2,
-    PyroscopeRole.compactor.value: 3,
-    PyroscopeRole.store_gateway.value: 3,
-    PyroscopeRole.tenant_settings: 1,
-    PyroscopeRole.ad_hoc_profiles: 1,
-}
-# The set of roles that need to be allocated for the
-# deployment to be considered robust according to Grafana Pyroscope's
-# Helm chart configurations.
-# https://github.com/grafana/pyroscope/blob/main/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
-
 PYROSCOPE_ROLES_CONFIG = ClusterRolesConfig(
     roles={role for role in PyroscopeRole},
     meta_roles=META_ROLES,
     minimal_deployment=MINIMAL_DEPLOYMENT,
-    recommended_deployment=RECOMMENDED_DEPLOYMENT,
 )
 # Define the configuration for Pyroscope roles.
 
