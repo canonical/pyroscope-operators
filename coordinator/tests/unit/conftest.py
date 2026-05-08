@@ -157,7 +157,10 @@ def peers():
 def nginx_container():
     return Container(
         "nginx",
-        execs={Exec(["update-ca-certificates", "--fresh"])},
+        execs={
+            Exec(["update-ca-certificates", "--fresh"]),
+            Exec(["nginx", "-s", "reload"]),
+        },
         can_connect=True,
     )
 

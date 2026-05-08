@@ -107,7 +107,7 @@ def test_happy_status_message(
             leader=True,
         ),
     )
-    assert state_out.unit_status.message == "[degraded] UI ready at http://foo.com:8080"
+    assert state_out.unit_status.message == "UI ready at http://foo.com:8080"
 
 
 @k8s_patch(status=ops.BlockedStatus("`juju trust` this application"))

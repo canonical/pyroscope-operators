@@ -13,7 +13,11 @@ from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
+from charmlibs.nginx_k8s import NginxConfig, TLSConfigManager
+
+CA_CERT_PATH = TLSConfigManager.CA_CERT_PATH
+CERT_PATH = TLSConfigManager.CERT_PATH
+KEY_PATH = TLSConfigManager.KEY_PATH
 from ops import BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
 
@@ -47,10 +51,6 @@ class PyroscopeCoordinator(Coordinator):
     @property
     def _default_active_message(self) -> str:
         return self._active_status_msg
-
-    @property
-    def _default_degraded_message(self) -> str:
-        return "[degraded] " + self._active_status_msg
 
 
 class PyroscopeCoordinatorCharm(CharmBase):
