@@ -19,12 +19,12 @@ from requests.auth import HTTPBasicAuth
 from pytest_bdd import given, then
 
 from tests.integration.helpers import (
-    deploy_distributed_cluster,
     ALL_WORKERS,
     PYROSCOPE_APP,
     ALL_ROLES,
+    SWFS_APP,
+    deploy_distributed_cluster,
     get_unit_ip_address,
-    deploy_s3,
     INTEGRATION_TESTERS_CHANNEL,
 )
 
@@ -32,16 +32,13 @@ PROMETHEUS_APP = "prometheus"
 LOKI_APP = "loki"
 TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker"
-TEMPO_S3_APP = "tempo-s3-bucket"
 CATALOGUE_APP = "catalogue"
 GRAFANA_APP = "grafana"
-TEMPO_S3_BUCKET = "tempo"
 COS_COMPONENTS = (
     PROMETHEUS_APP,
     LOKI_APP,
     TEMPO_WORKER_APP,
     TEMPO_APP,
-    TEMPO_S3_APP,
     CATALOGUE_APP,
     GRAFANA_APP,
 )
@@ -93,8 +90,7 @@ def test_setup(juju: Juju):
         trust=True,
     )
     juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
-    deploy_s3(juju, bucket_name=TEMPO_S3_BUCKET, s3_integrator_app=TEMPO_S3_APP)
-    juju.integrate(TEMPO_APP, TEMPO_S3_APP + ":s3-credentials")
+    juju.integrate(TEMPO_APP, SWFS_APP)
     juju.integrate(PYROSCOPE_APP + ":charm-tracing", TEMPO_APP + ":tracing")
     juju.integrate(PYROSCOPE_APP + ":workload-tracing", TEMPO_APP + ":tracing")
 

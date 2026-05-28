@@ -8,11 +8,9 @@ from jubilant import Juju, all_active, all_blocked
 from tests.integration.helpers import (
     ALL_ROLES,
     PYROSCOPE_APP,
+    SWFS_APP,
     WORKER_APP,
-    deploy_s3,
-    BUCKET_NAME,
-    S3_APP,
-    _deploy_and_configure_minio,
+    deploy_swfs,
 )
 
 
@@ -48,12 +46,11 @@ def test_deploy_workers(juju: Juju, worker_charm):
     )
 
 
-def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm):
+def test_all_active_when_coordinator_and_swfs_added(juju: Juju, coordinator_charm):
     # GIVEN a model with workers
 
     # WHEN deploying and integrating the minimal pyroscope cluster
-    _deploy_and_configure_minio(juju)
-    deploy_s3(juju, bucket_name=BUCKET_NAME, s3_integrator_app=S3_APP)
+    deploy_swfs(juju)
 
     charm_url, channel, resources = coordinator_charm
     juju.deploy(
@@ -63,7 +60,7 @@ def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm)
         resources=resources,
         trust=True,
     )
-    juju.integrate(PYROSCOPE_APP + ":s3", S3_APP + ":s3-credentials")
+    juju.integrate(PYROSCOPE_APP + ":s3", SWFS_APP)
     for role in ALL_ROLES:
         juju.integrate(PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster")
 
