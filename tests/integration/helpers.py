@@ -10,7 +10,6 @@ from typing import Literal, Optional, Sequence
 
 import jubilant
 from jubilant import Juju
-from minio import Minio
 from pytest_jubilant import get_resources, pack
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,11 +19,7 @@ COORDINATOR_CHARM_FILENAME = "pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm
 WORKER_CHARM_FILENAME = "pyroscope-worker-k8s_ubuntu@24.04-amd64.charm"
 
 # Application names used uniformly across the tests
-ACCESS_KEY = "accesskey"
-SECRET_KEY = "secretkey"
-BUCKET_NAME = "pyroscope"
-MINIO_APP = "minio"
-S3_APP = "s3-integrator"
+SWFS_APP = "swfs"
 WORKER_APP = "pyroscope-worker"
 PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
@@ -44,14 +39,23 @@ ALL_ROLES = [
     "ad-hoc-profiles",
 ]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
-S3_CREDENTIALS = {
-    "access-key": ACCESS_KEY,
-    "secret-key": SECRET_KEY,
-}
 INTEGRATION_TESTERS_CHANNEL = "2/edge"
 PROFILEGEN_SCRIPT_PATH = REPO_ROOT / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
+
+
+def deploy_swfs(juju: Juju, swfs_app: str = SWFS_APP):
+    """Deploy SeaweedFS as an S3 test backend."""
+    if swfs_app not in juju.status().apps:
+        juju.deploy("seaweedfs-k8s", app=swfs_app, channel="latest/edge")
+    juju.wait(
+        lambda status: jubilant.all_active(status, swfs_app),
+        error=jubilant.any_error,
+        delay=5,
+        successes=3,
+        timeout=2000,
+    )
 
 
 def _ci_enabled() -> bool:
@@ -200,81 +204,20 @@ def _deploy_cluster(
             coordinator_app + ":pyroscope-cluster", worker + ":pyroscope-cluster"
         )
 
-    # we can't conditionally wait_for_idle for minio, because we need its IP soon to call deploy_s3
-    _deploy_and_configure_minio(juju)
-
-    deploy_s3(juju, bucket_name=BUCKET_NAME, s3_integrator_app=S3_APP)
-    juju.integrate(coordinator_app + ":s3", S3_APP + ":s3-credentials")
+    deploy_swfs(juju)
+    juju.integrate(coordinator_app + ":s3", SWFS_APP)
 
     if wait_for_idle:
         logger.info("waiting for cluster to be active/idle...")
         juju.wait(
             lambda status: jubilant.all_active(
-                status, coordinator_app, *workers, S3_APP
+                status, coordinator_app, *workers, SWFS_APP
             ),
             timeout=2000,
             delay=5,
             successes=3,
         )
-    return [coordinator_app, *workers, S3_APP, MINIO_APP]
-
-
-def deploy_s3(juju, bucket_name: str, s3_integrator_app: str):
-    """Deploy and configure a s3 integrator.
-
-    Assumes there's a MINIO_APP deployed and ready.
-    """
-    logger.info(f"deploying {s3_integrator_app=}")
-    # latest revision of s3-integrator creates buckets under relation name, we pin to a working version
-    juju.deploy(
-        "s3-integrator",
-        s3_integrator_app,
-        channel="2/edge",
-        revision=157,  # FIXME: regression in 2/edge breaks bucket name in databag
-        base="ubuntu@24.04",
-    )
-
-    logger.info(f"provisioning {bucket_name=} on {s3_integrator_app=}")
-    minio_addr = get_unit_ip_address(juju, MINIO_APP, 0)
-    mc_client = Minio(
-        f"{minio_addr}:9000",
-        **{key.replace("-", "_"): value for key, value in S3_CREDENTIALS.items()},
-        secure=False,
-    )
-    # create pyroscope bucket
-    found = mc_client.bucket_exists(bucket_name)
-    if not found:
-        mc_client.make_bucket(bucket_name)
-
-    logger.info("configuring s3 integrator...")
-    secret_uri = juju.cli(
-        "add-secret",
-        f"{s3_integrator_app}-creds",
-        *(f"{key}={val}" for key, val in S3_CREDENTIALS.items()),
-    )
-    juju.cli("grant-secret", f"{s3_integrator_app}-creds", s3_integrator_app)
-
-    # configure s3-integrator
-    juju.config(
-        s3_integrator_app,
-        {
-            "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
-            "bucket": bucket_name,
-            "credentials": secret_uri.strip(),
-        },
-    )
-
-
-def _deploy_and_configure_minio(juju: Juju):
-    if MINIO_APP not in juju.status().apps:
-        juju.deploy(MINIO_APP, channel="edge", trust=True, config=S3_CREDENTIALS)
-    juju.wait(
-        lambda status: status.apps[MINIO_APP].is_active,
-        error=jubilant.any_error,
-        delay=5,
-        successes=3,
-        timeout=2000,
-    )
+    return [coordinator_app, *workers, SWFS_APP]
 
 
 def get_ingress_proxied_hostname(juju: Juju):
