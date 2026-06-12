@@ -5,7 +5,7 @@
 import logging
 from typing import Dict, List
 
-from coordinated_workers.nginx import (
+from charmlibs.nginx_k8s import (
     NginxLocationConfig,
     NginxUpstream,
 )
