@@ -13,7 +13,7 @@ from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import NginxConfig, CA_CERT_PATH, CERT_PATH, KEY_PATH
+from charmlibs.nginx_k8s import NginxConfig, TLSConfigManager
 from ops import BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
 
@@ -261,9 +261,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
         """Return True if the certificates files are on the nginx container's disk."""
         return (
             self._nginx_container.can_connect()
-            and self._nginx_container.exists(CERT_PATH)
-            and self._nginx_container.exists(KEY_PATH)
-            and self._nginx_container.exists(CA_CERT_PATH)
+            and self._nginx_container.exists(TLSConfigManager.CERT_PATH)
+            and self._nginx_container.exists(TLSConfigManager.KEY_PATH)
+            and self._nginx_container.exists(TLSConfigManager.CA_CERT_PATH)
         )
 
     def _reconcile(self):
