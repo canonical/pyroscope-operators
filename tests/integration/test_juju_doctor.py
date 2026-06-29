@@ -9,7 +9,6 @@ from tests.integration.helpers import (
     ALL_ROLES,
     PYROSCOPE_APP,
     SWFS_APP,
-    WORKER_APP,
     deploy_swfs,
 )
 
@@ -62,7 +61,9 @@ def test_all_active_when_coordinator_and_swfs_added(juju: Juju, coordinator_char
     )
     juju.integrate(PYROSCOPE_APP + ":s3", SWFS_APP)
     for role in ALL_ROLES:
-        juju.integrate(PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster")
+        juju.integrate(
+            PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster"
+        )
 
     # THEN both the coordinator and the workers become active
     juju.wait(
