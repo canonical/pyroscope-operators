@@ -9,15 +9,11 @@ import socket
 from typing import Optional
 
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
-from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
+from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
 from charmlibs.nginx_k8s import NginxConfig, TLSConfigManager
-
-CA_CERT_PATH = TLSConfigManager.CA_CERT_PATH
-CERT_PATH = TLSConfigManager.CERT_PATH
-KEY_PATH = TLSConfigManager.KEY_PATH
 from ops import BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
 
@@ -77,7 +73,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type=PYROSCOPE_GRAFANA_DATASOURCE_TYPE,
-            is_ingress_per_app=self._is_ingressed,
+            app_datasource_url=self._most_external_http_url,
         )
         try:
             self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
@@ -261,9 +257,9 @@ class PyroscopeCoordinatorCharm(CharmBase):
         """Return True if the certificates files are on the nginx container's disk."""
         return (
             self._nginx_container.can_connect()
-            and self._nginx_container.exists(CERT_PATH)
-            and self._nginx_container.exists(KEY_PATH)
-            and self._nginx_container.exists(CA_CERT_PATH)
+            and self._nginx_container.exists(TLSConfigManager.CERT_PATH)
+            and self._nginx_container.exists(TLSConfigManager.KEY_PATH)
+            and self._nginx_container.exists(TLSConfigManager.CA_CERT_PATH)
         )
 
     def _reconcile(self):
@@ -285,7 +281,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 else self._are_certificates_on_disk
             ),
         )
-        self.grafana_source.update_source(self._most_external_http_url)
+        self.grafana_source.update_app_source(self._most_external_http_url)
 
     def _reconcile_ingress(self):
         if not self.ingress.is_ready() or not self.unit.is_leader():

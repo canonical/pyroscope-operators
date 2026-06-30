@@ -64,7 +64,13 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
 def test_setup(juju: Juju):
     # GIVEN an empty model
     # WHEN deploying the pyroscope cluster and traefik
-    juju.deploy("traefik-k8s", app=TRAEFIK_APP, channel="latest/stable", trust=True)
+    juju.deploy(
+        "traefik-k8s",
+        app=TRAEFIK_APP,
+        channel="latest/stable",
+        base="ubuntu@26.04",
+        trust=True,
+    )
     deploy_monolithic_cluster(juju)
 
 

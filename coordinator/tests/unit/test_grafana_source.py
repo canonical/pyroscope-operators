@@ -6,10 +6,10 @@ import nginx_config
 from ops.testing import State
 
 
-def assert_unit_source_url_equals(
+def assert_app_source_url_equals(
     grafana_source_out: ops.testing.Relation, expected_value: str
 ):
-    assert grafana_source_out.local_unit_data["grafana_source_host"] == expected_value
+    assert grafana_source_out.local_app_data["grafana_source_app_host"] == expected_value
 
 
 def test_grafana_source_no_ingress(
@@ -31,7 +31,7 @@ def test_grafana_source_no_ingress(
                 leader=True,
             ),
         )
-    assert_unit_source_url_equals(
+    assert_app_source_url_equals(
         state_out.get_relation(grafana_source.id), "http://foo.com:8080"
     )
 
@@ -59,7 +59,7 @@ def test_grafana_source_with_k8s_fqdn(
                 leader=True,
             ),
         )
-    assert_unit_source_url_equals(
+    assert_app_source_url_equals(
         state_out.get_relation(grafana_source.id),
         f"http://pyroscope-coordinator-k8s.{state_out.model.name}.svc.cluster.local:{nginx_config.http_server_port}",
     )
@@ -86,7 +86,7 @@ def test_grafana_source_ingress(
                 leader=True,
             ),
         )
-    assert_unit_source_url_equals(
+    assert_app_source_url_equals(
         state_out.get_relation(grafana_source.id),
         f"http://{external_host}/{state_out.model.name}-pyroscope-coordinator-k8s",
     )

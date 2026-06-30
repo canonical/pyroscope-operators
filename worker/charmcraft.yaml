@@ -44,10 +44,10 @@ resources:
   pyroscope-image:
     type: oci-image
     description: OCI image for Grafana Pyroscope
-    upstream-source: ubuntu/pyroscope:1.14-24.04_edge
+    upstream-source: ubuntu/pyroscope@sha256:a54c703ff78426157affb4af7adcfe040de0ee534c71333cacd7e95627781440  # renovate: oci-image tag: 1.18-26.04
 
 links:
-  documentation: https://discourse.charmhub.io/t/18122
+  documentation: https://documentation.ubuntu.com/observability/latest/
   website: https://charmhub.io/pyroscope-worker-k8s
   source: https://github.com/canonical/pyroscope-operators/tree/main/worker
   issues: https://github.com/canonical/pyroscope-operators/issues
@@ -67,7 +67,7 @@ storage:
     type: filesystem
 
 platforms:
-  ubuntu@24.04:amd64:
+  ubuntu@26.04:amd64:
 
 parts:
   charm:
