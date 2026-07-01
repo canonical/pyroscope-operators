@@ -1,6 +1,7 @@
 name: Release Charm to Edge and Publish Libraries
 
 on:
+  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -61,6 +62,7 @@ jobs:
       charm-path: worker
       git-tag-prefix: worker-
       enable-integration: false
+      terraform-tag-prefix: tf-worker-
   release-coordinator:
     needs: charms-changed
     if: needs.charms-changed.outputs.coordinator_changed == 'true'
@@ -70,3 +72,4 @@ jobs:
       default-track: dev
       charm-path: coordinator
       git-tag-prefix: coordinator-
+      terraform-tag-prefix: tf-coordinator-
