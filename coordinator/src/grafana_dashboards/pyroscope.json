@@ -626,7 +626,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum by (component)(pyroscope_head_size_bytes{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"})",
+          "expr": "sum by (component)(pyroscope_metastore_boltdb_persist_snapshot_size_bytes{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"})",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "__auto",
@@ -636,7 +636,7 @@
       ],
       "thresholds": [],
       "timeRegions": [],
-      "title": "Disk Usage",
+      "title": "Metastore Index Size",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -716,7 +716,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum by (component)(rate(pyroscopedb_page_reads_total{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
+          "expr": "sum by (component)(rate(objstore_bucket_operations_total{operation=~\"get|get_range\",juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Reads: {{component}}",
@@ -728,7 +728,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum by (component)(rate(pyroscopedb_page_writes_total{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
+          "expr": "sum by (component)(rate(objstore_bucket_operations_total{operation=\"upload\",juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Writes: {{component}}",
@@ -738,7 +738,7 @@
       ],
       "thresholds": [],
       "timeRegions": [],
-      "title": "Storage Reads/Writes",
+      "title": "Object Store I/O",
       "tooltip": {
         "shared": true,
         "sort": 0,

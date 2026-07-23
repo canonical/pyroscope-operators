@@ -7,10 +7,13 @@ _valid_roles = [
     "querier",
     "query-frontend",
     "query-scheduler",
-    "ingester",
+    "query-backend",
     "distributor",
-    "compactor",
-    "store-gateway",
+    "segment-writer",
+    "metastore",
+    "compaction-worker",
+    "tenant-settings",
+    "ad-hoc-profiles",
 ]
 
 

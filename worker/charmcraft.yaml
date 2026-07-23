@@ -23,8 +23,8 @@ description: |
 
   - Runs any combination of Pyroscope roles to enable fine-grained cluster topology.
   - Configurable roles via Juju config: all (default), querier, query-frontend,
-    query-scheduler, ingester, distributor, compactor, store-gateway, tenant-settings,
-    and ad-hoc-profiles.
+    query-scheduler, query-backend, distributor, segment-writer, metastore,
+    compaction-worker, tenant-settings, and ad-hoc-profiles.
   - Scales horizontally — deploy multiple worker applications with different roles to
     distribute load across nodes.
   - Persistent local storage for profile data during ingestion.
@@ -129,11 +129,22 @@ config:
         Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
         is not met, the coordinator charm will set blocked status and the deployment will shut down.
 
-    role-ingester:
+    role-segment-writer:
       type: boolean
       default: false
       description: |
         Configure the application to run as this Pyroscope role. 
+
+        If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
+
+        Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
+        is not met, the coordinator charm will set blocked status and the deployment will shut down.
+
+    role-query-backend:
+      type: boolean
+      default: false
+      description: |
+        Configure the application to run as this Pyroscope role.
 
         If you want to configure this app to run with this role only, remember to set all other `role-x` to `false`.
 
@@ -152,7 +163,7 @@ config:
         is not met, the coordinator charm will set blocked status and the deployment will shut down.
   
 
-    role-compactor:
+    role-compaction-worker:
       type: boolean
       default: false
       description: |
@@ -163,7 +174,7 @@ config:
         Note that for a pyroscope deployment as a whole to be consistent, each role needs to be assigned to at least one worker node. If this condition
         is not met, the coordinator charm will set blocked status and the deployment will shut down.
 
-    role-store-gateway:
+    role-metastore:
       type: boolean
       default: false
       description: |

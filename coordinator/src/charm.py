@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 DISABLED_DATA_CLEANUP_CHARM_CONFIG = CharmConfig(
     pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
-        **{"retention_period": "0", "deletion_delay": "0", "cleanup_interval": "15m"}
+        **{"retention_period": "0"}
     )
 )
 PYROSCOPE_GRAFANA_DATASOURCE_TYPE = "grafana-pyroscope-datasource"

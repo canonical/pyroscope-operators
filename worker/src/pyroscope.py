@@ -70,8 +70,10 @@ class PyroscopeWorker:
                     "pyroscope": {
                         "override": "replace",
                         "summary": "pyroscope worker process",
-                        # Allow configuring multiple roles for one worker application
-                        "command": f"/usr/bin/pyroscope -config.file={CONFIG_FILE} -target={','.join(roles)}",
+                        # Allow configuring multiple roles for one worker application.
+                        # -architecture.storage=v2 selects the v2 object-storage path
+                        # (upstream default is v1-v2-dual).
+                        "command": f"/usr/bin/pyroscope -config.file={CONFIG_FILE} -target={','.join(roles)} -architecture.storage=v2",
                         "startup": "enabled",
                         "environment": env,
                     }

@@ -23,13 +23,14 @@ from conftest import config_on_disk, endpoint_ready
         ["querier"],
         ["query-frontend"],
         ["query-scheduler"],
-        ["ingester"],
+        ["query-backend"],
         ["distributor"],
-        ["compactor"],
-        ["store-gateway"],
-        # meta-roles
+        ["segment-writer"],
+        ["metastore"],
+        ["compaction-worker"],
+        # multiple roles on one worker
         ["query-scheduler", "query-frontend", "querier"],
-        ["compactor", "store-gateway"],
+        ["segment-writer", "metastore"],
     ),
 )
 def test_pebble_ready_plan(ctx, pyroscope_container, roles, https_proxy):
@@ -62,7 +63,7 @@ def test_pebble_ready_plan(ctx, pyroscope_container, roles, https_proxy):
     assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
     assert (
         plan_out["services"]["pyroscope"]["command"]
-        == f"/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target={','.join(roles)}"
+        == f"/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target={','.join(roles)} -architecture.storage=v2"
     )
     assert plan_out["services"]["pyroscope"]["environment"]["https_proxy"] == "0.0.0.1"
     # AND the pebble service is running
@@ -72,7 +73,11 @@ def test_pebble_ready_plan(ctx, pyroscope_container, roles, https_proxy):
     if roles == ["all"]:
         assert state_out.unit_status == ActiveStatus("(all roles) ready.")
     else:
-        assert state_out.unit_status == ActiveStatus(f"{','.join(roles)} ready.")
+        # the worker lib builds the status message from its role set, so the
+        # order of roles in the message is not guaranteed; compare as a set.
+        assert state_out.unit_status.name == "active"
+        status_roles = state_out.unit_status.message.removesuffix(" ready.").split(",")
+        assert set(status_roles) == set(roles)
 
 
 @config_on_disk()
@@ -121,7 +126,7 @@ def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
     assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
     assert (
         plan_out["services"]["pyroscope"]["command"]
-        == "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target=all"
+        == "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target=all -architecture.storage=v2"
     )
     assert (
         plan_out["services"]["pyroscope"]["environment"]["JAEGER_ENDPOINT"]

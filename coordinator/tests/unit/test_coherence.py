@@ -16,7 +16,7 @@ from pyroscope_config import (
     (
         ({PyroscopeRole.querier: 1}, False),
         ({PyroscopeRole.distributor: 1}, False),
-        ({PyroscopeRole.distributor: 1, PyroscopeRole.ingester: 1}, False),
+        ({PyroscopeRole.distributor: 1, PyroscopeRole.segment_writer: 1}, False),
         (MINIMAL_DEPLOYMENT, True),
     ),
 )
