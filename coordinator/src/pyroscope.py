@@ -36,20 +36,18 @@ class Pyroscope:
         self,
         coordinator: Coordinator,
     ) -> str:
-        """Generate the Pyroscope configuration."""
+        """Generate the Pyroscope (v2) configuration."""
         addrs = coordinator.cluster.gather_addresses()
         addrs_by_role = coordinator.cluster.gather_addresses_by_role()
         config = pyroscope_config.PyroscopeConfig(
             api=self._build_api_config(self._external_url),
             server=self._build_server_config(),
             distributor=self._build_distributor_config(),
-            ingester=self._build_ingester_config(addrs_by_role),
-            store_gateway=self._build_store_gateway_config(addrs_by_role),
+            segment_writer=self._build_segment_writer_config(addrs_by_role),
+            metastore=self._build_metastore_config(addrs_by_role),
             memberlist=self._build_memberlist_config(addrs),
             limits=self._build_limits_config(),
             storage=self._build_storage_config(coordinator._s3_config),
-            compactor=self._build_compactor_config(),
-            pyroscopedb=self._build_pyroscope_db(),
         )
         return yaml.dump(
             config.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -61,15 +59,17 @@ class Pyroscope:
         )
 
     @staticmethod
-    def _build_ingester_config(roles_addresses: Dict[str, Set[str]]):
-        ingester_addresses = roles_addresses.get(
-            pyroscope_config.PyroscopeRole.ingester
+    def _build_segment_writer_config(roles_addresses: Dict[str, Set[str]]):
+        # v2 write path (replaces the v1 ingester). Its ring kvstore defaults to
+        # consul upstream, so we pin it to memberlist for our gossip cluster.
+        sw_addresses = roles_addresses.get(
+            pyroscope_config.PyroscopeRole.segment_writer
         )
-        return pyroscope_config.Ingester(
+        return pyroscope_config.SegmentWriter(
             lifecycler=pyroscope_config.Lifecycler(
                 ring=pyroscope_config.Ring(
                     replication_factor=3
-                    if ingester_addresses and len(ingester_addresses) >= 3
+                    if sw_addresses and len(sw_addresses) >= 3
                     else 1,
                     kvstore=pyroscope_config.Kvstore(
                         store="memberlist",
@@ -79,16 +79,20 @@ class Pyroscope:
         )
 
     @staticmethod
-    def _build_store_gateway_config(roles_addresses: Dict[str, Set[str]]):
-        store_gw_addresses = roles_addresses.get(
-            pyroscope_config.PyroscopeRole.store_gateway
-        )
-        return pyroscope_config.StoreGateway(
-            sharding_ring=pyroscope_config.ShardingRing(
-                replication_factor=3
-                if store_gw_addresses and len(store_gw_addresses) >= 3
-                else 1,
-            )
+    def _build_metastore_config(roles_addresses: Dict[str, Set[str]]):
+        # The metastore forms a Raft cluster across all workers running the
+        # metastore role. For a single (monolithic 'all') worker this is 1.
+        # TODO(v2-ha): a multi-node metastore needs persistent, stable peer
+        # addresses + odd quorum; out of scope for the minimal single-node build.
+        ms_addresses = roles_addresses.get(pyroscope_config.PyroscopeRole.metastore)
+        peers = len(ms_addresses) if ms_addresses else 1
+        return pyroscope_config.Metastore(
+            raft=pyroscope_config.Raft(
+                dir=f"{Pyroscope._data_path}/metastore/raft",
+                snapshots_dir=f"{Pyroscope._data_path}/metastore/snapshots",
+                bootstrap_expect_peers=peers,
+            ),
+            data_dir=f"{Pyroscope._data_path}/metastore/data",
         )
 
     def _build_memberlist_config(self, worker_peers: Optional[Tuple[str, ...]]):
@@ -113,22 +117,6 @@ class Pyroscope:
         return pyroscope_config.Storage(
             backend="s3", s3=pyroscope_config.S3Storage(**s3_config)
         )
-
-    def _build_compactor_config(self):
-        return pyroscope_config.Compactor(
-            cleanup_interval=self._charm_config.cleanup_interval,
-            deletion_delay=(
-                0
-                if self._charm_config.deletion_delay == "0"
-                else self._charm_config.deletion_delay
-            ),
-            sharding_ring=pyroscope_config.ShardingRingCompactor(
-                kvstore=pyroscope_config.Kvstore(store="memberlist")
-            ),
-        )
-
-    def _build_pyroscope_db(self):
-        return pyroscope_config.DB(data_path=self._data_path)
 
     @staticmethod
     def _build_distributor_config():

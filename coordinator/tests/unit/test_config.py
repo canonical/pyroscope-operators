@@ -13,15 +13,6 @@ DISABLED_RETENTION_PERIOD_CONFIG = 0
 VALID_RETENTION_PERIOD_CONFIG = "7d"
 INVALID_RETENTION_PERIOD_CONFIG = "invalid"
 
-DEFAULT_DELETION_DELAY_CONFIG = "12h"
-DISABLED_DELETION_DELAY_CONFIG = 0
-VALID_DELETION_DELAY_CONFIG = "7d"
-INVALID_DELETION_DELAY_CONFIG = "invalid"
-
-DEFAULT_CLEANUP_INTERVAL_CONFIG = "15m"
-VALID_CLEANUP_INTERVAL_CONFIG = "30m"
-INVALID_CLEANUP_INTERVAL_CONFIG = "invalid"
-
 
 def get_worker_unit_data(unit_no):
     return {
@@ -116,66 +107,69 @@ def test_server_config(context, state_with_s3_and_workers):
 
 
 @pytest.mark.parametrize("workers_no", (1, 3))
-def test_ingester_config(
+def test_segment_writer_config(
     workers_no, context, state_with_s3_and_workers, all_worker, s3
 ):
-    # GIVEN an s3 relation and an ingester worker relation that has n units
-    ingester_workers = replace(
+    # GIVEN an s3 relation and a segment-writer worker relation that has n units
+    segment_writer_workers = replace(
         all_worker,
-        remote_app_data={"role": '"ingester"'},
+        remote_app_data={"role": '"segment-writer"'},
         remote_units_data={
             worker_idx: get_worker_unit_data(worker_idx)
             for worker_idx in range(workers_no)
         },
     )
-    state = replace(state_with_s3_and_workers, relations={ingester_workers, s3})
+    state = replace(state_with_s3_and_workers, relations={segment_writer_workers, s3})
     # WHEN an event is fired
-    with context(context.on.relation_changed(ingester_workers), state) as mgr:
+    with context(context.on.relation_changed(segment_writer_workers), state) as mgr:
         charm: PyroscopeCoordinatorCharm = mgr.charm
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
         expected_config = {
             "lifecycler": {
                 "ring": {
-                    "replication_factor": 3 if workers_no > 1 else 1,
+                    "replication_factor": 3 if workers_no >= 3 else 1,
                     "kvstore": {"store": "memberlist"},
                 }
             }
         }
-        # THEN ingester config portion is generated
-        assert "ingester" in actual_config_dict
-        # AND this config has memberlist store and a replication factor dependant on the no of ingester workers
-        assert actual_config_dict["ingester"] == expected_config
+        # THEN segment_writer config portion is generated
+        assert "segment_writer" in actual_config_dict
+        # AND this config has memberlist store and a replication factor dependant on the no of segment-writer workers
+        assert actual_config_dict["segment_writer"] == expected_config
 
 
 @pytest.mark.parametrize("workers_no", (1, 3))
-def test_store_gateway_config(
+def test_metastore_config(
     workers_no, context, state_with_s3_and_workers, all_worker, s3
 ):
-    # GIVEN an s3 relation and a store-gateway worker relation that has n units
-    store_gw_workers = replace(
+    # GIVEN an s3 relation and a metastore worker relation that has n units
+    metastore_workers = replace(
         all_worker,
-        remote_app_data={"role": '"store-gateway"'},
+        remote_app_data={"role": '"metastore"'},
         remote_units_data={
             worker_idx: get_worker_unit_data(worker_idx)
             for worker_idx in range(workers_no)
         },
     )
-    state = replace(state_with_s3_and_workers, relations={store_gw_workers, s3})
+    state = replace(state_with_s3_and_workers, relations={metastore_workers, s3})
     # WHEN an event is fired
-    with context(context.on.relation_changed(store_gw_workers), state) as mgr:
+    with context(context.on.relation_changed(metastore_workers), state) as mgr:
         charm: PyroscopeCoordinatorCharm = mgr.charm
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
         expected_config = {
-            "sharding_ring": {
-                "replication_factor": 3 if workers_no > 1 else 1,
-            }
+            "raft": {
+                "dir": "/pyroscope-data/metastore/raft",
+                "snapshots_dir": "/pyroscope-data/metastore/snapshots",
+                "bootstrap_expect_peers": workers_no,
+            },
+            "data_dir": "/pyroscope-data/metastore/data",
         }
-        # THEN store_gateway config portion is generated
-        assert "store_gateway" in actual_config_dict
-        # AND this config has a replication factor dependant on the no of store-gateway workers
-        assert actual_config_dict["store_gateway"] == expected_config
+        # THEN metastore config portion is generated
+        assert "metastore" in actual_config_dict
+        # AND its Raft cluster expects as many peers as there are metastore workers
+        assert actual_config_dict["metastore"] == expected_config
 
 
 def test_s3_storage_config(context, state_with_s3_and_workers):
@@ -246,68 +240,18 @@ def test_base_url_config_with_ingress(context, state_with_ingress, external_host
 
 
 @pytest.mark.parametrize(
-    "charm_config, expected_pyroscope_config",
+    "charm_config, expected_retention_period",
     [
+        pytest.param({}, DEFAULT_RETENTION_PERIOD_CONFIG, id="default charm config"),
         pytest.param(
-            {},
-            {
-                "retention_period": DEFAULT_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DEFAULT_DELETION_DELAY_CONFIG,
-            },
-            id="default charm config",
+            {"retention_period": VALID_RETENTION_PERIOD_CONFIG},
+            VALID_RETENTION_PERIOD_CONFIG,
+            id="valid retention_period",
         ),
         pytest.param(
-            {
-                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
-            },
-            {
-                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
-            },
-            id="non-default valid charm config",
-        ),
-        pytest.param(
-            {
-                "retention_period": INVALID_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
-            },
-            {
-                "retention_period": DISABLED_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DISABLED_DELETION_DELAY_CONFIG,
-            },
-            id="invalid retention_period charm config",
-        ),
-        pytest.param(
-            {
-                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": INVALID_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": VALID_DELETION_DELAY_CONFIG,
-            },
-            {
-                "retention_period": DISABLED_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DISABLED_DELETION_DELAY_CONFIG,
-            },
-            id="invalid cleanup_interval charm config",
-        ),
-        pytest.param(
-            {
-                "retention_period": VALID_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": VALID_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": INVALID_DELETION_DELAY_CONFIG,
-            },
-            {
-                "retention_period": DISABLED_RETENTION_PERIOD_CONFIG,
-                "cleanup_interval": DEFAULT_CLEANUP_INTERVAL_CONFIG,
-                "deletion_delay": DISABLED_DELETION_DELAY_CONFIG,
-            },
-            id="invalid deletion_delay charm config",
+            {"retention_period": INVALID_RETENTION_PERIOD_CONFIG},
+            DISABLED_RETENTION_PERIOD_CONFIG,
+            id="invalid retention_period",
         ),
     ],
 )
@@ -319,7 +263,7 @@ def test_retention_period_config(
     nginx_prometheus_exporter_container,
     peers,
     charm_config,
-    expected_pyroscope_config,
+    expected_retention_period,
 ):
     state = State(
         leader=True,
@@ -332,18 +276,9 @@ def test_retention_period_config(
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
         actual_limits_config = actual_config_dict["limits"]
-        actual_compactor_config = actual_config_dict["compactor"]
         expected_limits_config = {
-            "compactor_blocks_retention_period": expected_pyroscope_config[
-                "retention_period"
-            ],
+            "compactor_blocks_retention_period": expected_retention_period,
         }
+        # THEN retention is reflected in the limits section
+        # (v2 has no separate compactor block; compaction is driven by the metastore)
         assert actual_limits_config == expected_limits_config
-        assert (
-            actual_compactor_config["cleanup_interval"]
-            == expected_pyroscope_config["cleanup_interval"]
-        )
-        assert (
-            actual_compactor_config["cleanup_interval"]
-            == expected_pyroscope_config["cleanup_interval"]
-        )
