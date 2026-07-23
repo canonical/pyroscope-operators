@@ -28,9 +28,7 @@ SSC_APP = "ssc"
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [
-    "querier",
     "query-frontend",
-    "query-scheduler",
     "query-backend",
     "distributor",
     "segment-writer",
