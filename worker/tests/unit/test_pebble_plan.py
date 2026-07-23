@@ -20,16 +20,14 @@ from conftest import config_on_disk, endpoint_ready
     "roles",
     (
         ["all"],
-        ["querier"],
         ["query-frontend"],
-        ["query-scheduler"],
         ["query-backend"],
         ["distributor"],
         ["segment-writer"],
         ["metastore"],
         ["compaction-worker"],
         # multiple roles on one worker
-        ["query-scheduler", "query-frontend", "querier"],
+        ["query-frontend", "query-backend"],
         ["segment-writer", "metastore"],
     ),
 )

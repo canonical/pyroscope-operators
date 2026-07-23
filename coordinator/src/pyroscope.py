@@ -60,8 +60,8 @@ class Pyroscope:
 
     @staticmethod
     def _build_segment_writer_config(roles_addresses: Dict[str, Set[str]]):
-        # v2 write path (replaces the v1 ingester). Its ring kvstore defaults to
-        # consul upstream, so we pin it to memberlist for our gossip cluster.
+        # The segment-writer ring kvstore defaults to consul upstream, so we pin
+        # it to memberlist for our gossip cluster.
         sw_addresses = roles_addresses.get(
             pyroscope_config.PyroscopeRole.segment_writer
         )

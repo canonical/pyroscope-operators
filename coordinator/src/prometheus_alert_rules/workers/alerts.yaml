@@ -26,18 +26,8 @@ groups:
     annotations:
       summary: "Pyroscope panic detected ({{ $labels.instance }})"
       description: "Instance {{ $labels.instance }} has recorded at least one panic in the last minute."
-  - alert: PyroscopeFrontendNotConnectedToScheduler
-    expr: min by (job, instance)(pyroscope_query_frontend_connected_schedulers) == 0
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Query frontend not connected to any schedulers ({{ $labels.instance }})"
-      description: "Pyroscope frontend {{ $labels.instance }} is not connected to any schedulers."
-  # NOTE(v2): the v1 store-gateway/compactor alerts were removed here because those
-  # components no longer exist in the v2 storage architecture. Compaction is now driven
-  # by the metastore + compaction-worker (metric families pyroscope_compaction_worker_*
-  # and pyroscope_metastore_*); dedicated v2 alerts for those are a follow-up.
+  # TODO: add alerts for the v2 storage components (metric families
+  # pyroscope_compaction_worker_* and pyroscope_metastore_*).
   - alert: PyroscopeObjectStoreOperationFailures
     expr: sum by (instance, job, bucket, operation)(increase(objstore_bucket_operation_failures_total[5m])) > 0
     for: 5m

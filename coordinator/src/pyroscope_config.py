@@ -12,11 +12,7 @@ from pydantic import BaseModel, Field
 
 @unique
 class PyroscopeRole(StrEnum):
-    """Pyroscope v2 component role names.
-
-    v2 replaces the v1 ingester/store-gateway/compactor write+read path with an
-    object-storage-native one: segment-writer (write), metastore (Raft metadata
-    index), query-backend (read execution) and compaction-worker.
+    """Pyroscope component role names.
 
     References:
      arch:
@@ -27,9 +23,7 @@ class PyroscopeRole(StrEnum):
 
     all = "all"  # default, meta-role.
     # query path
-    querier = "querier"
     query_frontend = "query-frontend"
-    query_scheduler = "query-scheduler"
     query_backend = "query-backend"
     # write / ingest path
     distributor = "distributor"
@@ -44,9 +38,7 @@ class PyroscopeRole(StrEnum):
     @staticmethod
     def all_nonmeta():
         return {
-            PyroscopeRole.querier,
             PyroscopeRole.query_frontend,
-            PyroscopeRole.query_scheduler,
             PyroscopeRole.query_backend,
             PyroscopeRole.distributor,
             PyroscopeRole.segment_writer,
@@ -63,9 +55,7 @@ META_ROLES = {
 # Pyroscope component meta-role names.
 
 MINIMAL_DEPLOYMENT = {
-    PyroscopeRole.querier: 1,
     PyroscopeRole.query_frontend: 1,
-    PyroscopeRole.query_scheduler: 1,
     PyroscopeRole.query_backend: 1,
     PyroscopeRole.distributor: 1,
     PyroscopeRole.segment_writer: 1,
@@ -105,7 +95,7 @@ class Lifecycler(BaseModel):
 
 
 class SegmentWriter(BaseModel):
-    """Segment-writer schema (v2 write path; replaces the v1 ingester).
+    """Segment-writer schema.
 
     Note: upstream defaults this ring's kvstore to ``consul``, so we must set it
     to ``memberlist`` explicitly for our gossip-based cluster.

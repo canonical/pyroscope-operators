@@ -4,9 +4,7 @@ from typing import List
 
 _valid_roles = [
     "all",
-    "querier",
     "query-frontend",
-    "query-scheduler",
     "query-backend",
     "distributor",
     "segment-writer",
