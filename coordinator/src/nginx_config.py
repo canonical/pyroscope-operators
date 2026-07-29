@@ -31,6 +31,12 @@ http_locations: List[NginxLocationConfig] = [
     NginxLocationConfig(path="/assets", backend="worker", upstream_tls=upstream_tls),
     NginxLocationConfig(
         path="/ingest", backend="distributor", modifier="=", upstream_tls=upstream_tls
+    ),  # legacy ingest, used by pyroscope-go
+    # push API: the pyroscope-rs SDKs and profilecli speak Connect over plain HTTP here
+    NginxLocationConfig(
+        path="/push.v1.PusherService",
+        backend="distributor",
+        upstream_tls=upstream_tls,
     ),
     NginxLocationConfig(
         path="/pyroscope",
