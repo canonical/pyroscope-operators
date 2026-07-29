@@ -158,18 +158,50 @@ def test_metastore_config(
         charm: PyroscopeCoordinatorCharm = mgr.charm
         actual_config = charm.pyroscope.config(charm.coordinator)
         actual_config_dict = yaml.safe_load(actual_config)
+        expected_peers = sorted(
+            f"worker-{i}.test.svc.cluster.local:9099" for i in range(workers_no)
+        )
         expected_config = {
             "raft": {
                 "dir": "/pyroscope-data/metastore/raft",
                 "snapshots_dir": "/pyroscope-data/metastore/snapshots",
                 "bootstrap_expect_peers": workers_no,
+                "bootstrap_peers": expected_peers,
             },
+            "address": ",".join(p.replace(":9099", ":9095") for p in expected_peers),
             "data_dir": "/pyroscope-data/metastore/data",
         }
         # THEN metastore config portion is generated
         assert "metastore" in actual_config_dict
-        # AND its Raft cluster expects as many peers as there are metastore workers
+        # AND its Raft cluster expects as many peers as there are metastore workers,
+        # with the full peer list and a client gRPC address
         assert actual_config_dict["metastore"] == expected_config
+
+
+@pytest.mark.parametrize("workers_no", (1, 3))
+def test_query_backend_config(
+    workers_no, context, state_with_s3_and_workers, all_worker, s3
+):
+    # GIVEN an s3 relation and a query-backend worker relation that has n units
+    qb_workers = replace(
+        all_worker,
+        remote_app_data={"role": '"query-backend"'},
+        remote_units_data={
+            worker_idx: get_worker_unit_data(worker_idx)
+            for worker_idx in range(workers_no)
+        },
+    )
+    state = replace(state_with_s3_and_workers, relations={qb_workers, s3})
+    # WHEN an event is fired
+    with context(context.on.relation_changed(qb_workers), state) as mgr:
+        charm: PyroscopeCoordinatorCharm = mgr.charm
+        actual_config_dict = yaml.safe_load(charm.pyroscope.config(charm.coordinator))
+        # THEN the query-frontend is pointed at the query-backend headless service
+        # over gRPC via a dns:/// address (round_robin across all backend pods),
+        # regardless of how many query-backend units there are.
+        assert actual_config_dict["query_backend"] == {
+            "address": "dns:///test.svc.cluster.local:9095"
+        }
 
 
 def test_s3_storage_config(context, state_with_s3_and_workers):

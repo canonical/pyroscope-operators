@@ -58,11 +58,20 @@ def test_pebble_ready_plan(ctx, pyroscope_container, roles, https_proxy):
     pyroscope_container_out = state_out.get_container(pyroscope_container.name)
     plan_out = pyroscope_container_out.plan.to_dict()
 
-    assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
-    assert (
-        plan_out["services"]["pyroscope"]["command"]
-        == f"/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target={','.join(roles)} -architecture.storage=v2"
+    expected_command = (
+        f"/usr/bin/pyroscope -config.file=/etc/worker/config.yaml "
+        f"-target={','.join(roles)} -architecture.storage=v2"
     )
+    # metastore-running workers get their per-unit Raft identity appended
+    if "all" in roles or "metastore" in roles:
+        expected_command += (
+            f" -metastore.raft.server-id={host}"
+            f" -metastore.raft.advertise-address={host}:9099"
+            f" -metastore.raft.bind-address=:9099"
+        )
+
+    assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
+    assert plan_out["services"]["pyroscope"]["command"] == expected_command
     assert plan_out["services"]["pyroscope"]["environment"]["https_proxy"] == "0.0.0.1"
     # AND the pebble service is running
     assert pyroscope_container_out.services.get("pyroscope").is_running() is True
@@ -122,9 +131,12 @@ def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
     plan_out = pyroscope_container_out.plan.to_dict()
 
     assert plan_out["checks"]["ready"]["http"]["url"] == f"http://{host}:4040/ready"
-    assert (
-        plan_out["services"]["pyroscope"]["command"]
-        == "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml -target=all -architecture.storage=v2"
+    assert plan_out["services"]["pyroscope"]["command"] == (
+        "/usr/bin/pyroscope -config.file=/etc/worker/config.yaml "
+        "-target=all -architecture.storage=v2"
+        f" -metastore.raft.server-id={host}"
+        f" -metastore.raft.advertise-address={host}:9099"
+        " -metastore.raft.bind-address=:9099"
     )
     assert (
         plan_out["services"]["pyroscope"]["environment"]["JAEGER_ENDPOINT"]

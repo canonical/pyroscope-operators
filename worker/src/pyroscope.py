@@ -12,6 +12,7 @@ from coordinated_workers.worker import Worker, CONFIG_FILE
 from ops.pebble import Layer
 
 API_PORT = 4040
+METASTORE_RAFT_PORT = 9099
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class PyroscopeWorker:
             container_name=self._name,
             # each worker needs different resources.
             # we set minimal requests just to ensure scheduling — won’t affect actual performance since limits handle that.
-            # cfr. https://github.com/grafana/pyroscope/blob/v1.14.0/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
+            # cfr. https://github.com/grafana/pyroscope/blob/v2.2.0/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
             resources_requests=lambda _: {"cpu": "100m", "memory": "256Mi"},
         )
 
@@ -62,6 +63,22 @@ class PyroscopeWorker:
         roles = worker.roles
         # sort the roles to avoid unnecessary replans
         roles = sorted(roles)
+
+        # -architecture.storage=v2 selects the v2 object-storage path (default is dual)
+        command = (
+            f"/usr/bin/pyroscope -config.file={CONFIG_FILE} "
+            f"-target={','.join(roles)} -architecture.storage=v2"
+        )
+        # Per-unit Raft identity, which the shared coordinator config can't carry.
+        # server-id is the bare host, matching how bootstrap_peers resolves each peer.
+        if "all" in roles or "metastore" in roles:
+            fqdn = socket.getfqdn()
+            command += (
+                f" -metastore.raft.server-id={fqdn}"
+                f" -metastore.raft.advertise-address={fqdn}:{METASTORE_RAFT_PORT}"
+                f" -metastore.raft.bind-address=:{METASTORE_RAFT_PORT}"
+            )
+
         return Layer(
             {
                 "summary": "pyroscope worker layer",
@@ -70,10 +87,7 @@ class PyroscopeWorker:
                     "pyroscope": {
                         "override": "replace",
                         "summary": "pyroscope worker process",
-                        # Allow configuring multiple roles for one worker application.
-                        # -architecture.storage=v2 selects the v2 object-storage path
-                        # (upstream default is v1-v2-dual).
-                        "command": f"/usr/bin/pyroscope -config.file={CONFIG_FILE} -target={','.join(roles)} -architecture.storage=v2",
+                        "command": command,
                         "startup": "enabled",
                         "environment": env,
                     }
