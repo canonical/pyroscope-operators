@@ -26,7 +26,7 @@ from charm_config import (
 )
 from peers import Peers, PEERS_RELATION_ENDPOINT_NAME
 from pyroscope import Pyroscope
-from pyroscope_config import PYROSCOPE_ROLES_CONFIG
+from pyroscope_config import PYROSCOPE_ROLES_CONFIG, PyroscopeRole
 from cosl.reconciler import all_events, observe_events
 
 logger = logging.getLogger(__name__)
@@ -116,11 +116,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
                 enable_status_page=True,
             ),
             workers_config=self.pyroscope.config,
-            worker_ports=lambda role: (
-                Pyroscope.memberlist_port,
-                # we need http_server_port because the metrics server runs on it.
-                Pyroscope.http_server_port,
-            ),
+            worker_ports=self._worker_ports,
             workload_tracing_protocols=["jaeger_thrift_http"],
             container_name="nginx",
             resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
@@ -133,6 +129,16 @@ class PyroscopeCoordinatorCharm(CharmBase):
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
         )
+
+    @staticmethod
+    def _worker_ports(role: str):
+        """Ports a worker with the given role should open."""
+        # http_server_port is needed because the metrics server runs on it.
+        ports = [Pyroscope.memberlist_port, Pyroscope.http_server_port]
+        if role in (PyroscopeRole.all, PyroscopeRole.metastore):
+            # raft peer traffic and the gRPC API the other components call
+            ports += [Pyroscope.metastore_raft_port, Pyroscope.grpc_port]
+        return tuple(ports)
 
     ######################
     # UTILITY PROPERTIES #

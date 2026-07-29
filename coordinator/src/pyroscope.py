@@ -23,6 +23,9 @@ class Pyroscope:
     memberlist_port = 7946
     # this is an http server, but it can also somehow accept grpc traffic using some dark trick
     http_server_port = 4040
+    # metastore Raft peer port and gRPC (client) port
+    metastore_raft_port = 9099
+    grpc_port = 9095
 
     def __init__(
         self,
@@ -45,6 +48,7 @@ class Pyroscope:
             distributor=self._build_distributor_config(),
             segment_writer=self._build_segment_writer_config(addrs_by_role),
             metastore=self._build_metastore_config(addrs_by_role),
+            query_backend=self._build_query_backend_config(addrs_by_role),
             memberlist=self._build_memberlist_config(addrs),
             limits=self._build_limits_config(),
             storage=self._build_storage_config(coordinator._s3_config),
@@ -78,22 +82,42 @@ class Pyroscope:
             )
         )
 
-    @staticmethod
-    def _build_metastore_config(roles_addresses: Dict[str, Set[str]]):
-        # The metastore forms a Raft cluster across all workers running the
-        # metastore role. For a single (monolithic 'all') worker this is 1.
-        # TODO(v2-ha): a multi-node metastore needs persistent, stable peer
-        # addresses + odd quorum; out of scope for the minimal single-node build.
-        ms_addresses = roles_addresses.get(pyroscope_config.PyroscopeRole.metastore)
-        peers = len(ms_addresses) if ms_addresses else 1
+    @classmethod
+    def _build_metastore_config(cls, roles_addresses: Dict[str, Set[str]]):
+        # Shared Raft parameters; per-unit identity is set by the worker itself.
+        ms_addresses = sorted(
+            roles_addresses.get(pyroscope_config.PyroscopeRole.metastore) or []
+        )
+        peers = len(ms_addresses) or 1
+        bootstrap_peers = [
+            f"{addr}:{cls.metastore_raft_port}" for addr in ms_addresses
+        ] or None
+        # every node, so a client can always reach the current leader
+        address = ",".join(f"{addr}:{cls.grpc_port}" for addr in ms_addresses) or None
         return pyroscope_config.Metastore(
             raft=pyroscope_config.Raft(
                 dir=f"{Pyroscope._data_path}/metastore/raft",
                 snapshots_dir=f"{Pyroscope._data_path}/metastore/snapshots",
                 bootstrap_expect_peers=peers,
+                bootstrap_peers=bootstrap_peers,
             ),
+            address=address,
             data_dir=f"{Pyroscope._data_path}/metastore/data",
         )
+
+    @classmethod
+    def _build_query_backend_config(cls, roles_addresses: Dict[str, Set[str]]):
+        # The query-frontend round-robins over the query-backend, so it needs a
+        # dns:/// address for the headless service; grpc.NewClient won't parse a
+        # static list. Derive it by stripping the per-pod label off a unit fqdn.
+        qb_addresses = sorted(
+            roles_addresses.get(pyroscope_config.PyroscopeRole.query_backend) or []
+        )
+        address = None
+        if qb_addresses:
+            headless = qb_addresses[0].split(".", 1)[-1]
+            address = f"dns:///{headless}:{cls.grpc_port}"
+        return pyroscope_config.QueryBackend(address=address)
 
     def _build_memberlist_config(self, worker_peers: Optional[Tuple[str, ...]]):
         return pyroscope_config.Memberlist(

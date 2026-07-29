@@ -33,7 +33,7 @@ def test_deploy_pyroscope(juju: Juju):
 def test_configure_retention_and_ingest_profile(juju: Juju):
     juju.config(
         PYROSCOPE_APP,
-        {"retention_period": "1m", "deletion_delay": "0", "cleanup_interval": "30s"},
+        {"retention_period": "1m"},
     )
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     emit_profile(endpoint=f"{pyroscope_ip}:42424")

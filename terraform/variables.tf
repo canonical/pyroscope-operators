@@ -73,22 +73,16 @@ variable "coordinator_config" {
 
 # -------------- # App Names --------------
 
-variable "querier_name" {
-  description = "Name of the pyroscope querier app"
-  type        = string
-  default     = "pyroscope-querier"
-}
-
 variable "query_frontend_name" {
   description = "Name of the pyroscope query-frontend app"
   type        = string
   default     = "pyroscope-query-frontend"
 }
 
-variable "ingester_name" {
-  description = "Name of the pyroscope ingester app"
+variable "query_backend_name" {
+  description = "Name of the pyroscope query-backend app"
   type        = string
-  default     = "pyroscope-ingester"
+  default     = "pyroscope-query-backend"
 }
 
 variable "distributor_name" {
@@ -97,22 +91,22 @@ variable "distributor_name" {
   default     = "pyroscope-distributor"
 }
 
-variable "compactor_name" {
-  description = "Name of the pyroscope compactor app"
+variable "segment_writer_name" {
+  description = "Name of the pyroscope segment-writer app"
   type        = string
-  default     = "pyroscope-compactor"
+  default     = "pyroscope-segment-writer"
 }
 
-variable "query_scheduler_name" {
-  description = "Name of the pyroscope query-scheduler app"
+variable "metastore_name" {
+  description = "Name of the pyroscope metastore app"
   type        = string
-  default     = "pyroscope-query-scheduler"
+  default     = "pyroscope-metastore"
 }
 
-variable "store_gateway_name" {
-  description = "Name of the pyroscope store-gateway app"
+variable "compaction_worker_name" {
+  description = "Name of the pyroscope compaction-worker app"
   type        = string
-  default     = "pyroscope-store-gateway"
+  default     = "pyroscope-compaction-worker"
 }
 
 variable "tenant_settings_name" {
@@ -142,14 +136,14 @@ variable "coordinator_storage_directives" {
   default     = {}
 }
 
-variable "ad_hoc_profiles_worker_storage_directives" {
-  description = "Map of storage used by the ad-hoc-profiles worker application, which defaults to 1 GB, allocated by Juju"
+variable "query_frontend_worker_storage_directives" {
+  description = "Map of storage used by the query-frontend worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
   default     = {}
 }
 
-variable "compactor_worker_storage_directives" {
-  description = "Map of storage used by the compactor worker application, which defaults to 1 GB, allocated by Juju"
+variable "query_backend_worker_storage_directives" {
+  description = "Map of storage used by the query-backend worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
   default     = {}
 }
@@ -160,38 +154,32 @@ variable "distributor_worker_storage_directives" {
   default     = {}
 }
 
-variable "ingester_worker_storage_directives" {
-  description = "Map of storage used by the ingester worker application, which defaults to 1 GB, allocated by Juju"
+variable "segment_writer_worker_storage_directives" {
+  description = "Map of storage used by the segment-writer worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
   default     = {}
 }
 
-variable "querier_worker_storage_directives" {
-  description = "Map of storage used by the querier worker application, which defaults to 1 GB, allocated by Juju"
+variable "metastore_worker_storage_directives" {
+  description = "Map of storage used by the metastore worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
   default     = {}
 }
 
-variable "query_frontend_worker_storage_directives" {
-  description = "Map of storage used by the query-frontend worker application, which defaults to 1 GB, allocated by Juju"
-  type        = map(string)
-  default     = {}
-}
-
-variable "query_scheduler_worker_storage_directives" {
-  description = "Map of storage used by the query-scheduler worker application, which defaults to 1 GB, allocated by Juju"
-  type        = map(string)
-  default     = {}
-}
-
-variable "store_gateway_worker_storage_directives" {
-  description = "Map of storage used by the store-gateway worker application, which defaults to 1 GB, allocated by Juju"
+variable "compaction_worker_worker_storage_directives" {
+  description = "Map of storage used by the compaction-worker worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
   default     = {}
 }
 
 variable "tenant_settings_worker_storage_directives" {
   description = "Map of storage used by the tenant-settings worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
+variable "ad_hoc_profiles_worker_storage_directives" {
+  description = "Map of storage used by the ad-hoc-profiles worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
   default     = {}
 }
@@ -204,12 +192,32 @@ variable "s3_integrator_storage_directives" {
 
 # -------------- # Units Per App --------------
 
-variable "compactor_units" {
-  description = "Number of pyroscope worker units with compactor role"
+variable "coordinator_units" {
+  description = "Number of pyroscope coordinator units"
   type        = number
   default     = 1
   validation {
-    condition     = var.compactor_units >= 1
+    condition     = var.coordinator_units >= 1
+    error_message = "The number of units must be greater than or equal to 1."
+  }
+}
+
+variable "query_frontend_units" {
+  description = "Number of pyroscope worker units with query-frontend role"
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.query_frontend_units >= 1
+    error_message = "The number of units must be greater than or equal to 1."
+  }
+}
+
+variable "query_backend_units" {
+  description = "Number of pyroscope worker units with query-backend role"
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.query_backend_units >= 1
     error_message = "The number of units must be greater than or equal to 1."
   }
 }
@@ -224,32 +232,32 @@ variable "distributor_units" {
   }
 }
 
-variable "ingester_units" {
-  description = "Number of pyroscope worker units with ingester role"
+variable "segment_writer_units" {
+  description = "Number of pyroscope worker units with segment-writer role"
   type        = number
   default     = 1
   validation {
-    condition     = var.ingester_units >= 1
+    condition     = var.segment_writer_units >= 1
     error_message = "The number of units must be greater than or equal to 1."
   }
 }
 
-variable "query_scheduler_units" {
-  description = "Number of pyroscope worker units with query-scheduler role"
+variable "metastore_units" {
+  description = "Number of pyroscope worker units with metastore role. Must be odd (Raft quorum); defaults to 3 for high availability."
   type        = number
-  default     = 1
+  default     = 3
   validation {
-    condition     = var.query_scheduler_units >= 1
-    error_message = "The number of units must be greater than or equal to 1."
+    condition     = var.metastore_units >= 1 && var.metastore_units % 2 == 1
+    error_message = "The number of metastore units must be an odd number >= 1 (Raft quorum)."
   }
 }
 
-variable "store_gateway_units" {
-  description = "Number of pyroscope worker units with store-gateway role"
+variable "compaction_worker_units" {
+  description = "Number of pyroscope worker units with compaction-worker role"
   type        = number
   default     = 1
   validation {
-    condition     = var.store_gateway_units >= 1
+    condition     = var.compaction_worker_units >= 1
     error_message = "The number of units must be greater than or equal to 1."
   }
 }
@@ -270,35 +278,6 @@ variable "ad_hoc_profiles_units" {
   default     = 1
   validation {
     condition     = var.ad_hoc_profiles_units >= 1
-    error_message = "The number of units must be greater than or equal to 1."
-  }
-}
-
-variable "coordinator_units" {
-  description = "Number of pyroscope coordinator units"
-  type        = number
-  default     = 1
-  validation {
-    condition     = var.coordinator_units >= 1
-    error_message = "The number of units must be greater than or equal to 1."
-  }
-}
-
-variable "querier_units" {
-  description = "Number of pyroscope worker units with querier role"
-  type        = number
-  default     = 1
-  validation {
-    condition     = var.querier_units >= 1
-    error_message = "The number of units must be greater than or equal to 1."
-  }
-}
-variable "query_frontend_units" {
-  description = "Number of pyroscope worker units with query-frontend role"
-  type        = number
-  default     = 1
-  validation {
-    condition     = var.query_frontend_units >= 1
     error_message = "The number of units must be greater than or equal to 1."
   }
 }

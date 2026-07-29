@@ -47,24 +47,6 @@ module "pyroscope_coordinator" {
   constraints        = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=pyroscope,anti-pod.topology-key=kubernetes.io/hostname" : null
 }
 
-module "pyroscope_querier" {
-  source      = "../worker/terraform"
-  app_name    = var.querier_name
-  model_uuid  = var.model_uuid
-  channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.querier_name},anti-pod.topology-key=kubernetes.io/hostname" : null
-  config = {
-    role-all     = false
-    role-querier = true
-  }
-  revision           = var.worker_revision
-  storage_directives = var.querier_worker_storage_directives
-  units              = var.querier_units
-  depends_on = [
-    module.pyroscope_coordinator
-  ]
-}
-
 module "pyroscope_query_frontend" {
   source      = "../worker/terraform"
   app_name    = var.query_frontend_name
@@ -83,19 +65,19 @@ module "pyroscope_query_frontend" {
   ]
 }
 
-module "pyroscope_ingester" {
+module "pyroscope_query_backend" {
   source      = "../worker/terraform"
-  app_name    = var.ingester_name
+  app_name    = var.query_backend_name
   model_uuid  = var.model_uuid
   channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.ingester_name},anti-pod.topology-key=kubernetes.io/hostname" : null
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.query_backend_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
-    role-all      = false
-    role-ingester = true
+    role-all           = false
+    role-query-backend = true
   }
   revision           = var.worker_revision
-  storage_directives = var.ingester_worker_storage_directives
-  units              = var.ingester_units
+  storage_directives = var.query_backend_worker_storage_directives
+  units              = var.query_backend_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -119,56 +101,57 @@ module "pyroscope_distributor" {
   ]
 }
 
-module "pyroscope_compactor" {
+module "pyroscope_segment_writer" {
   source      = "../worker/terraform"
-  app_name    = var.compactor_name
+  app_name    = var.segment_writer_name
   model_uuid  = var.model_uuid
   channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.compactor_name},anti-pod.topology-key=kubernetes.io/hostname" : null
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.segment_writer_name},anti-pod.topology-key=kubernetes.io/hostname" : null
+  config = {
+    role-all            = false
+    role-segment-writer = true
+  }
+  revision           = var.worker_revision
+  storage_directives = var.segment_writer_worker_storage_directives
+  units              = var.segment_writer_units
+  depends_on = [
+    module.pyroscope_coordinator
+  ]
+}
+
+# The metastore is the only stateful v2 component. It forms a Raft quorum, so it
+# defaults to 3 units for high availability (an odd count avoids split-brain).
+module "pyroscope_metastore" {
+  source      = "../worker/terraform"
+  app_name    = var.metastore_name
+  model_uuid  = var.model_uuid
+  channel     = var.channel
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.metastore_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
     role-all       = false
-    role-compactor = true
+    role-metastore = true
   }
   revision           = var.worker_revision
-  storage_directives = var.compactor_worker_storage_directives
-  units              = var.compactor_units
+  storage_directives = var.metastore_worker_storage_directives
+  units              = var.metastore_units
   depends_on = [
     module.pyroscope_coordinator
   ]
 }
 
-module "pyroscope_query_scheduler" {
+module "pyroscope_compaction_worker" {
   source      = "../worker/terraform"
-  app_name    = var.query_scheduler_name
+  app_name    = var.compaction_worker_name
   model_uuid  = var.model_uuid
   channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.query_scheduler_name},anti-pod.topology-key=kubernetes.io/hostname" : null
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.compaction_worker_name},anti-pod.topology-key=kubernetes.io/hostname" : null
   config = {
-    role-all             = false
-    role-query-scheduler = true
+    role-all               = false
+    role-compaction-worker = true
   }
   revision           = var.worker_revision
-  storage_directives = var.query_scheduler_worker_storage_directives
-  units              = var.query_scheduler_units
-  depends_on = [
-    module.pyroscope_coordinator
-  ]
-}
-
-
-module "pyroscope_store_gateway" {
-  source      = "../worker/terraform"
-  app_name    = var.store_gateway_name
-  model_uuid  = var.model_uuid
-  channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.store_gateway_name},anti-pod.topology-key=kubernetes.io/hostname" : null
-  config = {
-    role-all           = false
-    role-store-gateway = true
-  }
-  revision           = var.worker_revision
-  storage_directives = var.store_gateway_worker_storage_directives
-  units              = var.store_gateway_units
+  storage_directives = var.compaction_worker_worker_storage_directives
+  units              = var.compaction_worker_units
   depends_on = [
     module.pyroscope_coordinator
   ]
@@ -226,20 +209,6 @@ resource "juju_integration" "coordinator_to_s3_integrator" {
   }
 }
 
-resource "juju_integration" "coordinator_to_querier" {
-  model_uuid = var.model_uuid
-
-  application {
-    name     = module.pyroscope_coordinator.app_name
-    endpoint = "pyroscope-cluster"
-  }
-
-  application {
-    name     = module.pyroscope_querier.app_name
-    endpoint = "pyroscope-cluster"
-  }
-}
-
 resource "juju_integration" "coordinator_to_query_frontend" {
   model_uuid = var.model_uuid
 
@@ -254,7 +223,7 @@ resource "juju_integration" "coordinator_to_query_frontend" {
   }
 }
 
-resource "juju_integration" "coordinator_to_ingester" {
+resource "juju_integration" "coordinator_to_query_backend" {
   model_uuid = var.model_uuid
 
   application {
@@ -263,7 +232,7 @@ resource "juju_integration" "coordinator_to_ingester" {
   }
 
   application {
-    name     = module.pyroscope_ingester.app_name
+    name     = module.pyroscope_query_backend.app_name
     endpoint = "pyroscope-cluster"
   }
 }
@@ -282,7 +251,7 @@ resource "juju_integration" "coordinator_to_distributor" {
   }
 }
 
-resource "juju_integration" "coordinator_to_compactor" {
+resource "juju_integration" "coordinator_to_segment_writer" {
   model_uuid = var.model_uuid
 
   application {
@@ -291,12 +260,12 @@ resource "juju_integration" "coordinator_to_compactor" {
   }
 
   application {
-    name     = module.pyroscope_compactor.app_name
+    name     = module.pyroscope_segment_writer.app_name
     endpoint = "pyroscope-cluster"
   }
 }
 
-resource "juju_integration" "coordinator_to_query_scheduler" {
+resource "juju_integration" "coordinator_to_metastore" {
   model_uuid = var.model_uuid
 
   application {
@@ -305,12 +274,12 @@ resource "juju_integration" "coordinator_to_query_scheduler" {
   }
 
   application {
-    name     = module.pyroscope_query_scheduler.app_name
+    name     = module.pyroscope_metastore.app_name
     endpoint = "pyroscope-cluster"
   }
 }
 
-resource "juju_integration" "coordinator_to_store_gateway" {
+resource "juju_integration" "coordinator_to_compaction_worker" {
   model_uuid = var.model_uuid
 
   application {
@@ -319,7 +288,7 @@ resource "juju_integration" "coordinator_to_store_gateway" {
   }
 
   application {
-    name     = module.pyroscope_store_gateway.app_name
+    name     = module.pyroscope_compaction_worker.app_name
     endpoint = "pyroscope-cluster"
   }
 }

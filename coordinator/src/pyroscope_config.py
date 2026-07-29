@@ -112,6 +112,8 @@ class Raft(BaseModel):
     # Number of peers to expect before bootstrapping the Raft cluster. Equals the
     # number of workers running the metastore role (1 for a single-node deploy).
     bootstrap_expect_peers: Optional[int] = None
+    # every metastore address (host:raft_port); each node finds itself by server-id
+    bootstrap_peers: Optional[List[str]] = None
 
 
 class Metastore(BaseModel):
@@ -119,6 +121,15 @@ class Metastore(BaseModel):
 
     raft: Raft
     data_dir: str
+    # gRPC address other components use to reach the metastore
+    address: Optional[str] = None
+
+
+class QueryBackend(BaseModel):
+    """Query-backend schema (v2 read path)."""
+
+    # dns:/// gRPC address of the query-backend headless service
+    address: Optional[str] = None
 
 
 class Api(BaseModel):
@@ -182,6 +193,7 @@ class PyroscopeConfig(BaseModel):
     distributor: Distributor
     segment_writer: SegmentWriter
     metastore: Metastore
+    query_backend: QueryBackend
     memberlist: Memberlist
     limits: Limits
     storage: Storage
