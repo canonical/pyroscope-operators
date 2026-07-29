@@ -1,4 +1,5 @@
 import pytest
+from charmlibs.nginx_k8s import NginxConfig
 
 import nginx_config
 
@@ -29,3 +30,41 @@ def test_servers_config():
 
     # THEN the locations are mapped to the right port
     assert server_ports_to_locations[nginx_config.http_server_port]
+
+
+@pytest.mark.parametrize(
+    "path, backend",
+    [
+        # unrouted, these 404 from nginx's static root and pushes are silently lost
+        ("/push.v1.PusherService", "distributor"),
+        ("/ingest", "distributor"),
+    ],
+)
+def test_ingest_paths_are_routed_to_the_distributor(path, backend):
+    # GIVEN the http locations the coordinator serves
+    locations = nginx_config.server_ports_to_locations()[nginx_config.http_server_port]
+
+    # WHEN we look up an ingest path
+    matching = [location for location in locations if location.path == path]
+
+    # THEN it is routed, and to the distributor
+    assert matching, f"{path} is not routed on the http server port"
+    assert all(location.backend == backend for location in matching)
+
+
+def test_rendered_config_proxies_the_push_api():
+    # GIVEN a rendered config with a distributor in the cluster
+    rendered = NginxConfig(
+        server_name="pyroscope-0.pyroscope-endpoints.test.svc.cluster.local",
+        upstream_configs=nginx_config.upstreams(4040),
+        server_ports_to_locations=nginx_config.server_ports_to_locations(),
+        enable_status_page=True,
+    ).get_config(
+        upstreams_to_addresses={
+            "distributor": {"distributor-0.test.svc.cluster.local"}
+        },
+        listen_tls=False,
+    )
+
+    # THEN it reaches the config nginx actually runs
+    assert "location /push.v1.PusherService" in rendered
