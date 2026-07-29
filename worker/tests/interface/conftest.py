@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from interface_tester import InterfaceTester
+from ops import ActiveStatus
 from ops.testing import Exec
 from scenario.state import Container, State
 
@@ -14,7 +15,7 @@ from charm import PyroscopeWorkerCharm
 
 
 PYROSCOPE_VERSION_EXEC_OUTPUT = Exec(
-    command_prefix=("/usr/bin/pyroscope", "-version"), stdout="2.1.1"
+    command_prefix=("/usr/bin/pyroscope", "-version"), stdout="2.2.0"
 )
 
 
@@ -33,12 +34,22 @@ def interface_test_config(interface_tester: InterfaceTester):
     interface_tester.configure(
         # override to use http instead of https, else it asks for ssh key password on every test.
         repo="http://github.com/canonical/charm-relation-interfaces",
-        branch="feat/pyroscope_cluster_interface",
     )
 
     # apply all necessary patches
     with ExitStack() as stack:
         stack.enter_context(patch("lightkube.core.client.GenericSyncClient"))
+        stack.enter_context(patch("coordinated_workers.worker.reconcile_charm_labels"))
+        # else the charm reads the serviceaccount namespace, which only exists in a pod
+        stack.enter_context(
+            patch.multiple(
+                "coordinated_workers.worker.KubernetesComputeResourcesPatch",
+                _namespace="test-namespace",
+                _patch=lambda _: None,
+                get_status=MagicMock(return_value=ActiveStatus()),
+                is_ready=MagicMock(return_value=True),
+            )
+        )
         stack.enter_context(
             patch(
                 "coordinated_workers.worker.Worker._running_worker_config",
