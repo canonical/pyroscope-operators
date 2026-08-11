@@ -172,8 +172,9 @@ config:
       type: string
     retention_period:
       description: |
-        Delete blocks containing samples older than the specified retention period.
+        Retention period for profile data in v2 storage. Data older than this
+        period is deleted by the metastore index cleaner.
         Defaults to "1d".
-        Supported units: d, w, m, y, h, s, ms or 0 for no limit (disable).
+        Supported units: d, w, m, y, h, s, ms or 0 to disable deletion.
       type: string
       default: "1d"
