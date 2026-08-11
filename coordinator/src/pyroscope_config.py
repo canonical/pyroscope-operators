@@ -180,9 +180,9 @@ class Distributor(BaseModel):
 
 
 class Limits(BaseModel):
-    """Limits schema."""
+    """Limits schema (v2 retention via limits.retention_period)."""
 
-    compactor_blocks_retention_period: str | int = "1d"
+    retention_period: str | int = "1d"
 
 
 class PyroscopeConfig(BaseModel):

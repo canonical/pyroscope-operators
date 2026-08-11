@@ -309,8 +309,7 @@ def test_retention_period_config(
         actual_config_dict = yaml.safe_load(actual_config)
         actual_limits_config = actual_config_dict["limits"]
         expected_limits_config = {
-            "compactor_blocks_retention_period": expected_retention_period,
+            "retention_period": expected_retention_period,
         }
-        # THEN retention is reflected in the limits section
-        # (v2 has no separate compactor block; compaction is driven by the metastore)
+        # THEN retention is reflected in the limits section (v2 metastore index cleaner)
         assert actual_limits_config == expected_limits_config
