@@ -243,7 +243,7 @@ variable "segment_writer_units" {
 }
 
 variable "metastore_units" {
-  description = "Number of pyroscope worker units with metastore role. Must be odd (Raft quorum); defaults to 3 for high availability."
+  description = "Initial number of pyroscope worker units with metastore role. Must be odd (Raft quorum); defaults to 3 for high availability."
   type        = number
   default     = 3
   validation {

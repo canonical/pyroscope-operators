@@ -7,7 +7,7 @@ The solution consists of the following Terraform modules:
 - [pyroscope-worker-k8s](https://github.com/canonical/pyroscope-operators/tree/main/worker): run one or more pyroscope application components.
 - [s3-integrator](https://github.com/canonical/s3-integrator): facade for S3 storage configurations.
 
-This Terraform module deploys pyroscope in its [microservices mode](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/): each Pyroscope v2 role runs as its own worker application, so roles can be scaled independently. The roles are `query-frontend`, `query-backend`, `distributor`, `segment-writer`, `metastore`, `compaction-worker`, `tenant-settings` and `ad-hoc-profiles`.
+This Terraform module deploys pyroscope in its [microservices mode](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/): each Pyroscope v2 role runs as its own worker application. The roles are `query-frontend`, `query-backend`, `distributor`, `segment-writer`, `metastore`, `compaction-worker`, `tenant-settings` and `ad-hoc-profiles`.
 
 The `metastore` is the only stateful role: it forms a [Raft](https://raft.github.io/) quorum, so it defaults to `3` units and must always run an odd number of units. The other roles default to `1` unit and can be scaled via their `<role>_units` inputs.
 
@@ -28,7 +28,7 @@ To deploy this module with its needed dependency, you can run `terraform apply -
 
 ### Scaling
 
-Each role scales independently through its `<role>_units` input, for example `terraform apply -var="model_uuid=<MODEL_UUID>" -var="distributor_units=3"`. The `metastore` role must keep an odd number of units (`>= 3`) so its Raft cluster retains a quorum. See [pyroscope worker roles](https://discourse.charmhub.io/t/pyroscope-worker-roles/15484) for the recommended scale of each role.
+Stateless roles scale independently through their `<role>_units` inputs, for example `terraform apply -var="model_uuid=<MODEL_UUID>" -var="distributor_units=3"`. See [pyroscope worker roles](https://discourse.charmhub.io/t/pyroscope-worker-roles/15484) for their recommended scale.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -95,7 +95,7 @@ Each role scales independently through its `<role>_units` input, for example `te
 | <a name="input_distributor_units"></a> [distributor\_units](#input\_distributor\_units) | Number of pyroscope worker units with distributor role | `number` | `1` | no |
 | <a name="input_distributor_worker_storage_directives"></a> [distributor\_worker\_storage\_directives](#input\_distributor\_worker\_storage\_directives) | Map of storage used by the distributor worker application, which defaults to 1 GB, allocated by Juju | `map(string)` | `{}` | no |
 | <a name="input_metastore_name"></a> [metastore\_name](#input\_metastore\_name) | Name of the pyroscope metastore app | `string` | `"pyroscope-metastore"` | no |
-| <a name="input_metastore_units"></a> [metastore\_units](#input\_metastore\_units) | Number of pyroscope worker units with metastore role. Must be odd (Raft quorum); defaults to 3 for high availability. | `number` | `3` | no |
+| <a name="input_metastore_units"></a> [metastore\_units](#input\_metastore\_units) | Initial number of pyroscope worker units with metastore role. Must be odd (Raft quorum); defaults to 3 for high availability. | `number` | `3` | no |
 | <a name="input_metastore_worker_storage_directives"></a> [metastore\_worker\_storage\_directives](#input\_metastore\_worker\_storage\_directives) | Map of storage used by the metastore worker application, which defaults to 1 GB, allocated by Juju | `map(string)` | `{}` | no |
 | <a name="input_model_uuid"></a> [model\_uuid](#input\_model\_uuid) | Reference to an existing model resource or data source for the model to deploy to | `string` | n/a | yes |
 | <a name="input_query_backend_name"></a> [query\_backend\_name](#input\_query\_backend\_name) | Name of the pyroscope query-backend app | `string` | `"pyroscope-query-backend"` | no |
