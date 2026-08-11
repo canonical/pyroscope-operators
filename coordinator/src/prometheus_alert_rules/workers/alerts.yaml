@@ -28,7 +28,16 @@ groups:
       summary: "Pyroscope panic detected ({{ $labels.instance }})"
       description: "Instance {{ $labels.instance }} has recorded at least one panic in the last minute."
   - alert: PyroscopeMetastoreRaftNoLeader
-    expr: sum(raft_state{state="Leader"}) == 0
+    expr: |
+      (
+        sum by (juju_model_uuid, juju_application) (
+          pyroscope_metastore_raft_state{state="Leader"}
+        )
+        or on (juju_model_uuid, juju_application)
+        0 * sum by (juju_model_uuid, juju_application) (
+          pyroscope_metastore_raft_state
+        )
+      ) == 0
     for: 5m
     labels:
       severity: critical
@@ -36,7 +45,10 @@ groups:
       summary: "Pyroscope metastore has no Raft leader"
       description: "No metastore unit reports Raft leader state. The v2 metadata index may be unavailable."
   - alert: PyroscopeMetastoreRaftMultipleLeaders
-    expr: sum(raft_state{state="Leader"}) > 1
+    expr: |
+      sum by (juju_model_uuid, juju_application) (
+        pyroscope_metastore_raft_state{state="Leader"}
+      ) > 1
     for: 2m
     labels:
       severity: critical
@@ -44,13 +56,38 @@ groups:
       summary: "Pyroscope metastore has multiple Raft leaders"
       description: "{{ $value }} metastore units report Raft leader state, which indicates split-brain."
   - alert: PyroscopeMetastoreRaftLogStoreTimeouts
-    expr: sum by (job, instance)(increase(raft_log_store_write_timeouts_total[5m])) > 0
+    expr: |
+      sum by (juju_model_uuid, juju_application, juju_unit, job, instance) (
+        increase(pyroscope_metastore_raft_log_store_write_timeouts_total[5m])
+      ) > 0
     for: 5m
     labels:
       severity: warning
     annotations:
       summary: "Metastore Raft log store write timeouts ({{ $labels.instance }})"
       description: "Instance {{ $labels.instance }} recorded Raft log store write timeouts in the last 5 minutes."
+  - alert: PyroscopeCompactionWorkerJobFailures
+    expr: |
+      sum by (juju_model_uuid, juju_application, juju_unit, job, instance) (
+        increase(pyroscope_compaction_worker_jobs_completed_total{status=~"failure|metadata_not_found|block_not_found"}[15m])
+      ) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pyroscope compaction job failures ({{ $labels.instance }})"
+      description: "Instance {{ $labels.instance }} recorded failed or incomplete compaction jobs in the last 15 minutes."
+  - alert: PyroscopeCompactionWorkerBlockDeletionFailures
+    expr: |
+      sum by (juju_model_uuid, juju_application, juju_unit, job, instance) (
+        increase(pyroscope_compaction_worker_blocks_deleted_total{status="failure"}[15m])
+      ) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pyroscope block deletion failures ({{ $labels.instance }})"
+      description: "Instance {{ $labels.instance }} recorded failed block deletions in the last 15 minutes."
   - alert: PyroscopeObjectStoreOperationFailures
     expr: sum by (instance, job, bucket, operation)(increase(objstore_bucket_operation_failures_total[5m])) > 0
     for: 5m
@@ -103,4 +140,3 @@ groups:
       summary: High write request errors on {{ $labels.method }} {{ $labels.route }}
       description: |
         Instance {{ $labels.instance }} is experiencing {{ printf "%.2f" $value }}% write requests error rate for route {{ $labels.route }} (method {{ $labels.method }}).
-
