@@ -1,4 +1,5 @@
-# TODO: revisit the alert rules when https://github.com/grafana/pyroscope/issues/3624 is addressed
+# Alert rules for Pyroscope v2 storage components. Revisit when
+# https://github.com/grafana/pyroscope/issues/3624 adds upstream defaults.
 
 groups:
 - name: pyroscope_general_alerts
@@ -26,8 +27,30 @@ groups:
     annotations:
       summary: "Pyroscope panic detected ({{ $labels.instance }})"
       description: "Instance {{ $labels.instance }} has recorded at least one panic in the last minute."
-  # TODO: add alerts for the v2 storage components (metric families
-  # pyroscope_compaction_worker_* and pyroscope_metastore_*).
+  - alert: PyroscopeMetastoreRaftNoLeader
+    expr: sum(raft_state{state="Leader"}) == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pyroscope metastore has no Raft leader"
+      description: "No metastore unit reports Raft leader state. The v2 metadata index may be unavailable."
+  - alert: PyroscopeMetastoreRaftMultipleLeaders
+    expr: sum(raft_state{state="Leader"}) > 1
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pyroscope metastore has multiple Raft leaders"
+      description: "{{ $value }} metastore units report Raft leader state, which indicates split-brain."
+  - alert: PyroscopeMetastoreRaftLogStoreTimeouts
+    expr: sum by (job, instance)(increase(raft_log_store_write_timeouts_total[5m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Metastore Raft log store write timeouts ({{ $labels.instance }})"
+      description: "Instance {{ $labels.instance }} recorded Raft log store write timeouts in the last 5 minutes."
   - alert: PyroscopeObjectStoreOperationFailures
     expr: sum by (instance, job, bucket, operation)(increase(objstore_bucket_operation_failures_total[5m])) > 0
     for: 5m

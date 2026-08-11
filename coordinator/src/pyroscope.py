@@ -100,6 +100,7 @@ class Pyroscope:
                 snapshots_dir=f"{Pyroscope._data_path}/metastore/snapshots",
                 bootstrap_expect_peers=peers,
                 bootstrap_peers=bootstrap_peers,
+                auto_join=True,
             ),
             address=address,
             data_dir=f"{Pyroscope._data_path}/metastore/data",

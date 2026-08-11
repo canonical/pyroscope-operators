@@ -9,7 +9,7 @@ The solution consists of the following Terraform modules:
 
 This Terraform module deploys pyroscope in its [microservices mode](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/): each Pyroscope v2 role runs as its own worker application, so roles can be scaled independently. The roles are `query-frontend`, `query-backend`, `distributor`, `segment-writer`, `metastore`, `compaction-worker`, `tenant-settings` and `ad-hoc-profiles`.
 
-The `metastore` is the only stateful role: it forms a [Raft](https://raft.github.io/) quorum, so it defaults to `3` units and must always run an odd number of units. The other roles default to `1` unit and can be scaled via their `<role>_units` inputs.
+The `metastore` is the only stateful role: it forms a [Raft](https://raft.github.io/) quorum, so it defaults to `3` units and must always run an odd number of units. Metastore scale-up after initial bootstrap is supported via Raft auto-join; scale-down is not supported and requires manual Raft member removal. The other roles default to `1` unit and can be scaled via their `<role>_units` inputs.
 
 
 > [!NOTE]

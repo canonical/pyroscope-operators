@@ -114,6 +114,8 @@ class Raft(BaseModel):
     bootstrap_expect_peers: Optional[int] = None
     # every metastore address (host:raft_port); each node finds itself by server-id
     bootstrap_peers: Optional[List[str]] = None
+    # New nodes with empty state try to join an existing cluster before bootstrap.
+    auto_join: Optional[bool] = None
 
 
 class Metastore(BaseModel):

@@ -167,6 +167,7 @@ def test_metastore_config(
                 "snapshots_dir": "/pyroscope-data/metastore/snapshots",
                 "bootstrap_expect_peers": workers_no,
                 "bootstrap_peers": expected_peers,
+                "auto_join": True,
             },
             "address": ",".join(p.replace(":9099", ":9095") for p in expected_peers),
             "data_dir": "/pyroscope-data/metastore/data",
