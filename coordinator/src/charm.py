@@ -133,11 +133,18 @@ class PyroscopeCoordinatorCharm(CharmBase):
     @staticmethod
     def _worker_ports(role: str):
         """Ports a worker with the given role should open."""
+        roles = {part.strip() for part in role.split(",") if part.strip()}
         # http_server_port is needed because the metrics server runs on it.
-        ports = [Pyroscope.memberlist_port, Pyroscope.http_server_port]
-        if role in (PyroscopeRole.all, PyroscopeRole.metastore):
-            # raft peer traffic and the gRPC API the other components call
-            ports += [Pyroscope.metastore_raft_port, Pyroscope.grpc_port]
+        # grpc_port is opened on every worker: upstream v2 components bind it and
+        # query-frontends dial query-backends at :9095 over the headless service.
+        ports = [
+            Pyroscope.memberlist_port,
+            Pyroscope.http_server_port,
+            Pyroscope.grpc_port,
+        ]
+        if PyroscopeRole.all in roles or PyroscopeRole.metastore in roles:
+            # raft peer traffic and the metastore gRPC API the other components call
+            ports.append(Pyroscope.metastore_raft_port)
         return tuple(ports)
 
     ######################
