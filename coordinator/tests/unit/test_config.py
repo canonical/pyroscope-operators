@@ -311,5 +311,39 @@ def test_retention_period_config(
         expected_limits_config = {
             "retention_period": expected_retention_period,
         }
-        # THEN retention is reflected in the limits section (v2 metastore index cleaner)
+        # THEN retention is reflected in the limits section
         assert actual_limits_config == expected_limits_config
+
+
+def test_deprecated_config_options_are_inert(
+    context,
+    all_worker,
+    s3,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    peers,
+):
+    # GIVEN a charm still carrying the deprecated options from an older deployment
+    state = State(
+        leader=True,
+        config={
+            "retention_period": VALID_RETENTION_PERIOD_CONFIG,
+            "deletion_delay": "24h",
+            "cleanup_interval": "30m",
+        },
+        relations=[all_worker, s3, peers],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+    )
+    # WHEN the config is rendered
+    with context(context.on.config_changed(), state) as mgr:
+        charm: PyroscopeCoordinatorCharm = mgr.charm
+        actual_config = charm.pyroscope.config(charm.coordinator)
+
+        # THEN the charm does not fall over, and retention still applies
+        actual_config_dict = yaml.safe_load(actual_config)
+        assert actual_config_dict["limits"] == {
+            "retention_period": VALID_RETENTION_PERIOD_CONFIG
+        }
+        # AND neither option reaches the workload, since they no longer do anything
+        assert "deletion_delay" not in actual_config
+        assert "cleanup_interval" not in actual_config

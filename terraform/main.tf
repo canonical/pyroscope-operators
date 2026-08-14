@@ -119,8 +119,8 @@ module "pyroscope_segment_writer" {
   ]
 }
 
-# The metastore is the only stateful v2 component. It forms a Raft quorum, so it
-# defaults to 3 units for high availability (an odd count avoids split-brain).
+# The metastore is the only stateful component. It forms a Raft quorum, so unlike
+# the other roles it defaults to 3 units. The unit count must stay odd.
 module "pyroscope_metastore" {
   source      = "../worker/terraform"
   app_name    = var.metastore_name

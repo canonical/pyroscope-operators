@@ -178,3 +178,18 @@ config:
         Supported units: d, w, m, y, h, s, ms or 0 to disable deletion.
       type: string
       default: "1d"
+    deletion_delay:
+      description: |
+        Time before a block marked for deletion is deleted from the bucket.
+        This is DEPRECATED and will be removed in the next track. The option
+        has no effect: Pyroscope now deletes expired data on its own, and
+        retention_period is the only control for it.
+      type: string
+      default: "12h"
+    cleanup_interval:
+      description: |
+        How frequently blocks cleanup and maintenance runs.
+        This is DEPRECATED and will be removed in the next track. The option
+        has no effect: Pyroscope now schedules this work on its own.
+      type: string
+      default: "15m"

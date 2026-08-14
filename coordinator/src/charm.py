@@ -135,8 +135,8 @@ class PyroscopeCoordinatorCharm(CharmBase):
         """Ports a worker with the given role should open."""
         roles = {part.strip() for part in role.split(",") if part.strip()}
         # http_server_port is needed because the metrics server runs on it.
-        # grpc_port is opened on every worker: upstream v2 components bind it and
-        # query-frontends dial query-backends at :9095 over the headless service.
+        # grpc_port is opened on every worker: the components bind it, and
+        # query-frontends dial query-backends there over the headless service.
         ports = [
             Pyroscope.memberlist_port,
             Pyroscope.http_server_port,

@@ -28,7 +28,7 @@ To deploy this module with its needed dependency, you can run `terraform apply -
 
 ### Scaling
 
-Stateless roles scale independently through their `<role>_units` inputs, for example `terraform apply -var="model_uuid=<MODEL_UUID>" -var="distributor_units=3"`. See [pyroscope worker roles](https://discourse.charmhub.io/t/pyroscope-worker-roles/15484) for their recommended scale.
+Stateless roles scale independently through their `<role>_units` inputs, for example `terraform apply -var="model_uuid=<MODEL_UUID>" -var="distributor_units=3"`. For the recommended scale of each role in a highly-available deployment, see [`probes/cluster-consistency.yaml`](../probes/cluster-consistency.yaml).
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

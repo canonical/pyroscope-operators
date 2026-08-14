@@ -95,11 +95,7 @@ class Lifecycler(BaseModel):
 
 
 class SegmentWriter(BaseModel):
-    """Segment-writer schema.
-
-    Note: upstream defaults this ring's kvstore to ``consul``, so we must set it
-    to ``memberlist`` explicitly for our gossip-based cluster.
-    """
+    """Segment-writer schema."""
 
     lifecycler: Lifecycler
 
@@ -109,26 +105,22 @@ class Raft(BaseModel):
 
     dir: str
     snapshots_dir: str
-    # Number of peers to expect before bootstrapping the Raft cluster. Equals the
-    # number of workers running the metastore role (1 for a single-node deploy).
     bootstrap_expect_peers: Optional[int] = None
-    # every metastore address (host:raft_port); each node finds itself by server-id
+    # every metastore address, as host:raft_port
     bootstrap_peers: Optional[List[str]] = None
 
 
 class Metastore(BaseModel):
-    """Metastore schema (v2 metadata index, Raft-based)."""
+    """Metastore schema."""
 
     raft: Raft
     data_dir: str
-    # gRPC address other components use to reach the metastore
     address: Optional[str] = None
 
 
 class QueryBackend(BaseModel):
-    """Query-backend schema (v2 read path)."""
+    """Query-backend schema."""
 
-    # dns:/// gRPC address of the query-backend headless service
     address: Optional[str] = None
 
 
@@ -180,13 +172,13 @@ class Distributor(BaseModel):
 
 
 class Limits(BaseModel):
-    """Limits schema (v2 retention via limits.retention_period)."""
+    """Limits schema."""
 
     retention_period: str | int = "1d"
 
 
 class PyroscopeConfig(BaseModel):
-    """PyroscopeConfig config schema (v2-only, minimal)."""
+    """PyroscopeConfig config schema."""
 
     api: Api
     server: Server

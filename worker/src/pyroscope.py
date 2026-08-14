@@ -64,7 +64,8 @@ class PyroscopeWorker:
         # sort the roles to avoid unnecessary replans
         roles = sorted(roles)
 
-        # -architecture.storage=v2 selects the v2 object-storage path (default is dual)
+        # The charm no longer defines the v1 roles, so the default dual mode would
+        # have nothing to serve the v1 read path. Pin the storage architecture to v2.
         command = (
             f"/usr/bin/pyroscope -config.file={CONFIG_FILE} "
             f"-target={','.join(roles)} -architecture.storage=v2"

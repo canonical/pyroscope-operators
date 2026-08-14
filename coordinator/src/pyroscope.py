@@ -39,7 +39,7 @@ class Pyroscope:
         self,
         coordinator: Coordinator,
     ) -> str:
-        """Generate the Pyroscope (v2) configuration."""
+        """Generate the Pyroscope configuration."""
         addrs = coordinator.cluster.gather_addresses()
         addrs_by_role = coordinator.cluster.gather_addresses_by_role()
         config = pyroscope_config.PyroscopeConfig(
