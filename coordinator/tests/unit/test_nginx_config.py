@@ -52,6 +52,21 @@ def test_ingest_paths_are_routed_to_the_distributor(path, backend):
     assert all(location.backend == backend for location in matching)
 
 
+@pytest.mark.parametrize("path", ["/", "/assets"])
+def test_ui_paths_are_routed_to_a_role_that_serves_the_ui(path):
+    # GIVEN the http locations the coordinator serves
+    locations = nginx_config.server_ports_to_locations()[nginx_config.http_server_port]
+
+    # WHEN we look up a UI path
+    matching = [location for location in locations if location.path == path]
+
+    # THEN it is routed at the query-frontend, not at the generic worker upstream.
+    # Every other role answers `/` with a redirect, so the generic upstream makes the
+    # UI load only on the fraction of requests that happen to land on a query-frontend.
+    assert matching, f"{path} is not routed on the http server port"
+    assert all(location.backend == "query-frontend" for location in matching)
+
+
 def test_rendered_config_proxies_the_push_api():
     # GIVEN a rendered config with a distributor in the cluster
     rendered = NginxConfig(

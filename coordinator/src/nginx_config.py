@@ -22,13 +22,18 @@ http_server_port = 8080
 upstream_tls = False
 
 http_locations: List[NginxLocationConfig] = [
+    # Pyroscope UI. Only the query-frontend serves it; every other role answers `/`
+    # with a redirect, so routing this at the generic `worker` upstream load-balances
+    # the UI across roles that cannot serve it and the page loads intermittently.
     NginxLocationConfig(
         path="/",
-        backend="worker",
+        backend="query-frontend",
         modifier="=",
         upstream_tls=upstream_tls,
-    ),  # pyroscope UI - not bound to a specific role
-    NginxLocationConfig(path="/assets", backend="worker", upstream_tls=upstream_tls),
+    ),
+    NginxLocationConfig(
+        path="/assets", backend="query-frontend", upstream_tls=upstream_tls
+    ),
     NginxLocationConfig(
         path="/ingest", backend="distributor", modifier="=", upstream_tls=upstream_tls
     ),  # legacy ingest, used by pyroscope-go
