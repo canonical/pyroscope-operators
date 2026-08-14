@@ -15,7 +15,6 @@ from pytest_jubilant import get_resources, pack
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CI_TRUE_VALUES = {"1", "true", "yes"}
-# must track the `platforms` stanza in charmcraft.yaml, else CI silently repacks
 COORDINATOR_CHARM_FILENAME = "pyroscope-coordinator-k8s_ubuntu@26.04-amd64.charm"
 WORKER_CHARM_FILENAME = "pyroscope-worker-k8s_ubuntu@26.04-amd64.charm"
 

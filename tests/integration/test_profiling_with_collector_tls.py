@@ -4,12 +4,6 @@
 
 import pytest
 
-pytestmark = [
-    pytest.mark.skip(
-        reason="Skipped due to https://github.com/canonical/pyroscope-operators/issues/315"
-    ),
-]
-
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
@@ -94,6 +88,11 @@ def test_integrate_ssc_collector(juju: Juju):
 
 
 @when("we emit a profile to the otel collector using otlp grpc")
+@pytest.mark.skip(
+    reason="otelcol 0.130 cannot parse the OTLP profiles schema Pyroscope v2 requires: "
+    "the collector rejects the payload with 'wrong wireType = 2 for field LocationsLength'. "
+    "Needs an opentelemetry-collector-k8s image on 0.152 or newer."
+)
 def test_emit_profile_to_collector(juju: Juju):
     collector_ip = get_unit_ip_address(juju, OTEL_COLLECTOR_APP, 0)
     emit_profile(
@@ -103,6 +102,11 @@ def test_emit_profile_to_collector(juju: Juju):
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 @then("the profile should be ingested by pyroscope")
+@pytest.mark.skip(
+    reason="otelcol 0.130 cannot parse the OTLP profiles schema Pyroscope v2 requires: "
+    "the collector rejects the payload with 'wrong wireType = 2 for field LocationsLength'. "
+    "Needs an opentelemetry-collector-k8s image on 0.152 or newer."
+)
 def test_ingest_profile_from_collector(juju: Juju, ca_cert_path):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_profile_is_ingested(

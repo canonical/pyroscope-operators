@@ -4,12 +4,6 @@
 
 import pytest
 
-pytestmark = [
-    pytest.mark.skip(
-        reason="Skipped due to https://github.com/canonical/pyroscope-operators/issues/315"
-    ),
-]
-
 from jubilant import Juju
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
