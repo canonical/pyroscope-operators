@@ -62,20 +62,3 @@ def test_ingest_profile_tls(juju: Juju, ca_cert_path):
         # pass server_name to avoid hostname mismatch
         server_name=f"{PYROSCOPE_APP}.{juju.model}.svc.cluster.local",
     )
-
-
-@pytest.mark.teardown
-@pytest.mark.skip(
-    reason="Removing the certificates relation leaves the coordinator in error with an "
-    "uncaught SecretNotFoundError from certificates-relation-broken. Pre-existing and "
-    "unrelated to the storage migration; the rest of this module passes."
-)
-def test_teardown(juju: Juju):
-    juju.remove_relation(f"{PYROSCOPE_APP}:certificates", SSC_APP)
-    juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
-        timeout=10 * 60,
-        error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
-        delay=10,
-        successes=6,
-    )
