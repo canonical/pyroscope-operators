@@ -5,12 +5,13 @@
 import pytest
 
 import time
-from jubilant import Juju
+from jubilant import Juju, all_active
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
     deploy_monolithic_cluster,
     emit_profile,
     PYROSCOPE_APP,
+    WORKER_APP,
     get_unit_ip_address,
 )
 from tests.integration.assertions import assert_no_profiles, assert_profile_is_ingested
@@ -28,6 +29,15 @@ def test_configure_retention_and_ingest_profile(juju: Juju):
     juju.config(
         PYROSCOPE_APP,
         {"retention_period": "1m"},
+    )
+    # juju.config returns before services restart, so an immediate push may
+    # hit a closed gRPC port.
+
+    juju.wait(
+        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
+        timeout=1000,
+        delay=5,
+        successes=3,
     )
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     emit_profile(endpoint=f"{pyroscope_ip}:42424")

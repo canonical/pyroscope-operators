@@ -44,11 +44,11 @@ resources:
   pyroscope-image:
     type: oci-image
     description: OCI image for Grafana Pyroscope
-    # TEMPORARY, DO NOT MERGE. Points at a personal GHCR copy of the 2.2.1 rock so CI can
-    # exercise the v2 charm against a v2 binary. The released pin must go back to
-    # ubuntu/pyroscope once oci-factory#1176 publishes the 2.2-26.04 tag; until then the
-    # 1.18 image rejects -architecture.storage=v2 and every worker crash-loops.
-    # renovate annotation deliberately omitted so renovate leaves this line alone.
+    # TODO(#437): DO NOT MERGE with this pin. It points at an unpublished copy of the
+    # 2.2.1 rock so CI can run the v2 charm against a v2 workload. Put it back to
+    # ubuntu/pyroscope once oci-factory#1176 publishes 2.2-26.04. Until then the 1.18
+    # image rejects -architecture.storage=v2 and every worker crash-loops.
+    # The renovate annotation is left off on purpose so renovate leaves this line alone.
     upstream-source: ghcr.io/iamsharduld/pyroscope@sha256:8e895552bda03bfab2cfd17b436e3786a096dfac99e20cd63746525df8a9534a
 
 links:
