@@ -12,7 +12,7 @@ from tests.integration.helpers import (
     PYROSCOPE_APP,
     get_unit_ip_address,
     OTEL_COLLECTOR_APP,
-    INTEGRATION_TESTERS_CHANNEL,
+    CHANNELS,
     WORKER_APP,
     SSC_APP,
 )
@@ -34,7 +34,7 @@ def test_deploy_and_integrate_collector(juju: Juju):
     juju.deploy(
         "opentelemetry-collector-k8s",
         OTEL_COLLECTOR_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["opentelemetry-collector-k8s"],
         trust=True,
     )
     juju.integrate(f"{PYROSCOPE_APP}:profiling", OTEL_COLLECTOR_APP)
@@ -89,9 +89,9 @@ def test_integrate_ssc_collector(juju: Juju):
 
 @when("we emit a profile to the otel collector using otlp grpc")
 @pytest.mark.skip(
-    reason="otelcol 0.130 cannot parse the OTLP profiles schema Pyroscope v2 requires: "
-    "the collector rejects the payload with 'wrong wireType = 2 for field LocationsLength'. "
-    "Needs an opentelemetry-collector-k8s image on 0.152 or newer."
+    reason="See #439. otelcol 0.130 rejects the OTLP profiles schema Pyroscope v2 needs, "
+    "with 'wrong wireType = 2 for field LocationsLength'. Every collector channel still "
+    "ships 0.130, so there is nothing to point this at yet."
 )
 def test_emit_profile_to_collector(juju: Juju):
     collector_ip = get_unit_ip_address(juju, OTEL_COLLECTOR_APP, 0)
@@ -103,9 +103,9 @@ def test_emit_profile_to_collector(juju: Juju):
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 @then("the profile should be ingested by pyroscope")
 @pytest.mark.skip(
-    reason="otelcol 0.130 cannot parse the OTLP profiles schema Pyroscope v2 requires: "
-    "the collector rejects the payload with 'wrong wireType = 2 for field LocationsLength'. "
-    "Needs an opentelemetry-collector-k8s image on 0.152 or newer."
+    reason="See #439. otelcol 0.130 rejects the OTLP profiles schema Pyroscope v2 needs, "
+    "with 'wrong wireType = 2 for field LocationsLength'. Every collector channel still "
+    "ships 0.130, so there is nothing to point this at yet."
 )
 def test_ingest_profile_from_collector(juju: Juju, ca_cert_path):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)

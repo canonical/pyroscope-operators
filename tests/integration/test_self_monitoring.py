@@ -25,7 +25,7 @@ from tests.integration.helpers import (
     SWFS_APP,
     deploy_distributed_cluster,
     get_unit_ip_address,
-    INTEGRATION_TESTERS_CHANNEL,
+    CHANNELS,
 )
 
 PROMETHEUS_APP = "prometheus"
@@ -45,9 +45,6 @@ COS_COMPONENTS = (
 
 logger = logging.getLogger(__name__)
 
-# The blanket skip from https://github.com/canonical/pyroscope-operators/issues/291 is gone:
-# the module runs, and only test_grafana_source_integration below still fails.
-
 
 @given("a pyroscope cluster is deployed with COS")
 @given("we integrate pyroscope and COS")
@@ -59,16 +56,14 @@ def test_setup(juju: Juju):
     pyro_apps = deploy_distributed_cluster(juju, ALL_ROLES, wait_for_idle=False)
 
     # AND we deploy & integrate with loki
-    juju.deploy(
-        "loki-k8s", app=LOKI_APP, channel=INTEGRATION_TESTERS_CHANNEL, trust=True
-    )
+    juju.deploy("loki-k8s", app=LOKI_APP, channel=CHANNELS["loki-k8s"], trust=True)
     juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
 
     # AND prometheus
     juju.deploy(
         "prometheus-k8s",
         app=PROMETHEUS_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["prometheus-k8s"],
         trust=True,
     )
     juju.integrate(
@@ -79,13 +74,13 @@ def test_setup(juju: Juju):
     juju.deploy(
         "tempo-coordinator-k8s",
         app=TEMPO_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["tempo-coordinator-k8s"],
         trust=True,
     )
     juju.deploy(
         "tempo-worker-k8s",
         app=TEMPO_WORKER_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["tempo-worker-k8s"],
         trust=True,
     )
     juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
@@ -97,7 +92,7 @@ def test_setup(juju: Juju):
     juju.deploy(
         "catalogue-k8s",
         CATALOGUE_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["catalogue-k8s"],
     )
     juju.integrate(PYROSCOPE_APP, CATALOGUE_APP)
 
@@ -105,7 +100,7 @@ def test_setup(juju: Juju):
     juju.deploy(
         "grafana-k8s",
         GRAFANA_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["grafana-k8s"],
         trust=True,
     )
     juju.integrate(PYROSCOPE_APP + ":grafana-dashboard", GRAFANA_APP)
@@ -247,13 +242,6 @@ def grafana_admin_creds(juju) -> str:
 
 
 @then("a pyroscope datasource is provisioned in grafana")
-@pytest.mark.skip(
-    reason="The coordinator provides grafana-source via the v1 library, which publishes "
-    "the app-level `grafana_source_app_host`. grafana-k8s still ships the v0 consumer, "
-    "which only reads the per-unit `grafana_source_host`, so it mints no datasource. The "
-    "v1 library documents this as the 'old Grafana + new provider' case and calls for a "
-    "coordinated rollout. Reproduced on grafana-k8s 1/stable rev 160 and 2/edge rev 180."
-)
 @retry(
     wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_delay(60 * 15), reraise=True
 )

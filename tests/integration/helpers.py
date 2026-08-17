@@ -38,7 +38,15 @@ ALL_ROLES = [
     "ad-hoc-profiles",
 ]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
-INTEGRATION_TESTERS_CHANNEL = "2/edge"
+CHANNELS = {
+    "grafana-k8s": "12.4/stable",
+    "loki-k8s": "3.7/stable",
+    "prometheus-k8s": "3.11/stable",
+    "tempo-coordinator-k8s": "2.10/stable",
+    "tempo-worker-k8s": "2.10/stable",
+    "catalogue-k8s": "3.0/stable",
+    "opentelemetry-collector-k8s": "0.130/stable",
+}
 PROFILEGEN_SCRIPT_PATH = REPO_ROOT / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
