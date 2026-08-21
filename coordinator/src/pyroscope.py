@@ -23,6 +23,9 @@ class Pyroscope:
     memberlist_port = 7946
     # this is an http server, but it can also somehow accept grpc traffic using some dark trick
     http_server_port = 4040
+    # metastore Raft peer port and gRPC (client) port
+    metastore_raft_port = 9099
+    grpc_port = 9095
 
     def __init__(
         self,
@@ -43,13 +46,12 @@ class Pyroscope:
             api=self._build_api_config(self._external_url),
             server=self._build_server_config(),
             distributor=self._build_distributor_config(),
-            ingester=self._build_ingester_config(addrs_by_role),
-            store_gateway=self._build_store_gateway_config(addrs_by_role),
+            segment_writer=self._build_segment_writer_config(addrs_by_role),
+            metastore=self._build_metastore_config(addrs_by_role),
+            query_backend=self._build_query_backend_config(addrs_by_role),
             memberlist=self._build_memberlist_config(addrs),
             limits=self._build_limits_config(),
             storage=self._build_storage_config(coordinator._s3_config),
-            compactor=self._build_compactor_config(),
-            pyroscopedb=self._build_pyroscope_db(),
         )
         return yaml.dump(
             config.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -61,15 +63,17 @@ class Pyroscope:
         )
 
     @staticmethod
-    def _build_ingester_config(roles_addresses: Dict[str, Set[str]]):
-        ingester_addresses = roles_addresses.get(
-            pyroscope_config.PyroscopeRole.ingester
+    def _build_segment_writer_config(roles_addresses: Dict[str, Set[str]]):
+        # The segment-writer ring kvstore defaults to consul upstream, so we pin
+        # it to memberlist for our gossip cluster.
+        sw_addresses = roles_addresses.get(
+            pyroscope_config.PyroscopeRole.segment_writer
         )
-        return pyroscope_config.Ingester(
+        return pyroscope_config.SegmentWriter(
             lifecycler=pyroscope_config.Lifecycler(
                 ring=pyroscope_config.Ring(
                     replication_factor=3
-                    if ingester_addresses and len(ingester_addresses) >= 3
+                    if sw_addresses and len(sw_addresses) >= 3
                     else 1,
                     kvstore=pyroscope_config.Kvstore(
                         store="memberlist",
@@ -78,18 +82,42 @@ class Pyroscope:
             )
         )
 
-    @staticmethod
-    def _build_store_gateway_config(roles_addresses: Dict[str, Set[str]]):
-        store_gw_addresses = roles_addresses.get(
-            pyroscope_config.PyroscopeRole.store_gateway
+    @classmethod
+    def _build_metastore_config(cls, roles_addresses: Dict[str, Set[str]]):
+        # Shared Raft parameters; per-unit identity is set by the worker itself.
+        ms_addresses = sorted(
+            roles_addresses.get(pyroscope_config.PyroscopeRole.metastore) or []
         )
-        return pyroscope_config.StoreGateway(
-            sharding_ring=pyroscope_config.ShardingRing(
-                replication_factor=3
-                if store_gw_addresses and len(store_gw_addresses) >= 3
-                else 1,
-            )
+        peers = len(ms_addresses) or 1
+        bootstrap_peers = [
+            f"{addr}:{cls.metastore_raft_port}" for addr in ms_addresses
+        ] or None
+        # every node, so a client can always reach the current leader
+        address = ",".join(f"{addr}:{cls.grpc_port}" for addr in ms_addresses) or None
+        return pyroscope_config.Metastore(
+            raft=pyroscope_config.Raft(
+                dir=f"{Pyroscope._data_path}/metastore/raft",
+                snapshots_dir=f"{Pyroscope._data_path}/metastore/snapshots",
+                bootstrap_expect_peers=peers,
+                bootstrap_peers=bootstrap_peers,
+            ),
+            address=address,
+            data_dir=f"{Pyroscope._data_path}/metastore/data",
         )
+
+    @classmethod
+    def _build_query_backend_config(cls, roles_addresses: Dict[str, Set[str]]):
+        # The query-frontend round-robins over the query-backend, so it needs a
+        # dns:/// address for the headless service; grpc.NewClient won't parse a
+        # static list. Derive it by stripping the per-pod label off a unit fqdn.
+        qb_addresses = sorted(
+            roles_addresses.get(pyroscope_config.PyroscopeRole.query_backend) or []
+        )
+        address = None
+        if qb_addresses:
+            headless = qb_addresses[0].split(".", 1)[-1]
+            address = f"dns:///{headless}:{cls.grpc_port}"
+        return pyroscope_config.QueryBackend(address=address)
 
     def _build_memberlist_config(self, worker_peers: Optional[Tuple[str, ...]]):
         return pyroscope_config.Memberlist(
@@ -103,7 +131,7 @@ class Pyroscope:
 
     def _build_limits_config(self):
         return pyroscope_config.Limits(
-            compactor_blocks_retention_period=0
+            retention_period=0
             if self._charm_config.retention_period == "0"
             else self._charm_config.retention_period
         )
@@ -113,22 +141,6 @@ class Pyroscope:
         return pyroscope_config.Storage(
             backend="s3", s3=pyroscope_config.S3Storage(**s3_config)
         )
-
-    def _build_compactor_config(self):
-        return pyroscope_config.Compactor(
-            cleanup_interval=self._charm_config.cleanup_interval,
-            deletion_delay=(
-                0
-                if self._charm_config.deletion_delay == "0"
-                else self._charm_config.deletion_delay
-            ),
-            sharding_ring=pyroscope_config.ShardingRingCompactor(
-                kvstore=pyroscope_config.Kvstore(store="memberlist")
-            ),
-        )
-
-    def _build_pyroscope_db(self):
-        return pyroscope_config.DB(data_path=self._data_path)
 
     @staticmethod
     def _build_distributor_config():

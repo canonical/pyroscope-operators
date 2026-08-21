@@ -4,12 +4,6 @@
 
 import pytest
 
-pytestmark = [
-    pytest.mark.skip(
-        reason="Skipped due to https://github.com/canonical/pyroscope-operators/issues/315"
-    ),
-]
-
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
@@ -18,7 +12,7 @@ from tests.integration.helpers import (
     PYROSCOPE_APP,
     get_unit_ip_address,
     OTEL_COLLECTOR_APP,
-    INTEGRATION_TESTERS_CHANNEL,
+    CHANNELS,
     WORKER_APP,
 )
 from tests.integration.assertions import assert_profile_is_ingested
@@ -39,7 +33,7 @@ def test_deploy_and_integrate_collector(juju: Juju):
     juju.deploy(
         "opentelemetry-collector-k8s",
         OTEL_COLLECTOR_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["opentelemetry-collector-k8s"],
         trust=True,
     )
     juju.integrate(f"{PYROSCOPE_APP}:profiling", OTEL_COLLECTOR_APP)
@@ -55,6 +49,11 @@ def test_deploy_and_integrate_collector(juju: Juju):
 
 
 @when("we emit a profile to the otel collector using otlp grpc")
+@pytest.mark.skip(
+    reason="See #439. otelcol 0.130 rejects the OTLP profiles schema Pyroscope v2 needs, "
+    "with 'wrong wireType = 2 for field LocationsLength'. Every collector channel still "
+    "ships 0.130, so there is nothing to point this at yet."
+)
 def test_emit_profile_to_collector(juju: Juju):
     collector_ip = get_unit_ip_address(juju, OTEL_COLLECTOR_APP, 0)
     emit_profile(
@@ -64,6 +63,11 @@ def test_emit_profile_to_collector(juju: Juju):
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 @then("the profile should be ingested by pyroscope")
+@pytest.mark.skip(
+    reason="See #439. otelcol 0.130 rejects the OTLP profiles schema Pyroscope v2 needs, "
+    "with 'wrong wireType = 2 for field LocationsLength'. Every collector channel still "
+    "ships 0.130, so there is nothing to point this at yet."
+)
 def test_ingest_profile_from_collector(juju: Juju):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_profile_is_ingested(

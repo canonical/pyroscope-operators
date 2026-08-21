@@ -25,7 +25,7 @@ from tests.integration.helpers import (
     SWFS_APP,
     deploy_distributed_cluster,
     get_unit_ip_address,
-    INTEGRATION_TESTERS_CHANNEL,
+    CHANNELS,
 )
 
 PROMETHEUS_APP = "prometheus"
@@ -45,10 +45,6 @@ COS_COMPONENTS = (
 
 logger = logging.getLogger(__name__)
 
-# FIXME: temporarily skip all tests in this module until we figure out why they're failing in CI
-#  cfr:  https://github.com/canonical/pyroscope-operators/issues/291
-pytestmark = pytest.mark.skip
-
 
 @given("a pyroscope cluster is deployed with COS")
 @given("we integrate pyroscope and COS")
@@ -60,16 +56,14 @@ def test_setup(juju: Juju):
     pyro_apps = deploy_distributed_cluster(juju, ALL_ROLES, wait_for_idle=False)
 
     # AND we deploy & integrate with loki
-    juju.deploy(
-        "loki-k8s", app=LOKI_APP, channel=INTEGRATION_TESTERS_CHANNEL, trust=True
-    )
+    juju.deploy("loki-k8s", app=LOKI_APP, channel=CHANNELS["loki-k8s"], trust=True)
     juju.integrate(PYROSCOPE_APP + ":logging", LOKI_APP + ":logging")
 
     # AND prometheus
     juju.deploy(
         "prometheus-k8s",
         app=PROMETHEUS_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["prometheus-k8s"],
         trust=True,
     )
     juju.integrate(
@@ -80,13 +74,13 @@ def test_setup(juju: Juju):
     juju.deploy(
         "tempo-coordinator-k8s",
         app=TEMPO_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["tempo-coordinator-k8s"],
         trust=True,
     )
     juju.deploy(
         "tempo-worker-k8s",
         app=TEMPO_WORKER_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["tempo-worker-k8s"],
         trust=True,
     )
     juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
@@ -98,7 +92,7 @@ def test_setup(juju: Juju):
     juju.deploy(
         "catalogue-k8s",
         CATALOGUE_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["catalogue-k8s"],
     )
     juju.integrate(PYROSCOPE_APP, CATALOGUE_APP)
 
@@ -106,7 +100,7 @@ def test_setup(juju: Juju):
     juju.deploy(
         "grafana-k8s",
         GRAFANA_APP,
-        channel=INTEGRATION_TESTERS_CHANNEL,
+        channel=CHANNELS["grafana-k8s"],
         trust=True,
     )
     juju.integrate(PYROSCOPE_APP + ":grafana-dashboard", GRAFANA_APP)
@@ -213,7 +207,7 @@ def test_catalogue_integration(juju: Juju):
     response = juju.ssh(f"{PYROSCOPE_APP}/0", f"curl {url}")
     # THEN we receive a 200 OK response (0 exit status)
     # AND we confirm the response is from the Pyroscope UI (via the page title)
-    assert "<title>Grafana Pyroscope</title>" in response
+    assert "<title>Pyroscope</title>" in response
 
 
 @then("Dashboards are provisioned")

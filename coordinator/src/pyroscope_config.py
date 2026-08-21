@@ -16,32 +16,34 @@ class PyroscopeRole(StrEnum):
 
     References:
      arch:
-      -> https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/about-grafana-pyroscope-architecture/
+      -> https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/
      config:
       -> https://grafana.com/docs/pyroscope/latest/configure-server/
     """
 
     all = "all"  # default, meta-role.
-    querier = "querier"
+    # query path
     query_frontend = "query-frontend"
-    query_scheduler = "query-scheduler"
-    ingester = "ingester"
+    query_backend = "query-backend"
+    # write / ingest path
     distributor = "distributor"
-    compactor = "compactor"
-    store_gateway = "store-gateway"
+    segment_writer = "segment-writer"
+    # storage / metadata
+    metastore = "metastore"
+    compaction_worker = "compaction-worker"
+    # misc
     tenant_settings = "tenant-settings"
     ad_hoc_profiles = "ad-hoc-profiles"
 
     @staticmethod
     def all_nonmeta():
         return {
-            PyroscopeRole.querier,
             PyroscopeRole.query_frontend,
-            PyroscopeRole.query_scheduler,
-            PyroscopeRole.ingester,
+            PyroscopeRole.query_backend,
             PyroscopeRole.distributor,
-            PyroscopeRole.compactor,
-            PyroscopeRole.store_gateway,
+            PyroscopeRole.segment_writer,
+            PyroscopeRole.metastore,
+            PyroscopeRole.compaction_worker,
             PyroscopeRole.tenant_settings,
             PyroscopeRole.ad_hoc_profiles,
         }
@@ -53,13 +55,12 @@ META_ROLES = {
 # Pyroscope component meta-role names.
 
 MINIMAL_DEPLOYMENT = {
-    PyroscopeRole.querier: 1,
     PyroscopeRole.query_frontend: 1,
-    PyroscopeRole.query_scheduler: 1,
-    PyroscopeRole.ingester: 1,
+    PyroscopeRole.query_backend: 1,
     PyroscopeRole.distributor: 1,
-    PyroscopeRole.compactor: 1,
-    PyroscopeRole.store_gateway: 1,
+    PyroscopeRole.segment_writer: 1,
+    PyroscopeRole.metastore: 1,
+    PyroscopeRole.compaction_worker: 1,
     PyroscopeRole.tenant_settings: 1,
     PyroscopeRole.ad_hoc_profiles: 1,
 }
@@ -93,16 +94,34 @@ class Lifecycler(BaseModel):
     ring: Ring
 
 
-class ShardingRing(BaseModel):
-    """ShardingRing schema."""
+class SegmentWriter(BaseModel):
+    """Segment-writer schema."""
 
-    replication_factor: int
+    lifecycler: Lifecycler
 
 
-class ShardingRingCompactor(BaseModel):
-    """Compactor ShardingRing schema."""
+class Raft(BaseModel):
+    """Metastore Raft schema."""
 
-    kvstore: Kvstore
+    dir: str
+    snapshots_dir: str
+    bootstrap_expect_peers: Optional[int] = None
+    # every metastore address, as host:raft_port
+    bootstrap_peers: Optional[List[str]] = None
+
+
+class Metastore(BaseModel):
+    """Metastore schema."""
+
+    raft: Raft
+    data_dir: str
+    address: Optional[str] = None
+
+
+class QueryBackend(BaseModel):
+    """Query-backend schema."""
+
+    address: Optional[str] = None
 
 
 class Api(BaseModel):
@@ -119,18 +138,6 @@ class Server(BaseModel):
     """Server schema."""
 
     http_listen_port: int
-
-
-class Ingester(BaseModel):
-    """Ingester schema."""
-
-    lifecycler: Lifecycler
-
-
-class StoreGateway(BaseModel):
-    """StoreGateway schema."""
-
-    sharding_ring: ShardingRing
 
 
 class Memberlist(BaseModel):
@@ -164,24 +171,10 @@ class Distributor(BaseModel):
     ring: Ring
 
 
-class Compactor(BaseModel):
-    """Distributor schema."""
-
-    cleanup_interval: str = "15m"
-    deletion_delay: str | int = "12h"
-    sharding_ring: ShardingRingCompactor
-
-
-class DB(BaseModel):
-    """Pyroscope DB schema."""
-
-    data_path: str
-
-
 class Limits(BaseModel):
     """Limits schema."""
 
-    compactor_blocks_retention_period: str | int = "1d"
+    retention_period: str | int = "1d"
 
 
 class PyroscopeConfig(BaseModel):
@@ -190,10 +183,9 @@ class PyroscopeConfig(BaseModel):
     api: Api
     server: Server
     distributor: Distributor
-    ingester: Ingester
-    store_gateway: StoreGateway
+    segment_writer: SegmentWriter
+    metastore: Metastore
+    query_backend: QueryBackend
     memberlist: Memberlist
     limits: Limits
     storage: Storage
-    compactor: Compactor
-    pyroscopedb: DB

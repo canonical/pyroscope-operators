@@ -15,8 +15,8 @@ from pytest_jubilant import get_resources, pack
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CI_TRUE_VALUES = {"1", "true", "yes"}
-COORDINATOR_CHARM_FILENAME = "pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm"
-WORKER_CHARM_FILENAME = "pyroscope-worker-k8s_ubuntu@24.04-amd64.charm"
+COORDINATOR_CHARM_FILENAME = "pyroscope-coordinator-k8s_ubuntu@26.04-amd64.charm"
+WORKER_CHARM_FILENAME = "pyroscope-worker-k8s_ubuntu@26.04-amd64.charm"
 
 # Application names used uniformly across the tests
 SWFS_APP = "swfs"
@@ -28,18 +28,25 @@ SSC_APP = "ssc"
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [
-    "querier",
     "query-frontend",
-    "query-scheduler",
-    "ingester",
+    "query-backend",
     "distributor",
-    "compactor",
-    "store-gateway",
+    "segment-writer",
+    "metastore",
+    "compaction-worker",
     "tenant-settings",
     "ad-hoc-profiles",
 ]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
-INTEGRATION_TESTERS_CHANNEL = "2/edge"
+CHANNELS = {
+    "grafana-k8s": "12.4/stable",
+    "loki-k8s": "3.7/stable",
+    "prometheus-k8s": "3.11/stable",
+    "tempo-coordinator-k8s": "2.10/stable",
+    "tempo-worker-k8s": "2.10/stable",
+    "catalogue-k8s": "3.0/stable",
+    "opentelemetry-collector-k8s": "0.130/stable",
+}
 PROFILEGEN_SCRIPT_PATH = REPO_ROOT / "scripts" / "profilegen.py"
 
 logger = logging.getLogger(__name__)
