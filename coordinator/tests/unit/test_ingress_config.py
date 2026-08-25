@@ -17,7 +17,7 @@ http:
     juju-otel-pyro-router-my-service-name:
       entryPoints:
       - my-service-name
-      rule: ClientIP(`0.0.0.0/0`)
+      rule: HostRegexp(`{host:.+}`)
       service: juju-otel-pyro-service-my-service-name
     juju-otel-pyro-router-web:
       entryPoints:
@@ -82,7 +82,7 @@ http:
     juju-otel-pyro-router-my-service-name:
       entryPoints:
       - my-service-name
-      rule: ClientIP(`0.0.0.0/0`)
+      rule: HostRegexp(`{host:.+}`)
       service: juju-otel-pyro-service-my-service-name
       middlewares:  
       # no stripprefix for grpc endpoint

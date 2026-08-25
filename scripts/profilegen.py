@@ -1,77 +1,74 @@
 #!/usr/bin/env python3
-"""Utility script to generate a mock CPU profile and export it using OTLP gRPC to a profiling backend (i.e. Pyroscope/Otel Collector)."""
+"""Utility script to generate a mock CPU profile and export it using OTLP gRPC to a profiling backend (i.e. Pyroscope/Otel Collector).
 
+Builds the stack-table revision of the OTLP profiles schema (Sample.stack_index into
+ProfilesDictionary.stack_table), which is what Pyroscope v2 parses.
+
+Requires opentelemetry-proto >= 1.43.0: earlier releases numbered Sample's fields
+differently from the Go module, so profiles decoded as garbage and were answered 200
+without being ingested.
+"""
+
+import logging
 import os
+from pathlib import Path
 from typing import Optional
+
 import grpc
-from opentelemetry.proto.profiles.v1development import profiles_pb2
 from opentelemetry.proto.collector.profiles.v1development import (
     profiles_service_pb2,
     profiles_service_pb2_grpc,
 )
 from opentelemetry.proto.common.v1 import common_pb2
-from pathlib import Path
-import logging
+from opentelemetry.proto.profiles.v1development import profiles_pb2
 
 logger = logging.getLogger(__name__)
 
+# index 0 must be "" (empty string) by convention
+_STRINGS = ["", "cpu", "nanoseconds", "profilegen-main-function", "service.name"]
+_CPU_STRINDEX = 1
+_NANOSECONDS_STRINDEX = 2
+_FUNCTION_STRINDEX = 3
+_SERVICE_NAME_STRINDEX = 4
+
 
 def _build_profile() -> profiles_pb2.Profile:
+    # all indices below reference the dictionary tables built alongside this profile
     sample_type = profiles_pb2.ValueType(
-        # The indices will internally reference whatever is in the profile's dictionary's `string_table`
-        type_strindex=1,  # "cpu"
-        unit_strindex=2,  # "nanoseconds"
+        type_strindex=_CPU_STRINDEX, unit_strindex=_NANOSECONDS_STRINDEX
     )
-
     sample = profiles_pb2.Sample(
-        locations_start_index=0,
-        locations_length=1,
-        value=[100],  # 1 nanosecond
-        attribute_indices=[0],
+        stack_index=0,
+        attribute_indices=[0],  # attribute_table[0], i.e. service.name
+        values=[100],  # nanoseconds
     )
 
     return profiles_pb2.Profile(
-        sample_type=[sample_type],
-        sample=[sample],
-        location_indices=[0],
+        sample_type=sample_type,
+        samples=[sample],
         period_type=sample_type,
         period=1,
-        default_sample_type_index=0,
     )
 
 
 def _build_profile_dictionary(service_name: str) -> profiles_pb2.ProfilesDictionary:
-    # index 0 must be "" (empty string) by convention
-    string_table = [
-        "",
-        "cpu",
-        "nanoseconds",
-        "profilegen-main-function",
-    ]
-
-    function = profiles_pb2.Function(
-        name_strindex=3,  # "profilegen-main-function"
-    )
-
+    function = profiles_pb2.Function(name_strindex=_FUNCTION_STRINDEX)
     location = profiles_pb2.Location(
-        mapping_index=0,
-        line=[
-            profiles_pb2.Line(
-                function_index=0,  # refers to first function in Profile.function
-            )
-        ],
+        mapping_index=0, lines=[profiles_pb2.Line(function_index=0)]
     )
-
-    attribute = common_pb2.KeyValue(
-        key="service.name",
+    # the indirection that replaced Sample.locations_start_index/length
+    stack = profiles_pb2.Stack(location_indices=[0])
+    attribute = profiles_pb2.KeyValueAndUnit(
+        key_strindex=_SERVICE_NAME_STRINDEX,
         value=common_pb2.AnyValue(string_value=service_name),
     )
 
     return profiles_pb2.ProfilesDictionary(
-        string_table=string_table,
+        string_table=_STRINGS,
+        mapping_table=[profiles_pb2.Mapping()],
         location_table=[location],
         function_table=[function],
-        mapping_table=[profiles_pb2.Mapping()],
+        stack_table=[stack],
         attribute_table=[attribute],
     )
 

@@ -1,4 +1,7 @@
-# TODO: revisit the alert rules when https://github.com/grafana/pyroscope/issues/3624 is addressed
+# Alert rules for Pyroscope v2 storage components. Upstream has no default rules
+# for v2 yet: https://github.com/grafana/pyroscope/issues/3624 tracks the request,
+# and https://github.com/grafana/pyroscope/pull/4525 is the work in progress.
+# Revisit these rules once that lands.
 
 groups:
 - name: pyroscope_general_alerts
@@ -11,15 +14,6 @@ groups:
     annotations:
       summary: Ring members unhealthy ({{ $labels.instance }})
       description: "At least one Pyroscope component is in an Unhealthy state on {{ $labels.instance }}."
-  - alert: PyroscopeStoreGatewayNotSyncing
-    expr: |
-      max by (job, instance) (increase(pyroscope_storegateway_bucket_sync_total[15m])) == 0
-    for: 15m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Store-gateway not syncing ({{ $labels.instance }})"
-      description: No bucket syncs occurred on {{ $labels.instance }} in the last 15 minutes.
   - alert: PyroscopeTCPConnectionsLimit
     expr:  max by (job, instance)(100 * (pyroscope_tcp_connections / pyroscope_tcp_connections_limit) >= 80 and pyroscope_tcp_connections_limit > 0)
     for: 5m
@@ -35,32 +29,87 @@ groups:
     annotations:
       summary: "Pyroscope panic detected ({{ $labels.instance }})"
       description: "Instance {{ $labels.instance }} has recorded at least one panic in the last minute."
-  - alert: PyroscopeFrontendNotConnectedToScheduler
-    expr: min by (job, instance)(pyroscope_query_frontend_connected_schedulers) == 0
+  - alert: PyroscopeMetastoreRaftNoLeader
+    expr: |
+      (
+        sum by (juju_model_uuid, juju_application) (
+          pyroscope_metastore_raft_state{state="Leader"}
+        )
+        or on (juju_model_uuid, juju_application)
+        0 * sum by (juju_model_uuid, juju_application) (
+          pyroscope_metastore_raft_state
+        )
+      ) == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pyroscope metastore has no Raft leader"
+      description: >-
+        No metastore unit reports Raft leader state, so the metadata index accepts no
+        writes. Expect profile ingestion to fail and queries to return incomplete results.
+        Check that a majority of the metastore units are up and that the application runs
+        an odd number of units.
+  - alert: PyroscopeMetastoreRaftMultipleLeaders
+    expr: |
+      sum by (juju_model_uuid, juju_application) (
+        pyroscope_metastore_raft_state{state="Leader"}
+      ) > 1
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pyroscope metastore has multiple Raft leaders"
+      description: >-
+        {{ $value }} metastore units report Raft leader state, which indicates split-brain.
+        Raft recovers on its own once the units can reach each other again, so check the
+        network between the metastore units first. If the alert stays on, the units are
+        still partitioned.
+  - alert: PyroscopeMetastoreRaftLogStoreTimeouts
+    expr: |
+      sum by (juju_model_uuid, juju_application, juju_unit, job, instance) (
+        increase(pyroscope_metastore_raft_log_store_write_timeouts_total[5m])
+      ) > 0
     for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "Query frontend not connected to any schedulers ({{ $labels.instance }})"
-      description: "Pyroscope frontend {{ $labels.instance }} is not connected to any schedulers."
-  - alert: PyroscopeCompactorFailures
-    expr: sum by (instance, job)(increase(pyroscope_compactor_runs_failed_total{reason="error"}[1h])) > 0
-    for: 1h
+      summary: "Metastore Raft log store write timeouts ({{ $labels.instance }})"
+      description: >-
+        Instance {{ $labels.instance }} recorded Raft log store write timeouts in the last
+        5 minutes. Writes to the metadata index are slow, which slows ingestion, and a unit
+        that keeps timing out can lose leadership. This is almost always slow storage, so
+        check disk latency on the unit and the storage backing its metastore volume.
+  - alert: PyroscopeCompactionWorkerJobFailures
+    expr: |
+      sum by (juju_model_uuid, juju_application, juju_unit, job, instance) (
+        increase(pyroscope_compaction_worker_jobs_completed_total{status=~"failure|metadata_not_found|block_not_found"}[15m])
+      ) > 0
+    for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "Compactor run failed ({{ $labels.instance }})"
-      description: |
-        One or more compactor runs failed in the last 1 hour on instance {{ $labels.instance }}.
-  - alert: PyroscopeBlockCleanupFailures
-    expr: sum by (instance, job)(increase(pyroscope_compactor_block_cleanup_failures_total[1h])) > 0
-    for: 1h
+      summary: "Pyroscope compaction job failures ({{ $labels.instance }})"
+      description: >-
+        Instance {{ $labels.instance }} recorded failed or incomplete compaction jobs in the
+        last 15 minutes. Uncompacted blocks pile up, so queries get slower and object storage
+        grows faster than it should. Check the compaction-worker logs, and that the unit can
+        reach both the object storage bucket and the metastore.
+  - alert: PyroscopeCompactionWorkerBlockDeletionFailures
+    expr: |
+      sum by (juju_model_uuid, juju_application, juju_unit, job, instance) (
+        increase(pyroscope_compaction_worker_blocks_deleted_total{status="failure"}[15m])
+      ) > 0
+    for: 5m
     labels:
       severity: warning
     annotations:
-      summary: Compactor block cleanup failures ({{ $labels.instance }})
-      description: >
-        Failures occurred while attempting to clean up compactor blocks on instance {{ $labels.instance }}.
+      summary: "Pyroscope block deletion failures ({{ $labels.instance }})"
+      description: >-
+        Instance {{ $labels.instance }} recorded failed block deletions in the last 15 minutes.
+        Expired data is not being removed, so the bucket keeps growing and retention_period is
+        not really being honoured. Check that the S3 credentials still allow deletes and that
+        the bucket is reachable.
   - alert: PyroscopeObjectStoreOperationFailures
     expr: sum by (instance, job, bucket, operation)(increase(objstore_bucket_operation_failures_total[5m])) > 0
     for: 5m
@@ -113,4 +162,3 @@ groups:
       summary: High write request errors on {{ $labels.method }} {{ $labels.route }}
       description: |
         Instance {{ $labels.instance }} is experiencing {{ printf "%.2f" $value }}% write requests error rate for route {{ $labels.route }} (method {{ $labels.method }}).
-

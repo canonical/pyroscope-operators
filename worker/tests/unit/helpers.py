@@ -4,13 +4,14 @@ from typing import List
 
 _valid_roles = [
     "all",
-    "querier",
     "query-frontend",
-    "query-scheduler",
-    "ingester",
+    "query-backend",
     "distributor",
-    "compactor",
-    "store-gateway",
+    "segment-writer",
+    "metastore",
+    "compaction-worker",
+    "tenant-settings",
+    "ad-hoc-profiles",
 ]
 
 

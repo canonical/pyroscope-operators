@@ -28,7 +28,9 @@ dev = [
     # for scripts/profilegen.py
     "grpcio",
     "protobuf",
-    "opentelemetry-proto",
+    # 1.43.0 is the first release whose Sample field numbers match the Go module
+    # pyroscope v2 parses with; see scripts/profilegen.py.
+    "opentelemetry-proto>=1.43.0",
 
 #   LINTING
     "pyright",

@@ -38,7 +38,7 @@ def check_http_endpoint(juju: Juju, use_ingress: bool):
         url = f"http://{nginx_ip}:{NGINX_CONFIG_HTTP_SERVER_PORT}"
 
     ui = requests.get(url)
-    assert b"Grafana Pyroscope" in ui.content
+    assert b"<title>Pyroscope</title>" in ui.content
 
 
 @tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))
