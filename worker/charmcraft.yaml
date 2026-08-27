@@ -47,7 +47,7 @@ resources:
     upstream-source: ubuntu/pyroscope@sha256:6a5496c19144759aa2ef23bd706bee315379182e989edb46907288289c014906  # renovate: oci-image tag: 2.2-26.04_edge
 
 links:
-  documentation: https://documentation.ubuntu.com/observability/latest/
+  documentation: https://discourse.charmhub.io/t/charmed-pyroscope-ha/18120
   website: https://charmhub.io/pyroscope-worker-k8s
   source: https://github.com/canonical/pyroscope-operators/tree/main/worker
   issues: https://github.com/canonical/pyroscope-operators/issues
