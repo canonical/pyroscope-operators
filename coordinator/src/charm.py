@@ -48,10 +48,6 @@ class PyroscopeCoordinator(Coordinator):
     def _default_active_message(self) -> str:
         return self._active_status_msg
 
-    @property
-    def _default_degraded_message(self) -> str:
-        return "[degraded] " + self._active_status_msg
-
 
 class PyroscopeCoordinatorCharm(CharmBase):
     """Charmed Operator for Pyroscope; a distributed profiling backend."""
