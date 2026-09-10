@@ -128,6 +128,10 @@ def charm_and_channel_and_resources(
 
 
 def _resolve_packed_charm(packed: Path, project_dir: Path) -> Path:
+    # charmcraft 4.4.1 and 4.4.2 ignore the output directory passed to
+    # `charmcraft pack` and leave the .charm file inside the project
+    # directory instead: https://github.com/canonical/charmcraft/issues/2854
+    # Same workaround as Juju's test helpers: https://github.com/juju/juju/pull/23174
     if packed.is_file():
         return packed
     in_project_dir = project_dir / packed.name
