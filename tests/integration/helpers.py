@@ -121,9 +121,21 @@ def charm_and_channel_and_resources(
         except subprocess.CalledProcessError:
             logger.warning("Failed to build Pyroscope %s. Trying again!", role)
             continue
+        pth = _resolve_packed_charm(pth, REPO_ROOT / role)
         os.environ[charm_path_key] = str(pth)
         return pth, None, get_resources(REPO_ROOT / role)
     raise subprocess.CalledProcessError(1, f"pack {role}")
+
+
+def _resolve_packed_charm(packed: Path, project_dir: Path) -> Path:
+    if packed.is_file():
+        return packed
+    in_project_dir = project_dir / packed.name
+    if in_project_dir.is_file():
+        return in_project_dir
+    raise FileNotFoundError(
+        f"packed charm {packed.name} not found in {packed.parent} or {project_dir}"
+    )
 
 
 def deploy_distributed_cluster(
