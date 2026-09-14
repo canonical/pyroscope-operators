@@ -60,8 +60,14 @@ def pyroscope_container():
 
 @contextmanager
 def endpoint_ready(tls: bool = False):
-    with patch(
-        "urllib.request.urlopen", new=partial(_urlopen_patch, tls=tls, resp="ready")
+    with (
+        patch(
+            "urllib.request.urlopen", new=partial(_urlopen_patch, tls=tls, resp="ready")
+        ),
+        patch(
+            "coordinated_workers.worker.Worker._is_readiness_check_failing",
+            return_value=False,
+        ),
     ):
         yield
 
