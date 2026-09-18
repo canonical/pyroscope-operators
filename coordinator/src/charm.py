@@ -32,9 +32,7 @@ from cosl.reconciler import all_events, observe_events
 logger = logging.getLogger(__name__)
 
 DISABLED_DATA_CLEANUP_CHARM_CONFIG = CharmConfig(
-    pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
-        **{"retention_period": "0"}
-    )
+    pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(retention_period="0")
 )
 PYROSCOPE_GRAFANA_DATASOURCE_TYPE = "grafana-pyroscope-datasource"
 

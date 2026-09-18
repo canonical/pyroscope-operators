@@ -177,6 +177,12 @@ class Limits(BaseModel):
     retention_period: str | int = "1d"
 
 
+class Analytics(BaseModel):
+    """Analytics schema."""
+
+    reporting_enabled: bool
+
+
 class PyroscopeConfig(BaseModel):
     """PyroscopeConfig config schema."""
 
@@ -189,3 +195,4 @@ class PyroscopeConfig(BaseModel):
     memberlist: Memberlist
     limits: Limits
     storage: Storage
+    analytics: Optional[Analytics] = None
