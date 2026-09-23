@@ -31,9 +31,6 @@ from cosl.reconciler import all_events, observe_events
 
 logger = logging.getLogger(__name__)
 
-DISABLED_DATA_CLEANUP_CHARM_CONFIG = CharmConfig(
-    pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(retention_period="0")
-)
 PYROSCOPE_GRAFANA_DATASOURCE_TYPE = "grafana-pyroscope-datasource"
 
 
@@ -81,7 +78,7 @@ class PyroscopeCoordinatorCharm(CharmBase):
             self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
         except CharmConfigInvalidError as e:
             logger.warning(f"{e.msg}\nDisabling profiles cleanup to prevent data loss.")
-            self._charm_config = DISABLED_DATA_CLEANUP_CHARM_CONFIG
+            self._charm_config = self._disabled_data_cleanup_config()
         self.pyroscope = Pyroscope(
             external_url=self._most_external_http_url,
             charm_config=self._charm_config,
@@ -257,11 +254,20 @@ class PyroscopeCoordinatorCharm(CharmBase):
             ),
         )
 
+    def _disabled_data_cleanup_config(self) -> CharmConfig:
+        """Return a fallback CharmConfig with data cleanup disabled but preserving reporting_enabled."""
+        return CharmConfig(
+            pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
+                retention_period="0",
+                reporting_enabled=bool(self.config["reporting_enabled"]),
+            )
+        )
+
     def _on_collect_unit_status(self, event: CollectStatusEvent):
         try:
             self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
         except CharmConfigInvalidError as exc:
-            self._charm_config = DISABLED_DATA_CLEANUP_CHARM_CONFIG
+            self._charm_config = self._disabled_data_cleanup_config()
             event.add_status(BlockedStatus(exc.msg))
             return
 
