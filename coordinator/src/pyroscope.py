@@ -52,6 +52,7 @@ class Pyroscope:
             memberlist=self._build_memberlist_config(addrs),
             limits=self._build_limits_config(),
             storage=self._build_storage_config(coordinator._s3_config),
+            analytics=self._build_analytics_config(),
         )
         return yaml.dump(
             config.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -135,6 +136,11 @@ class Pyroscope:
             if self._charm_config.retention_period == "0"
             else self._charm_config.retention_period
         )
+
+    def _build_analytics_config(self):
+        if self._charm_config.reporting_enabled:
+            return None
+        return pyroscope_config.Analytics(reporting_enabled=False)
 
     @staticmethod
     def _build_storage_config(s3_config: dict):
