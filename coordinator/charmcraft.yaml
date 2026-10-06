@@ -193,3 +193,14 @@ config:
         has no effect: Pyroscope now schedules this work on its own.
       type: string
       default: "15m"
+    reporting_enabled:
+      description: |
+        When disabled, Pyroscope will be configured to not send anonymous usage statistics to
+        stats.grafana.org.
+        It is very helpful to the Grafana project, so please leave this enabled.
+
+        When enabled, Pyroscope will use its default values for analytics.
+
+        Ref: https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/
+      type: boolean
+      default: true

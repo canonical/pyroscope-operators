@@ -36,6 +36,7 @@ class PyroscopeCoordinatorConfigModel(BaseModel):  # pylint: disable=too-few-pub
     """Represent the Pyroscope Coordinator charm's configuration options."""
 
     retention_period: StrictStr = Field(default="1d", pattern=TIMESPEC_REGEXP)
+    reporting_enabled: bool = True
 
 
 @dataclasses.dataclass
@@ -45,9 +46,11 @@ class CharmConfig:
     Attributes:
         retention_period: Delete blocks containing samples older than the specified retention
             period.
+        reporting_enabled: Whether Pyroscope sends anonymous usage statistics.
     """
 
     retention_period: StrictStr
+    reporting_enabled: bool
 
     def __init__(
         self, *, pyroscope_charm_config_model: PyroscopeCoordinatorConfigModel
@@ -58,6 +61,7 @@ class CharmConfig:
             pyroscope_charm_config_model: Configuration model for Pyroscope Coordinator charm.
         """
         self.retention_period = pyroscope_charm_config_model.retention_period
+        self.reporting_enabled = pyroscope_charm_config_model.reporting_enabled
 
     @classmethod
     def from_charm(
