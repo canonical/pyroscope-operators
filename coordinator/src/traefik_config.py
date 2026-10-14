@@ -51,8 +51,8 @@ def _generate_http_routers_config(
             http_routers[router_name_getter(endpoint)] = {
                 "entryPoints": [endpoint.sanitized_entrypoint_name],
                 "service": service_name_getter(endpoint),
-                # TODO better matcher
-                "rule": "ClientIP(`0.0.0.0/0`)",
+                # Dedicated gRPC entrypoint: match any Host header (Traefik v2 pattern).
+                "rule": "HostRegexp(`{host:.+}`)",
                 # Omit 'middlewares' altogether if empty; else we get:
                 # level=error msg="Error occurred during watcher callback:
                 # ...: middlewares cannot be a standalone element (type map[string]*dynamic.Middleware)"

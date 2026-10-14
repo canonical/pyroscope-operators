@@ -36,8 +36,7 @@ class PyroscopeCoordinatorConfigModel(BaseModel):  # pylint: disable=too-few-pub
     """Represent the Pyroscope Coordinator charm's configuration options."""
 
     retention_period: StrictStr = Field(default="1d", pattern=TIMESPEC_REGEXP)
-    deletion_delay: StrictStr = Field(default="12h", pattern=TIMESPEC_REGEXP)
-    cleanup_interval: StrictStr = Field(default="15m", pattern=TIMESPEC_REGEXP)
+    reporting_enabled: bool = True
 
 
 @dataclasses.dataclass
@@ -47,14 +46,11 @@ class CharmConfig:
     Attributes:
         retention_period: Delete blocks containing samples older than the specified retention
             period.
-        deletion_delay: Time before a block marked for deletion is deleted from bucket.
-        cleanup_interval: How frequently compactor should run blocks cleanup and maintenance,
-            as well as update the bucket index.
+        reporting_enabled: Whether Pyroscope sends anonymous usage statistics.
     """
 
     retention_period: StrictStr
-    deletion_delay: StrictStr
-    cleanup_interval: StrictStr
+    reporting_enabled: bool
 
     def __init__(
         self, *, pyroscope_charm_config_model: PyroscopeCoordinatorConfigModel
@@ -65,8 +61,7 @@ class CharmConfig:
             pyroscope_charm_config_model: Configuration model for Pyroscope Coordinator charm.
         """
         self.retention_period = pyroscope_charm_config_model.retention_period
-        self.deletion_delay = pyroscope_charm_config_model.deletion_delay
-        self.cleanup_interval = pyroscope_charm_config_model.cleanup_interval
+        self.reporting_enabled = pyroscope_charm_config_model.reporting_enabled
 
     @classmethod
     def from_charm(

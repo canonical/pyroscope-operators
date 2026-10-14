@@ -9,6 +9,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Pyroscope only names a profile "process_cpu" when the OTLP sample type is exactly
+# "samples:count:cpu:nanoseconds"; otherwise it takes the third field of the type
+# (pkg/ingester/otlp/convert.go). profilegen emits cpu/nanoseconds, so it lands as "cpu".
+PROFILEGEN_PROFILE_TYPE = "cpu:cpu:nanoseconds:cpu:nanoseconds"
+
 
 def assert_profile_is_ingested(
     hostname: str,
@@ -16,6 +21,7 @@ def assert_profile_is_ingested(
     tls: bool = False,
     ca_path: Optional[str] = None,
     server_name: Optional[str] = None,
+    profile_type: str = PROFILEGEN_PROFILE_TYPE,
 ):
     scheme = f"http{'s' if tls else ''}"
     port = "8080"
@@ -23,7 +29,7 @@ def assert_profile_is_ingested(
 
     cmd = (
         "curl -s --get --data-urlencode "
-        f"'query=process_cpu:cpu:nanoseconds:cpu:nanoseconds{{service_name=\"{service_name}\"}}' "
+        f"'query={profile_type}{{service_name=\"{service_name}\"}}' "
         '--data-urlencode "from=now-1h" '
         f"{scheme}://{target_hostname}:{port}/pyroscope/render"
     )
@@ -50,6 +56,7 @@ def assert_no_profiles(
     tls: bool = False,
     ca_path: Optional[str] = None,
     server_name: Optional[str] = None,
+    profile_type: str = PROFILEGEN_PROFILE_TYPE,
 ):
     scheme = f"http{'s' if tls else ''}"
     port = "8080"
@@ -57,7 +64,7 @@ def assert_no_profiles(
 
     cmd = (
         "curl -s --get --data-urlencode "
-        f"'query=process_cpu:cpu:nanoseconds:cpu:nanoseconds{{service_name=\"{service_name}\"}}' "
+        f"'query={profile_type}{{service_name=\"{service_name}\"}}' "
         '--data-urlencode "from=now-1m" '
         f"{scheme}://{target_hostname}:{port}/pyroscope/render"
     )

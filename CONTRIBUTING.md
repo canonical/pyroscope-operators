@@ -61,8 +61,8 @@ cd ./coordinator; charmcraft pack
 ```
 
 This will create:
-- `coordinator/pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm`
-- `worker/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm`
+- `coordinator/pyroscope-coordinator-k8s_ubuntu@26.04-amd64.charm`
+- `worker/pyroscope-worker-k8s_ubuntu@26.04-amd64.charm`
 
 ### Deploy
 
@@ -72,14 +72,21 @@ juju add-model dev
 # Enable DEBUG logging
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
-juju deploy ./coordinator/pyroscope-coordinator-k8s_ubuntu@24.04-amd64.charm \
+juju deploy ./coordinator/pyroscope-coordinator-k8s_ubuntu@26.04-amd64.charm \
     --resource nginx-image=ghcr.io/canonical/nginx@sha256:6415a2c5f25f1d313c87315a681bdc84be80f3c79c304c6744737f9b34207993  \
     --resource nginx-prometheus-exporter-image=nginx/nginx-prometheus-exporter:1.1.0 \
     --trust pyroscope
-juju deploy ./worker/pyroscope-worker-k8s_ubuntu@24.04-amd64.charm \
-    --resource pyroscope-image=ubuntu/pyroscope:1.14-24.04_edge \
+juju deploy ./worker/pyroscope-worker-k8s_ubuntu@26.04-amd64.charm \
+    --resource pyroscope-image=ubuntu/pyroscope:2.2-26.04 \
     --trust pyroscope-worker
 juju integrate pyroscope pyroscope-worker
 ```
 
-You'll also need an s3-compatible backend such as Ceph or Minio and an [s3-integrator charm](https://charmhub.io/s3-integrator). See [this doc](https://discourse.charmhub.io/t/cos-lite-docs-set-up-minio-for-s3-testing/15211) for more details.
+You'll also need an s3-compatible backend. The integration tests use the `seaweedfs-k8s` charm related directly to `pyroscope:s3` (see `deploy_swfs` in `tests/integration/helpers.py`), which is the quickest way to get a working backend:
+
+```shell
+juju deploy seaweedfs-k8s swfs --channel latest/edge
+juju integrate pyroscope:s3 swfs
+```
+
+Alternatively, use any s3-compatible backend such as Ceph or Minio behind an [s3-integrator charm](https://charmhub.io/s3-integrator); see [this doc](https://discourse.charmhub.io/t/cos-lite-docs-set-up-minio-for-s3-testing/15211) for that route.

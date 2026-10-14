@@ -179,7 +179,5 @@ def coordinator_charm_config():
     return CharmConfig(
         pyroscope_charm_config_model=PyroscopeCoordinatorConfigModel(
             retention_period="1d",
-            deletion_delay="2h",
-            cleanup_interval="15m",
         )
     )

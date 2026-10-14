@@ -14,9 +14,9 @@ from pyroscope_config import (
 @pytest.mark.parametrize(
     "roles, expected",
     (
-        ({PyroscopeRole.querier: 1}, False),
+        ({PyroscopeRole.query_backend: 1}, False),
         ({PyroscopeRole.distributor: 1}, False),
-        ({PyroscopeRole.distributor: 1, PyroscopeRole.ingester: 1}, False),
+        ({PyroscopeRole.distributor: 1, PyroscopeRole.segment_writer: 1}, False),
         (MINIMAL_DEPLOYMENT, True),
     ),
 )

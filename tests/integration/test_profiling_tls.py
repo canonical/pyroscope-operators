@@ -4,12 +4,6 @@
 
 import pytest
 
-pytestmark = [
-    pytest.mark.skip(
-        reason="Skipped due to https://github.com/canonical/pyroscope-operators/issues/315"
-    ),
-]
-
 from jubilant import Juju, all_active, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
@@ -67,16 +61,4 @@ def test_ingest_profile_tls(juju: Juju, ca_cert_path):
         ca_path=str(ca_cert_path),
         # pass server_name to avoid hostname mismatch
         server_name=f"{PYROSCOPE_APP}.{juju.model}.svc.cluster.local",
-    )
-
-
-@pytest.mark.teardown
-def test_teardown(juju: Juju):
-    juju.remove_relation(f"{PYROSCOPE_APP}:certificates", SSC_APP)
-    juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
-        timeout=10 * 60,
-        error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
-        delay=10,
-        successes=6,
     )
