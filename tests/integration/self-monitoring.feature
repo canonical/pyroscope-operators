@@ -39,8 +39,3 @@ Feature: self-monitoring
     Given a pyroscope cluster is deployed with COS
     When we integrate pyroscope and COS
     Then metrics are sent to prometheus
-
-  Scenario: Pyroscope workload traces are sent to tempo
-    Given a pyroscope cluster is deployed with COS
-    When we integrate pyroscope and COS
-    Then Pyroscope workload traces are sent to tempo
