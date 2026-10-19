@@ -310,9 +310,25 @@ def test_teardown(juju: Juju):
         successes=3,
     )
 
-
 @pytest.mark.teardown
 def test_teardown_pyroscope(juju: Juju):
     for worker_name in ALL_WORKERS:
         juju.remove_application(worker_name)
     juju.remove_application(PYROSCOPE_APP)
+
+@then("Pyroscope workload traces are sent to tempo")
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
+def test_workload_tracing_integration(juju: Juju):
+    # GIVEN a pyroscope cluster integrated with tempo over workload-tracing
+    address = get_unit_ip_address(juju, TEMPO_APP, 0)
+
+    # WHEN we query the tags for all ingested traces in Tempo
+    url = f"http://{address}:3200/api/search/tag/juju_application/values"
+    response = requests.get(url)
+    tags = response.json()["tagValues"]
+
+    # THEN each pyroscope worker has sent workload traces
+    expected_apps = {PYROSCOPE_APP, *ALL_WORKERS}
+
+    for app in expected_apps:
+        assert app in tags
