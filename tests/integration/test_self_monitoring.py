@@ -315,3 +315,19 @@ def test_teardown_pyroscope(juju: Juju):
     for worker_name in ALL_WORKERS:
         juju.remove_application(worker_name)
     juju.remove_application(PYROSCOPE_APP)
+
+
+@then("worker workload traces are sent to tempo")
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
+def test_worker_workload_tracing_integration(juju: Juju):
+    address = get_unit_ip_address(juju, TEMPO_APP, 0)
+    url = f"http://{address}:3200/api/search/tag/service.name/values"
+
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    service_names = response.json()["tagValues"]
+
+    assert "pyroscope-worker" in service_names, (
+        f"No pyroscope-worker workload traces found in Tempo. "
+        f"Observed service names: {service_names}"
+    )
