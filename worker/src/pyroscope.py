@@ -52,7 +52,7 @@ class PyroscopeWorker:
                     "OTEL_TRACES_EXPORTER": "otlp",
                     "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL": "http/protobuf",
                     "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": f"{tempo_endpoint}/v1/traces",
-                    "OTEL_RESOURCE_ATTRIBUTES": f"juju_application={topology.application},juju_model={topology.model}",
+                    "OTEL_RESOURCE_ATTRIBUTES": f"juju_application={topology.application},juju_model={topology.model}"
                     + f",juju_model_uuid={topology.model_uuid},juju_unit={topology.unit},juju_charm={topology.charm_name}",
                 }
             )
