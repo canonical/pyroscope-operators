@@ -169,6 +169,30 @@ def test_charm_tracing_integration(juju: Juju):
         assert app in tags
 
 
+@then("worker workload traces are sent to tempo")
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
+def test_worker_workload_tracing_integration(juju: Juju):
+    # GIVEN a Pyroscope cluster integrated with Tempo
+    address = get_unit_ip_address(juju, TEMPO_APP, 0)
+    url = f"http://{address}:3200/api/search"
+
+    # WHEN we search Tempo for traces from the worker service
+    response = requests.get(
+        url,
+        params={"tags": 'service.name="pyroscope-worker"'},
+        timeout=10,
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    # THEN Tempo should return at least one matching trace
+    traces = data.get("traces", [])
+    assert traces, (
+        "No pyroscope-worker traces found in Tempo. "
+        f"Tempo response: {data}"
+    )
+
+
 @then("Pyroscope logs are sent to loki")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_logging_integration(juju: Juju):
@@ -315,19 +339,3 @@ def test_teardown_pyroscope(juju: Juju):
     for worker_name in ALL_WORKERS:
         juju.remove_application(worker_name)
     juju.remove_application(PYROSCOPE_APP)
-
-
-@then("worker workload traces are sent to tempo")
-@retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
-def test_worker_workload_tracing_integration(juju: Juju):
-    address = get_unit_ip_address(juju, TEMPO_APP, 0)
-    url = f"http://{address}:3200/api/search/tag/service.name/values"
-
-    response = requests.get(url, timeout=10)
-    response.raise_for_status()
-    service_names = response.json()["tagValues"]
-
-    assert "pyroscope-worker" in service_names, (
-        f"No pyroscope-worker workload traces found in Tempo. "
-        f"Observed service names: {service_names}"
-    )

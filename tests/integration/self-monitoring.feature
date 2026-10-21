@@ -35,12 +35,12 @@ Feature: self-monitoring
     When we integrate pyroscope and COS
     Then charm traces are sent to tempo
 
-  Scenario: metrics are sent to prometheus
-    Given a pyroscope cluster is deployed with COS
-    When we integrate pyroscope and COS
-    Then metrics are sent to prometheus
-
   Scenario: Worker workload traces are sent to tempo
     Given a pyroscope cluster is deployed with COS
     When we integrate pyroscope and COS
     Then worker workload traces are sent to tempo
+
+  Scenario: metrics are sent to prometheus
+    Given a pyroscope cluster is deployed with COS
+    When we integrate pyroscope and COS
+    Then metrics are sent to prometheus
