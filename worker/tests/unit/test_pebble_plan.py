@@ -114,7 +114,7 @@ def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
                 remote_app_data={
                     "worker_config": json.dumps("beef"),
                     "workload_tracing_receivers": json.dumps(
-                        {"jaeger_thrift_http": tempo_endpoint}
+                        {"otlp_http": tempo_endpoint}
                     ),
                 },
             ),
@@ -138,13 +138,12 @@ def test_tracing_config_in_pebble_plan(ctx, pyroscope_container):
         f" -metastore.raft.advertise-address={host}:9099"
         " -metastore.raft.bind-address=:9099"
     )
+    assert plan_out["services"]["pyroscope"]["environment"]["OTEL_TRACES_EXPORTER"] == "otlp"
     assert (
-        plan_out["services"]["pyroscope"]["environment"]["JAEGER_ENDPOINT"]
-        == f"{tempo_endpoint}/api/traces?format=jaeger.thrift"
+        plan_out["services"]["pyroscope"]["environment"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+        == f"{tempo_endpoint}/v1/traces"
     )
-    assert plan_out["services"]["pyroscope"]["environment"]["JAEGER_SAMPLER_PARAM"]
-    assert plan_out["services"]["pyroscope"]["environment"]["JAEGER_SAMPLER_TYPE"]
     assert (
-        plan_out["services"]["pyroscope"]["environment"]["JAEGER_TAGS"]
+        plan_out["services"]["pyroscope"]["environment"]["OTEL_RESOURCE_ATTRIBUTES"]
         == "juju_application=worker,juju_model=test,juju_model_uuid=00000000-0000-4000-8000-000000000000,juju_unit=worker/0,juju_charm=pyroscope"
     )

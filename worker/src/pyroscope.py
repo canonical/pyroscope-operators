@@ -44,18 +44,15 @@ class PyroscopeWorker:
         # Configure Pyroscope workload traces
         env = {}
         if tempo_endpoint := worker.cluster.get_workload_tracing_receivers().get(
-            "jaeger_thrift_http", None
+            "otlp_http", None
         ):
             topology = worker.cluster.juju_topology
-            # TODO once https://github.com/grafana/pyroscope/issues/4127 is implemented, switch to otel envvars
             env.update(
                 {
-                    "JAEGER_ENDPOINT": (
-                        f"{tempo_endpoint}/api/traces?format=jaeger.thrift"
-                    ),
-                    "JAEGER_SAMPLER_PARAM": "1",
-                    "JAEGER_SAMPLER_TYPE": "const",
-                    "JAEGER_TAGS": f"juju_application={topology.application},juju_model={topology.model}"
+                    "OTEL_TRACES_EXPORTER": "otlp",
+                    "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL": "http/protobuf",
+                    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": f"{tempo_endpoint}/v1/traces",
+                    "OTEL_RESOURCE_ATTRIBUTES": f"juju_application={topology.application},juju_model={topology.model}"
                     + f",juju_model_uuid={topology.model_uuid},juju_unit={topology.unit},juju_charm={topology.charm_name}",
                 }
             )
