@@ -44,7 +44,7 @@ resources:
   pyroscope-image:
     type: oci-image
     description: OCI image for Grafana Pyroscope
-    upstream-source: ubuntu/pyroscope@sha256:6a5496c19144759aa2ef23bd706bee315379182e989edb46907288289c014906  # renovate: oci-image tag: 2.2-26.04_edge
+    upstream-source: ubuntu/pyroscope@sha256:5c1fe8b787c101c1ea55b2e4b2f2cec9c1e7ccb72cbdbd236a6a63cf672f81bb  # renovate: oci-image tag: 2.2-26.04_edge
 
 links:
   documentation: https://documentation.ubuntu.com/observability/latest/
