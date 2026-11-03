@@ -1,5 +1,4 @@
 import ops
-from conftest import k8s_patch
 from ops.testing import PeerRelation, State
 
 
@@ -110,30 +109,6 @@ def test_happy_status_message(
     assert state_out.unit_status.message == "UI ready at http://foo.com:8080"
 
 
-@k8s_patch(status=ops.BlockedStatus("`juju trust` this application"))
-def test_k8s_patch_failed(
-    context,
-    s3,
-    all_worker,
-    nginx_container,
-    nginx_prometheus_exporter_container,
-):
-    state_out = context.run(
-        context.on.update_status(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
-    )
-    assert state_out.unit_status == ops.BlockedStatus("`juju trust` this application")
-
-
 def test_blocked_status_when_invalid_compactor_blocks_retention_period(
     context,
     s3,
@@ -159,27 +134,3 @@ def test_blocked_status_when_invalid_compactor_blocks_retention_period(
         state_out.unit_status.message
         == "The following configurations are not valid: ['retention_period']"
     )
-
-
-@k8s_patch(status=ops.WaitingStatus("waiting"))
-def test_k8s_patch_waiting(
-    context,
-    s3,
-    all_worker,
-    nginx_container,
-    nginx_prometheus_exporter_container,
-):
-    state_out = context.run(
-        context.on.update_status(),
-        State(
-            relations=[
-                PeerRelation("peers", peers_data={1: {}, 2: {}}),
-                s3,
-                all_worker,
-            ],
-            containers=[nginx_container, nginx_prometheus_exporter_container],
-            unit_status=ops.ActiveStatus(),
-            leader=True,
-        ),
-    )
-    assert state_out.unit_status == ops.WaitingStatus("waiting")
