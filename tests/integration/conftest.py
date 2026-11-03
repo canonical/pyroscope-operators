@@ -6,9 +6,17 @@ import tempfile
 
 from pytest import fixture
 
-from tests.integration.helpers import charm_and_channel_and_resources, SSC_APP
-from jubilant import Juju
-
+from tests.integration.helpers import (
+    charm_and_channel_and_resources,
+    SSC_APP,
+    PYROSCOPE_APP,
+    WORKER_APP,
+    TRAEFIK_APP,
+    OTEL_COLLECTOR_APP,
+    ALL_WORKERS,
+    COS_COMPONENTS,
+)
+from jubilant import Juju, all_active, any_error
 
 logger = logging.getLogger(__name__)
 
@@ -40,3 +48,53 @@ def ca_cert_path(juju: Juju):
     yield tmp_file_path
 
     tmp_file_path.unlink(missing_ok=True)
+
+
+@fixture(scope="module")
+def teardown_ingress_stack(request, juju: Juju):
+    """Remove the pyroscope + worker + traefik stack deployed for ingress tests."""
+    yield
+    if request.config.getoption("--no-teardown"):
+        return
+    juju.remove_application(PYROSCOPE_APP)
+    juju.remove_application(WORKER_APP)
+    juju.remove_application(TRAEFIK_APP)
+
+
+@fixture(scope="module")
+def teardown_collector_profiling_relation(request, juju: Juju):
+    """Remove the profiling relation to the otel collector and wait for settle.
+
+    Shared by test_profiling_with_collector.py and test_profiling_with_collector_tls.py.
+    """
+    yield
+    if request.config.getoption("--no-teardown"):
+        return
+    juju.remove_relation(f"{PYROSCOPE_APP}:profiling", OTEL_COLLECTOR_APP)
+    juju.wait(
+        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
+        timeout=10 * 60,
+        error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
+        delay=10,
+        successes=6,
+    )
+
+
+@fixture(scope="module")
+def teardown_self_monitoring_stack(request, juju: Juju):
+    """Remove COS components, then workers, then the coordinator."""
+    yield
+    if request.config.getoption("--no-teardown"):
+        return
+    for app in COS_COMPONENTS:
+        juju.remove_application(app)
+    juju.wait(
+        lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
+        error=lambda status: any_error(status, PYROSCOPE_APP, *ALL_WORKERS),
+        timeout=2000,
+        delay=10,
+        successes=3,
+    )
+    for worker_name in ALL_WORKERS:
+        juju.remove_application(worker_name)
+    juju.remove_application(PYROSCOPE_APP)

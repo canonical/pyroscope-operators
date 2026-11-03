@@ -18,6 +18,8 @@ from tests.integration.helpers import (
 from tests.integration.assertions import assert_profile_is_ingested
 from pytest_bdd import given, when, then
 
+pytestmark = pytest.mark.usefixtures("teardown_collector_profiling_relation")
+
 
 @pytest.mark.setup
 @given("a pyroscope cluster is deployed")
@@ -74,14 +76,3 @@ def test_ingest_profile_from_collector(juju: Juju):
         hostname=pyroscope_ip, service_name="profilegen-otel-collector"
     )
 
-
-@pytest.mark.teardown
-def test_teardown(juju: Juju):
-    juju.remove_relation(f"{PYROSCOPE_APP}:profiling", OTEL_COLLECTOR_APP)
-    juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
-        timeout=10 * 60,
-        error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
-        delay=10,
-        successes=6,
-    )

@@ -21,6 +21,8 @@ from tests.integration.helpers import (
     get_unit_ip_address,
 )
 
+pytestmark = pytest.mark.usefixtures("teardown_ingress_stack")
+
 # hardcoded here instead of imported from coordinator.src.nginx_config to avoid dependency and PYTHONPATH conflicts
 NGINX_CONFIG_HTTP_SERVER_PORT = 8080
 NGINX_CONFIG_GRPC_SERVER_PORT = 42424
@@ -132,13 +134,3 @@ def test_nginx_grpc_server_route_after_ingress(juju: Juju):
     """Verify that after we remove ingress, we can once again hit the grpc endpoint through nginx."""
     check_grpc_endpoint(juju, use_ingress=False)
 
-
-@pytest.mark.teardown
-def test_teardown(juju: Juju):
-    # GIVEN a model with traefik and the pyroscope cluster
-    # WHEN we remove traefik, the coordinator, and the worker
-    juju.remove_application(PYROSCOPE_APP)
-    juju.remove_application(WORKER_APP)
-    juju.remove_application(TRAEFIK_APP)
-
-    # THEN nothing throws an exception

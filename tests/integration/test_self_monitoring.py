@@ -10,7 +10,7 @@ from tenacity import wait_exponential as wexp
 
 import pytest
 import requests
-from jubilant import Juju, all_active, any_error
+from jubilant import Juju, all_active
 from tenacity import (
     stop_after_attempt,
     wait_fixed,
@@ -26,22 +26,16 @@ from tests.integration.helpers import (
     deploy_distributed_cluster,
     get_unit_ip_address,
     CHANNELS,
-)
-
-PROMETHEUS_APP = "prometheus"
-LOKI_APP = "loki"
-TEMPO_APP = "tempo"
-TEMPO_WORKER_APP = "tempo-worker"
-CATALOGUE_APP = "catalogue"
-GRAFANA_APP = "grafana"
-COS_COMPONENTS = (
+    COS_COMPONENTS,
     PROMETHEUS_APP,
     LOKI_APP,
-    TEMPO_WORKER_APP,
     TEMPO_APP,
+    TEMPO_WORKER_APP,
     CATALOGUE_APP,
     GRAFANA_APP,
 )
+
+pytestmark = pytest.mark.usefixtures("teardown_self_monitoring_stack")
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +108,6 @@ def test_setup(juju: Juju):
         successes=5,
     )
 
-
 @then("metrics are sent to prometheus")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_metrics_integration(juju: Juju):
@@ -132,7 +125,6 @@ def test_metrics_integration(juju: Juju):
             assert len(data["data"]["result"]) > 0, f"No metrics found for app '{app}'"
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Prometheus failed for app '{app}': {e}"
-
 
 @then("metrics are sent to prometheus")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
@@ -152,7 +144,6 @@ def test_metrics_nginx_integration(juju: Juju):
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Prometheus failed for app '{app}': {e}"
 
-
 @then("charm traces are sent to tempo")
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
 def test_charm_tracing_integration(juju: Juju):
@@ -167,7 +158,6 @@ def test_charm_tracing_integration(juju: Juju):
 
     for app in expected_apps:
         assert app in tags
-
 
 @then("worker workload traces are sent to tempo")
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(5))
@@ -192,7 +182,6 @@ def test_worker_workload_tracing_integration(juju: Juju):
         f"Tempo response: {data}"
     )
 
-
 @then("Pyroscope logs are sent to loki")
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_logging_integration(juju: Juju):
@@ -213,7 +202,6 @@ def test_logging_integration(juju: Juju):
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Loki failed for app '{app}': {e}"
 
-
 @then("catalogue items are provisioned")
 def test_catalogue_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with catalogue
@@ -232,7 +220,6 @@ def test_catalogue_integration(juju: Juju):
     # THEN we receive a 200 OK response (0 exit status)
     # AND we confirm the response is from the Pyroscope UI (via the page title)
     assert "<title>Pyroscope</title>" in response
-
 
 @then("Dashboards are provisioned")
 def test_dashboard_integration(juju: Juju):
@@ -256,14 +243,12 @@ def test_dashboard_integration(juju: Juju):
     else:
         raise RuntimeError("No password in grafana's output")
 
-
 @pytest.fixture(scope="module")
 def grafana_admin_creds(juju) -> str:
     # NB this fixture can only be accessed after GRAFANA has been deployed.
     # obtain admin credentials via juju action, formatted as "username:password" (for basicauth)
     result = juju.run(GRAFANA_APP + "/0", "get-admin-password")
     return f"admin:{result.results['admin-password']}"
-
 
 @then("a pyroscope datasource is provisioned in grafana")
 @retry(
@@ -274,7 +259,6 @@ def test_grafana_source_integration(juju: Juju, grafana_admin_creds):
     graf_ip = get_unit_ip_address(juju, GRAFANA_APP, 0)
     res = requests.get(f"http://{grafana_admin_creds}@{graf_ip}:3000/api/datasources")
     assert "grafana-pyroscope-datasource" in {ds["type"] for ds in res.json()}
-
 
 @then("alert rules are sent to prometheus")
 def test_alert_rules_integration(juju: Juju):
@@ -301,7 +285,6 @@ def test_alert_rules_integration(juju: Juju):
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Prometheus failed: {e}"
 
-
 @then("loki alert rules are sent to loki")
 def test_loki_alert_rules_integration(juju: Juju):
     # GIVEN a pyroscope cluster integrated with loki
@@ -316,26 +299,3 @@ def test_loki_alert_rules_integration(juju: Juju):
             assert app in response.text, f"No Loki alert rules found for app '{app}'"
     except requests.exceptions.RequestException as e:
         assert False, f"Request to Loki failed: {e}"
-
-
-@pytest.mark.teardown
-def test_teardown(juju: Juju):
-    # GIVEN a pyroscope cluster with core cos relations
-    # WHEN we remove the cos components
-    for app in COS_COMPONENTS:
-        juju.remove_application(app)
-
-    # THEN the coordinator and all workers eventually reach active/idle state
-    juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
-        error=lambda status: any_error(status, PYROSCOPE_APP, *ALL_WORKERS),
-        timeout=2000,
-        delay=10,
-        successes=3,
-    )
-
-@pytest.mark.teardown
-def test_teardown_pyroscope(juju: Juju):
-    for worker_name in ALL_WORKERS:
-        juju.remove_application(worker_name)
-    juju.remove_application(PYROSCOPE_APP)

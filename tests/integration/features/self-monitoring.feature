@@ -18,7 +18,7 @@ Feature: self-monitoring
   Scenario: Dashboards are provisioned
     Given a pyroscope cluster is deployed with COS
     When we integrate pyroscope and COS
-    Then dashboards are sent to grafana
+    Then Dashboards are provisioned
 
   Scenario: Catalogue items are provisioned
     Given a pyroscope cluster is deployed with COS

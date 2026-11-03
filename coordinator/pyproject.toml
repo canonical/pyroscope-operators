@@ -63,6 +63,7 @@ fail_under = 90
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["setup", "teardown"]
+bdd_features_base_dir = "tests"
 
 # Linting tools configuration
 [lint]
