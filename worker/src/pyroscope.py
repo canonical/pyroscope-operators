@@ -27,11 +27,6 @@ class PyroscopeWorker:
             pebble_layer=self.layer,
             endpoints={"cluster": "pyroscope-cluster"},
             readiness_check_endpoint=self.readiness_check_endpoint,
-            container_name=self._name,
-            # each worker needs different resources.
-            # we set minimal requests just to ensure scheduling — won’t affect actual performance since limits handle that.
-            # cfr. https://github.com/grafana/pyroscope/blob/v1.14.0/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
-            resources_requests=lambda _: {"cpu": "100m", "memory": "256Mi"},
         )
 
     @staticmethod
