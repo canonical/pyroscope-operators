@@ -20,13 +20,13 @@ from pytest_bdd import given, when, then
 
 
 @pytest.mark.setup
-@given("a pyroscope cluster is deployed")
+@given("a Pyroscope cluster is deployed")
 def test_deploy_pyroscope(juju: Juju):
     deploy_monolithic_cluster(juju, wait_for_idle=True)
 
 
 @pytest.mark.setup
-@given("a certificates provider charm is deployed and integrated with pyroscope")
+@given("a certificates provider charm is deployed and integrated with Pyroscope")
 def test_deploy_and_integrate_ssc(juju: Juju):
     juju.deploy("self-signed-certificates", SSC_APP)
     juju.integrate(f"{PYROSCOPE_APP}:certificates", SSC_APP)
@@ -39,7 +39,7 @@ def test_deploy_and_integrate_ssc(juju: Juju):
     )
 
 
-@when("we emit a profile to pyroscope using otlp grpc over TLS")
+@when("we emit a profile to Pyroscope using OTLP gRPC over TLS")
 def test_emit_profile_tls(juju: Juju, ca_cert_path):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     emit_profile(
@@ -52,7 +52,7 @@ def test_emit_profile_tls(juju: Juju, ca_cert_path):
 
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
-@then("the profile should be ingested by pyroscope")
+@then("the profile should be ingested by Pyroscope")
 def test_ingest_profile_tls(juju: Juju, ca_cert_path):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_profile_is_ingested(

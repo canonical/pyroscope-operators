@@ -19,12 +19,12 @@ from pytest_bdd import given, when, then
 
 
 @pytest.mark.setup
-@given("a pyroscope cluster is deployed")
+@given("a Pyroscope cluster is deployed")
 def test_deploy_pyroscope(juju: Juju):
     deploy_monolithic_cluster(juju, wait_for_idle=True)
 
 
-@when("we set retention time to `1m` and emit a profile to pyroscope using otlp grpc")
+@when("we set retention time to `1m` and emit a profile to Pyroscope using OTLP gRPC")
 def test_configure_retention_and_ingest_profile(juju: Juju):
     juju.config(
         PYROSCOPE_APP,

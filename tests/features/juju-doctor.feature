@@ -7,7 +7,7 @@ Feature: juju-doctor
 
   Scenario: Add coordinator and SWFS
     Given a model with workers
-    When deploying and integrating the minimal pyroscope cluster
+    When deploying and integrating the minimal Pyroscope cluster
     Then both the coordinator and the workers become active
 
   Scenario: Run juju-doctor probes
