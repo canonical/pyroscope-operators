@@ -12,6 +12,8 @@ from tests.integration.helpers import (
     deploy_swfs,
 )
 
+from pytest_bdd import given, when, then
+
 
 def _deploy_worker(juju: Juju, worker_charm, role: str, scale: int):
     """Deploy a worker for a specific role."""
@@ -30,25 +32,34 @@ def _deploy_worker(juju: Juju, worker_charm, role: str, scale: int):
     )
 
 
-@pytest.mark.setup
-def test_deploy_workers(juju: Juju, worker_charm):
-    # GIVEN an empty model
+@given("an empty model")
+def test_model_is_empty(juju: Juju):
+    assert juju.status().apps == {}
 
-    # WHEN deploying the workers with recommended scale
+
+@pytest.mark.setup
+@when("deploying the workers with recommended scale")
+def test_deploy_workers(juju: Juju, worker_charm):
     for role in ALL_ROLES:
         _deploy_worker(juju, worker_charm, role, 1)
 
-    # THEN workers will be blocked because of missing coordinator integration
+
+@then("workers will be blocked because of missing coordinator integration")
+def test_workers_blocked(juju: Juju):
     juju.wait(
         lambda status: all_blocked(status, *ALL_ROLES),
         timeout=1000,
     )
 
 
-def test_all_active_when_coordinator_and_swfs_added(juju: Juju, coordinator_charm):
-    # GIVEN a model with workers
+@given("a model with workers")
+def test_model_has_workers(juju: Juju):
+    apps = juju.status().apps
+    assert all(role in apps for role in ALL_ROLES)
 
-    # WHEN deploying and integrating the minimal pyroscope cluster
+
+@when("deploying and integrating the minimal Pyroscope cluster")
+def test_deploy_and_integrate_minimal_cluster(juju: Juju, coordinator_charm):
     deploy_swfs(juju)
 
     charm_url, channel, resources = coordinator_charm
@@ -65,16 +76,25 @@ def test_all_active_when_coordinator_and_swfs_added(juju: Juju, coordinator_char
             PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster"
         )
 
-    # THEN both the coordinator and the workers become active
+
+@then("both the coordinator and the workers become active")
+def test_coordinator_and_workers_active(juju: Juju):
     juju.wait(
         lambda status: all_active(status, PYROSCOPE_APP, *ALL_ROLES),
         timeout=5000,
     )
 
 
+@given("the full model")
+def test_full_model(juju: Juju):
+    apps = juju.status().apps
+    assert PYROSCOPE_APP in apps
+    assert SWFS_APP in apps
+    assert all(role in apps for role in ALL_ROLES)
+
+
+@then("juju-doctor passes")
 def test_juju_doctor_probes(juju: Juju):
-    # GIVEN the full model
-    # THEN juju-doctor passes
     try:
         sh.uvx(
             "juju-doctor",

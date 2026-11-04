@@ -8,9 +8,9 @@ import subprocess
 import requests
 import tenacity
 from tenacity import wait_exponential as wexp, stop_after_attempt as satt
-import jubilant
 import pytest
-from jubilant import Juju
+from jubilant import Juju, all_active, any_error
+from pytest_bdd import given, when, then
 
 from tests.integration.helpers import (
     PYROSCOPE_APP,
@@ -20,6 +20,8 @@ from tests.integration.helpers import (
     get_ingress_proxied_hostname,
     get_unit_ip_address,
 )
+
+pytestmark = pytest.mark.usefixtures("teardown_ingress_stack")
 
 # hardcoded here instead of imported from coordinator.src.nginx_config to avoid dependency and PYTHONPATH conflicts
 NGINX_CONFIG_HTTP_SERVER_PORT = 8080
@@ -61,9 +63,8 @@ def check_grpc_endpoint(juju: Juju, use_ingress: bool):
 
 
 @pytest.mark.setup
+@given("a Pyroscope cluster and Traefik are deployed")
 def test_setup(juju: Juju):
-    # GIVEN an empty model
-    # WHEN deploying the pyroscope cluster and traefik
     juju.deploy(
         "traefik-k8s",
         app=TRAEFIK_APP,
@@ -74,71 +75,76 @@ def test_setup(juju: Juju):
     deploy_monolithic_cluster(juju)
 
 
+@then("we can hit the HTTP endpoint through nginx")
 def test_nginx_ui_route_before_ingress(juju: Juju):
     """Verify that before we integrate ingress, we can hit the http endpoint through nginx."""
     check_http_endpoint(juju, use_ingress=False)
 
 
+@then("we can hit the gRPC endpoint through nginx")
 def test_nginx_grpc_server_route_before_ingress(juju: Juju):
     """Verify that before we integrate ingress, we can hit the grpc endpoint through nginx."""
     check_grpc_endpoint(juju, use_ingress=False)
 
 
 @pytest.mark.setup
-def test_add_ingress(juju):
-    # AND WHEN we integrate the pyroscope cluster with traefik over ingress
+@when("we integrate the Pyroscope cluster with Traefik over ingress")
+def test_add_ingress(juju: Juju):
     juju.integrate(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
 
-    # THEN the coordinator, worker, and traefik are all in active/idle state
+
+@then("the coordinator, worker, and Traefik are all in active/idle state")
+def test_ingress_active(juju: Juju):
     juju.wait(
-        lambda status: jubilant.all_active(
-            status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP
-        ),
-        error=jubilant.any_error,
+        lambda status: all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        error=any_error,
         timeout=2000,
     )
 
 
+@then("we can hit the HTTP endpoint through nginx")
 def test_nginx_ui_route_with_ingress(juju: Juju):
     """Verify that once we integrate ingress, we can hit the http endpoint through nginx."""
     check_http_endpoint(juju, use_ingress=True)
 
 
+@then("we can hit the gRPC endpoint through nginx")
 def test_nginx_grpc_server_route_with_ingress(juju: Juju):
     """Verify that once we integrate ingress, we can hit the grpc endpoint through nginx."""
     check_grpc_endpoint(juju, use_ingress=True)
 
 
-@pytest.mark.teardown
-def test_remove_ingress(juju: Juju):
-    # GIVEN a model with traefik and the pyroscope cluster integrated
-    # WHEN we remove the ingress relation
-    juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
-
-    # THEN the coordinator and worker are in active/idle state
+@given("a model with traefik and the Pyroscope cluster integrated")
+def test_ingress_integrated_and_active(juju: Juju):
     juju.wait(
-        lambda status: jubilant.all_active(status, PYROSCOPE_APP, WORKER_APP),
-        error=jubilant.any_error,
+        lambda status: all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        error=any_error,
         timeout=2000,
     )
 
 
+@pytest.mark.teardown
+@when("we remove the ingress relation")
+def test_remove_ingress(juju: Juju):
+    juju.remove_relation(PYROSCOPE_APP + ":ingress", TRAEFIK_APP)
+
+
+@then("the coordinator and worker are in active/idle state")
+def test_ingress_removed_active(juju: Juju):
+    juju.wait(
+        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
+        error=any_error,
+        timeout=2000,
+    )
+
+
+@then("we can once again hit the HTTP endpoint through nginx")
 def test_nginx_ui_route_after_ingress(juju: Juju):
     """Verify that after we remove ingress, we can once again hit the http endpoint through nginx."""
     check_http_endpoint(juju, use_ingress=False)
 
 
+@then("we can once again hit the gRPC endpoint through nginx")
 def test_nginx_grpc_server_route_after_ingress(juju: Juju):
     """Verify that after we remove ingress, we can once again hit the grpc endpoint through nginx."""
     check_grpc_endpoint(juju, use_ingress=False)
-
-
-@pytest.mark.teardown
-def test_teardown(juju: Juju):
-    # GIVEN a model with traefik and the pyroscope cluster
-    # WHEN we remove traefik, the coordinator, and the worker
-    juju.remove_application(PYROSCOPE_APP)
-    juju.remove_application(WORKER_APP)
-    juju.remove_application(TRAEFIK_APP)
-
-    # THEN nothing throws an exception

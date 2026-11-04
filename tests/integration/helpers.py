@@ -25,6 +25,20 @@ PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
 OTEL_COLLECTOR_APP = "opentelemetry-collector"
 SSC_APP = "ssc"
+PROMETHEUS_APP = "prometheus"
+LOKI_APP = "loki"
+TEMPO_APP = "tempo"
+TEMPO_WORKER_APP = "tempo-worker"
+CATALOGUE_APP = "catalogue"
+GRAFANA_APP = "grafana"
+COS_COMPONENTS = (
+    PROMETHEUS_APP,
+    LOKI_APP,
+    TEMPO_WORKER_APP,
+    TEMPO_APP,
+    CATALOGUE_APP,
+    GRAFANA_APP,
+)
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [

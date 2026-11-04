@@ -28,5 +28,5 @@ dev = [
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["setup", "teardown"]
-
+bdd_features_base_dir = "tests/features"
 
