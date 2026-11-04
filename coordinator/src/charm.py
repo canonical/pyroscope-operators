@@ -13,6 +13,7 @@ from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.pyroscope_coordinator_k8s.v0.profiling import ProfilingEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 from coordinated_workers.coordinator import Coordinator
+from coordinated_workers.helpers import NON_RECONCILABLE_EVENTS
 from charmlibs.nginx_k8s import NginxConfig, TLSConfigManager
 from ops import BlockedStatus, CollectStatusEvent
 from ops.charm import CharmBase
@@ -113,14 +114,16 @@ class PyroscopeCoordinatorCharm(CharmBase):
             workers_config=self.pyroscope.config,
             worker_ports=self._worker_ports,
             workload_tracing_protocols=["otlp_http"],
-            container_name="nginx",
-            resources_requests=lambda _: {"cpu": "50m", "memory": "100Mi"},
             catalogue_item=self._catalogue_item,
             active_status_msg=self._active_status_msg,
         )
 
-        # do this regardless of what event we are processing
-        observe_events(self, all_events, self._reconcile)
+        # Observers run in registration order: Coordinator's reconcile was registered first,
+        # so it always runs before ours. Skip the events coordinated-workers deliberately
+        # excludes from reconciliation (e.g. pebble-check-failed).
+        observe_events(
+            self, all_events.difference(NON_RECONCILABLE_EVENTS), self._reconcile
+        )
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
         )

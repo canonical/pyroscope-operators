@@ -3,7 +3,7 @@
 import pathlib
 from contextlib import ExitStack
 from shutil import rmtree
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from coordinated_workers.interfaces.cluster import (
@@ -11,7 +11,6 @@ from coordinated_workers.interfaces.cluster import (
     ClusterRequirerUnitData,
 )
 from interface_tester import InterfaceTester
-from ops import ActiveStatus
 from ops.pebble import Layer
 from scenario import Relation, Exec, Container, PeerRelation, State
 
@@ -82,8 +81,6 @@ cluster_relation = Relation(
 
 peers = PeerRelation("peers", peers_data={1: {}})
 
-k8s_resource_patch_ready = MagicMock(return_value=True)
-
 
 @pytest.fixture(autouse=True, scope="module")
 def patch_all():
@@ -95,15 +92,6 @@ def patch_all():
         stack.enter_context(
             patch(
                 "coordinated_workers.coordinator.Coordinator._consolidate_alert_rules"
-            )
-        )
-        stack.enter_context(
-            patch.multiple(
-                "charms.observability_libs.v0.kubernetes_compute_resources_patch.KubernetesComputeResourcesPatch",
-                _namespace="test-namespace",
-                _patch=lambda _: None,
-                is_ready=k8s_resource_patch_ready,
-                get_status=lambda _: ActiveStatus(""),
             )
         )
         yield
