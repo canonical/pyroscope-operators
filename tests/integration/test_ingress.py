@@ -116,8 +116,11 @@ def test_nginx_grpc_server_route_with_ingress(juju: Juju):
 
 @given("a model with traefik and the Pyroscope cluster integrated")
 def test_ingress_integrated_and_active(juju: Juju):
-    status = juju.status()
-    assert all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP)
+    juju.wait(
+        lambda status: all_active(status, TRAEFIK_APP, PYROSCOPE_APP, WORKER_APP),
+        error=any_error,
+        timeout=2000,
+    )
 
 
 @pytest.mark.teardown
