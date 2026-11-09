@@ -10,6 +10,7 @@ from typing import Literal, Optional, Sequence
 
 import jubilant
 from jubilant import Juju
+from observability_clients import Pyroscope
 from pytest_jubilant import get_resources, pack
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +32,15 @@ TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker"
 CATALOGUE_APP = "catalogue"
 GRAFANA_APP = "grafana"
+
+# Ports of the charms, hardcoded here instead of imported from the charm sources to
+# avoid dependency and PYTHONPATH conflicts: the coordinator's nginx serves the HTTP
+# and gRPC endpoints (coordinator/src/nginx_config.py), and every worker serves its
+# HTTP API, with the /ready endpoint, on its own port (worker/src/pyroscope.py).
+NGINX_HTTP_PORT = 8080
+NGINX_GRPC_PORT = 42424
+WORKER_HTTP_PORT = 4040
+
 COS_COMPONENTS = (
     PROMETHEUS_APP,
     LOKI_APP,
@@ -105,6 +115,20 @@ def related_apps(juju: Juju, app_name: str, endpoint: str) -> list[str]:
     """Return the apps `app_name` is integrated with over `endpoint`."""
     relations = juju.status().apps[app_name].relations.get(endpoint, [])
     return [relation.related_app for relation in relations]
+
+
+def coordinator_client(juju: Juju, address: str) -> Pyroscope:
+    """A client for the coordinator's nginx on `address`, over TLS when Pyroscope has a CA.
+
+    The client doesn't verify certificates, so the CA isn't needed to query.
+    """
+    scheme = "https" if related_apps(juju, PYROSCOPE_APP, "certificates") else "http"
+    return Pyroscope(url=f"{scheme}://{address}:{NGINX_HTTP_PORT}")
+
+
+def worker_client(address: str) -> Pyroscope:
+    """A client for the HTTP API of a worker on `address`."""
+    return Pyroscope(url=f"http://{address}:{WORKER_HTTP_PORT}")
 
 
 def charm_and_channel_and_resources(

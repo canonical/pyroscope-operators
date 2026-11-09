@@ -60,12 +60,15 @@ Step definitions live in [`tests/integration/steps`](tests/integration/steps), o
 `tests/integration/conftest.py`. The charms Pyroscope relates to are listed in `COUNTERPARTS` in `steps/relations.py`,
 so that `Pyroscope is related to <name> over "<endpoint>"` works for any of them.
 
+The steps query Pyroscope and the COS charms with [observability-clients].
+
 All the scenarios of a feature share their model, so a scenario's `Given` steps must bring the model to the state
 it needs, whatever ran before: deploy or integrate only what is missing, and wait for it to settle. Tag a scenario
 with `@skip`, and say why in the feature's description, when no passing test exists for it yet.
 
 [pytest-bdd]: https://pytest-bdd.readthedocs.io/
 [jubilant]: https://documentation.ubuntu.com/jubilant/
+[observability-clients]: https://pypi.org/project/observability-clients/
 
 ## Build charm
 

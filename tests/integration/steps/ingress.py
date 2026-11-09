@@ -17,14 +17,12 @@ from tenacity import stop_after_attempt as satt
 from tenacity import wait_exponential as wexp
 
 from tests.integration.helpers import (
+    NGINX_GRPC_PORT,
+    NGINX_HTTP_PORT,
     PYROSCOPE_APP,
     get_ingress_proxied_hostname,
     get_unit_ip_address,
 )
-
-# hardcoded here instead of imported from coordinator.src.nginx_config to avoid dependency and PYTHONPATH conflicts
-NGINX_CONFIG_HTTP_SERVER_PORT = 8080
-NGINX_CONFIG_GRPC_SERVER_PORT = 42424
 
 # The endpoints trail the relations that expose them, so the steps retry until they answer.
 _until_answered = tenacity.retry(wait=wexp(multiplier=2, max=30), stop=satt(10))
@@ -37,7 +35,7 @@ def check_http_endpoint(juju: jubilant.Juju, use_ingress: bool):
         url = f"http://{ingress_hostname}/{juju.model}-{PYROSCOPE_APP}"
     else:
         nginx_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
-        url = f"http://{nginx_ip}:{NGINX_CONFIG_HTTP_SERVER_PORT}"
+        url = f"http://{nginx_ip}:{NGINX_HTTP_PORT}"
 
     ui = requests.get(url)
     assert b"<title>Pyroscope</title>" in ui.content
@@ -50,7 +48,7 @@ def check_grpc_endpoint(juju: jubilant.Juju, use_ingress: bool):
     else:
         hostname = "http://" + get_unit_ip_address(juju, PYROSCOPE_APP, 0)
 
-    url = f"{hostname}:{NGINX_CONFIG_GRPC_SERVER_PORT}"
+    url = f"{hostname}:{NGINX_GRPC_PORT}"
     proc = subprocess.run(["curl", url], capture_output=True, text=True, check=False)
 
     # With ingress, Traefik connects to nginx over h2c (HTTP/2),

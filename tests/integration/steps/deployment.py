@@ -10,6 +10,7 @@ model to the state they describe, whatever an earlier scenario left.
 
 import jubilant
 from pytest_bdd import given, parsers, then, when
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from tests.integration.helpers import (
     ALL_ROLES,
@@ -17,9 +18,15 @@ from tests.integration.helpers import (
     PYROSCOPE_APP,
     SWFS_APP,
     WORKER_APP,
+    coordinator_client,
     deploy_distributed_cluster,
     ensure_monolithic_cluster,
+    related_apps,
+    worker_client,
 )
+
+# The endpoints trail the statuses, so the health check retries until they answer.
+_until_answered = retry(stop=stop_after_attempt(10), wait=wait_fixed(10), reraise=True)
 
 
 def wait_for_active(juju: jubilant.Juju, *apps: str, timeout: float = 2000) -> None:
@@ -32,6 +39,19 @@ def wait_for_active(juju: jubilant.Juju, *apps: str, timeout: float = 2000) -> N
         delay=10,
         successes=3,
     )
+
+
+@_until_answered
+def assert_endpoints_answer(juju: jubilant.Juju) -> None:
+    """Every coordinator unit serves through nginx, and every worker unit is ready."""
+    status = juju.status()
+    for name, unit in status.apps[PYROSCOPE_APP].units.items():
+        assert coordinator_client(juju, unit.address).is_ready("/"), (
+            f"{name} doesn't answer through nginx"
+        )
+    for worker_app in related_apps(juju, PYROSCOPE_APP, "pyroscope-cluster"):
+        for name, unit in status.apps[worker_app].units.items():
+            assert worker_client(unit.address).is_ready(), f"{name} isn't ready"
 
 
 def scale(juju: jubilant.Juju, coordinator_charm, units: int) -> None:
@@ -87,8 +107,9 @@ def coordinator_is_scaled(juju: jubilant.Juju, coordinator_charm, units: str):
 
 @then("Pyroscope is healthy")
 def pyroscope_is_healthy(juju: jubilant.Juju):
-    """Every application in the model is active and idle."""
+    """Every application is active and idle, and Pyroscope answers on every unit."""
     wait_for_active(juju, *juju.status().apps)
+    assert_endpoints_answer(juju)
 
 
 @then("the coordinator is blocked")
