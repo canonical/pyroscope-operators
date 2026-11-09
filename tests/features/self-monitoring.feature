@@ -1,8 +1,7 @@
 Feature: self-monitoring
 
   Background:
-    Given a Pyroscope cluster is deployed with COS
-    When we integrate Pyroscope and COS
+    Given a Pyroscope cluster and COS are deployed and integrated
 
   Scenario: Metrics are sent to Prometheus
     Then metrics are sent to Prometheus

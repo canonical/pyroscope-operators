@@ -5,16 +5,17 @@ from pathlib import Path
 import tempfile
 
 from pytest import fixture
+from pytest_bdd import given
 
 from tests.integration.helpers import (
+    CHANNELS,
     charm_and_channel_and_resources,
-    SSC_APP,
-    PYROSCOPE_APP,
-    WORKER_APP,
-    TRAEFIK_APP,
+    ensure_monolithic_cluster,
     OTEL_COLLECTOR_APP,
-    ALL_WORKERS,
-    COS_COMPONENTS,
+    PYROSCOPE_APP,
+    related_apps,
+    SSC_APP,
+    WORKER_APP,
 )
 from jubilant import Juju, all_active, any_error
 
@@ -50,51 +51,30 @@ def ca_cert_path(juju: Juju):
     tmp_file_path.unlink(missing_ok=True)
 
 
-@fixture(scope="module")
-def teardown_ingress_stack(request, juju: Juju):
-    """Remove the pyroscope + worker + traefik stack deployed for ingress tests."""
-    yield
-    if request.config.getoption("--no-teardown"):
-        return
-    juju.remove_application(PYROSCOPE_APP)
-    juju.remove_application(WORKER_APP)
-    juju.remove_application(TRAEFIK_APP)
+@given("a Pyroscope cluster is deployed")
+def pyroscope_cluster_is_deployed(juju: Juju):
+    ensure_monolithic_cluster(juju)
 
 
-@fixture(scope="module")
-def teardown_collector_profiling_relation(request, juju: Juju):
-    """Remove the profiling relation to the otel collector and wait for settle.
-
-    Shared by test_profiling_with_collector.py and test_profiling_with_collector_tls.py.
-    """
-    yield
-    if request.config.getoption("--no-teardown"):
-        return
-    juju.remove_relation(f"{PYROSCOPE_APP}:profiling", OTEL_COLLECTOR_APP)
+@given(
+    "an OTel Collector charm is deployed and integrated with Pyroscope over profiling"
+)
+def collector_is_integrated_with_pyroscope(juju: Juju):
+    if OTEL_COLLECTOR_APP not in juju.status().apps:
+        juju.deploy(
+            "opentelemetry-collector-k8s",
+            OTEL_COLLECTOR_APP,
+            channel=CHANNELS["opentelemetry-collector-k8s"],
+            trust=True,
+        )
+    if OTEL_COLLECTOR_APP not in related_apps(juju, PYROSCOPE_APP, "profiling"):
+        juju.integrate(f"{PYROSCOPE_APP}:profiling", OTEL_COLLECTOR_APP)
     juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP),
+        lambda status: all_active(
+            status, PYROSCOPE_APP, WORKER_APP, OTEL_COLLECTOR_APP
+        ),
         timeout=10 * 60,
         error=lambda status: any_error(status, PYROSCOPE_APP, WORKER_APP),
         delay=10,
         successes=6,
     )
-
-
-@fixture(scope="module")
-def teardown_self_monitoring_stack(request, juju: Juju):
-    """Remove COS components, then workers, then the coordinator."""
-    yield
-    if request.config.getoption("--no-teardown"):
-        return
-    for app in COS_COMPONENTS:
-        juju.remove_application(app)
-    juju.wait(
-        lambda status: all_active(status, PYROSCOPE_APP, *ALL_WORKERS),
-        error=lambda status: any_error(status, PYROSCOPE_APP, *ALL_WORKERS),
-        timeout=2000,
-        delay=10,
-        successes=3,
-    )
-    for worker_name in ALL_WORKERS:
-        juju.remove_application(worker_name)
-    juju.remove_application(PYROSCOPE_APP)

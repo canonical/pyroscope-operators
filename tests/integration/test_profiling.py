@@ -2,34 +2,27 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import pytest
-
 from jubilant import Juju
+from pytest_bdd import scenarios, when, then
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
-    deploy_monolithic_cluster,
     emit_profile,
     PYROSCOPE_APP,
     get_unit_ip_address,
 )
 from tests.integration.assertions import assert_profile_is_ingested
-from pytest_bdd import given, when, then
 
-
-@pytest.mark.setup
-@given("a Pyroscope cluster is deployed")
-def test_deploy_pyroscope(juju: Juju):
-    deploy_monolithic_cluster(juju, wait_for_idle=True)
+scenarios("profiling.feature")
 
 
 @when("we emit a profile to Pyroscope using OTLP gRPC")
-def test_emit_profile(juju: Juju):
+def emit_profile_to_pyroscope(juju: Juju):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     emit_profile(endpoint=f"{pyroscope_ip}:42424")
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 @then("the profile should be ingested by Pyroscope")
-def test_ingest_profile(juju: Juju):
+@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+def profile_is_ingested(juju: Juju):
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_profile_is_ingested(hostname=pyroscope_ip)

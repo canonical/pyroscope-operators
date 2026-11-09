@@ -2,64 +2,83 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import pytest
 from jubilant import Juju, all_active, all_blocked
-from pytest_bdd import given, when, then
+from pytest_bdd import given, parsers, scenarios, when, then
 
 from tests.integration.helpers import (
     PYROSCOPE_APP,
     SWFS_APP,
     WORKER_APP,
     deploy_monolithic_cluster,
+    related_apps,
 )
 
-
-@pytest.mark.setup
-@given("a Pyroscope coordinator is deployed with no other relations")
-def test_deploy_pyroscope_alone(juju: Juju, coordinator_charm):
-    url, channel, resources = coordinator_charm
-    juju.deploy(url, PYROSCOPE_APP, channel=channel, resources=resources, trust=True)
+scenarios("scaling-monolithic.feature")
 
 
-@then("the coordinator is blocked")
-def test_coordinator_blocked_alone(juju: Juju):
-    # coordinator is blocked because of missing s3 and workers integration
-    juju.wait(lambda status: all_blocked(status, PYROSCOPE_APP), timeout=1000)
+def integrate_s3_and_worker(juju: Juju):
+    """Make sure the coordinator has an s3 backend and a worker, deploying what is missing."""
+    if WORKER_APP not in juju.status().apps:
+        deploy_monolithic_cluster(
+            juju, coordinator_deployed_as=PYROSCOPE_APP, wait_for_idle=False
+        )
+    elif SWFS_APP not in related_apps(juju, PYROSCOPE_APP, "s3"):
+        juju.integrate(PYROSCOPE_APP + ":s3", SWFS_APP)
 
 
-@when("we add a coordinator unit")
-def test_add_coordinator_unit(juju: Juju):
-    juju.cli("add-unit", PYROSCOPE_APP, "-n", "1")
-
-
-@then("the coordinator is blocked")
-def test_coordinator_stays_blocked_after_scale_up(juju: Juju):
-    juju.wait(lambda status: all_blocked(status, PYROSCOPE_APP), timeout=1000)
-
-
-@pytest.mark.setup
-@when("we deploy an s3 backend and a full monolithic set of workers, and integrate them")
-@then("the coordinator and workers are active")
-def test_deploy_swfs_and_workers(juju: Juju):
-    deploy_monolithic_cluster(
-        juju, coordinator_deployed_as=PYROSCOPE_APP, wait_for_idle=True
+def wait_for_active(juju: Juju):
+    juju.wait(
+        lambda status: all_active(status, PYROSCOPE_APP, WORKER_APP, SWFS_APP),
+        timeout=2000,
+        delay=5,
+        successes=3,
     )
 
 
-@given("the coordinator, s3 backend and workers are all integrated and active")
-def test_coordinator_swfs_workers_integrated(juju: Juju):
-    status = juju.status()
-    assert all_active(status, PYROSCOPE_APP, WORKER_APP, SWFS_APP)
+@given("a Pyroscope coordinator is deployed with no other relations")
+def pyroscope_coordinator_is_deployed_alone(juju: Juju, coordinator_charm):
+    # the scenarios that need the coordinator to be blocked come before the ones that integrate it
+    if PYROSCOPE_APP not in juju.status().apps:
+        url, channel, resources = coordinator_charm
+        juju.deploy(
+            url, PYROSCOPE_APP, channel=channel, resources=resources, trust=True
+        )
 
 
-@pytest.mark.teardown
+@given("the coordinator, s3 backend and worker are all integrated and active")
+def coordinator_s3_and_worker_are_integrated(juju: Juju):
+    integrate_s3_and_worker(juju)
+    wait_for_active(juju)
+
+
+@when(parsers.parse("we scale the coordinator to {units:d} units"))
+def scale_coordinator(juju: Juju, units: int):
+    current = len(juju.status().apps[PYROSCOPE_APP].units)
+    if units > current:
+        juju.add_unit(PYROSCOPE_APP, num_units=units - current)
+
+
+@when(
+    "we integrate the coordinator with an s3 backend and a worker that runs every role"
+)
+def integrate_coordinator_with_s3_and_worker(juju: Juju):
+    integrate_s3_and_worker(juju)
+
+
 @when("we remove the s3 relation")
-def test_remove_s3_relation(juju: Juju):
-    juju.remove_relation(SWFS_APP, PYROSCOPE_APP)
+def remove_s3_relation(juju: Juju):
+    if SWFS_APP in related_apps(juju, PYROSCOPE_APP, "s3"):
+        juju.remove_relation(SWFS_APP, PYROSCOPE_APP)
     # FIXME: s3 stubbornly refuses to die
     # juju.remove_application(SWFS_APP, force=True)
 
 
 @then("the coordinator is blocked")
-def test_coordinator_blocked_after_s3_removed(juju: Juju):
+def coordinator_is_blocked(juju: Juju):
+    # the coordinator is blocked because of the missing s3 and workers integration
     juju.wait(lambda status: all_blocked(status, PYROSCOPE_APP), timeout=1000)
+
+
+@then("the coordinator and the worker are active")
+def coordinator_and_worker_are_active(juju: Juju):
+    wait_for_active(juju)

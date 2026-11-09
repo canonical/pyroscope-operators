@@ -101,6 +101,12 @@ def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
     return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
 
 
+def related_apps(juju: Juju, app_name: str, endpoint: str) -> list[str]:
+    """Return the apps `app_name` is integrated with over `endpoint`."""
+    relations = juju.status().apps[app_name].relations.get(endpoint, [])
+    return [relation.related_app for relation in relations]
+
+
 def charm_and_channel_and_resources(
     role: Literal["coordinator", "worker"], charm_path_key: str, charm_channel_key: str
 ):
@@ -255,6 +261,22 @@ def _deploy_cluster(
             successes=3,
         )
     return [coordinator_app, *workers, SWFS_APP]
+
+
+def ensure_monolithic_cluster(juju: Juju):
+    """Deploy a monolithic cluster unless there is one, and wait for it to be active/idle.
+
+    The scenarios of a feature share a model, so a `Given` step brings the model to the
+    state it describes, whatever the scenarios before it left behind.
+    """
+    if PYROSCOPE_APP not in juju.status().apps:
+        deploy_monolithic_cluster(juju, wait_for_idle=False)
+    juju.wait(
+        lambda status: jubilant.all_active(status, PYROSCOPE_APP, WORKER_APP, SWFS_APP),
+        timeout=2000,
+        delay=5,
+        successes=3,
+    )
 
 
 def get_ingress_proxied_hostname(juju: Juju):

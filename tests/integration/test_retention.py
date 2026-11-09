@@ -2,33 +2,30 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import pytest
-
 import time
 from jubilant import Juju, all_active
+from pytest_bdd import parsers, scenarios, when, then
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
-    deploy_monolithic_cluster,
     emit_profile,
     PYROSCOPE_APP,
     WORKER_APP,
     get_unit_ip_address,
 )
 from tests.integration.assertions import assert_no_profiles, assert_profile_is_ingested
-from pytest_bdd import given, when, then
+
+scenarios("retention.feature")
 
 
-@pytest.mark.setup
-@given("a Pyroscope cluster is deployed")
-def test_deploy_pyroscope(juju: Juju):
-    deploy_monolithic_cluster(juju, wait_for_idle=True)
-
-
-@when("we set retention time to `1m` and emit a profile to Pyroscope using OTLP gRPC")
-def test_configure_retention_and_ingest_profile(juju: Juju):
+@when(
+    parsers.parse(
+        'we set retention time to "{minutes:d}m" and emit a profile to Pyroscope using OTLP gRPC'
+    )
+)
+def configure_retention_and_ingest_profile(juju: Juju, minutes: int):
     juju.config(
         PYROSCOPE_APP,
-        {"retention_period": "1m"},
+        {"retention_period": f"{minutes}m"},
     )
     # juju.config returns before services restart, so an immediate push may
     # hit a closed gRPC port.
@@ -44,9 +41,9 @@ def test_configure_retention_and_ingest_profile(juju: Juju):
     assert_profile_is_ingested(hostname=pyroscope_ip)
 
 
+@then(parsers.parse('the profile should be removed after "{minutes:d}m"'))
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
-@then("the profile should be removed after `1m`")
-def test_profile_removed(juju: Juju):
-    time.sleep(1 * 60)
+def profile_is_removed(juju: Juju, minutes: int):
+    time.sleep(minutes * 60)
     pyroscope_ip = get_unit_ip_address(juju, PYROSCOPE_APP, 0)
     assert_no_profiles(hostname=pyroscope_ip)
