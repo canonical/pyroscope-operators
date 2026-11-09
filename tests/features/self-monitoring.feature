@@ -12,31 +12,22 @@ Feature: self-monitoring
     Given Pyroscope is deployed with a worker for every role
     And the OpenTelemetry Collector counts the telemetry of every Pyroscope application
 
-  Scenario: The OpenTelemetry Collector receives the metrics of every Pyroscope application
+  Scenario: Pyroscope sends its metrics to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "metrics-endpoint"
     Then the OpenTelemetry Collector has metrics from every Pyroscope application
+    * the OpenTelemetry Collector has nginx metrics from Pyroscope
+    * the OpenTelemetry Collector has alert rules from Pyroscope over "metrics-endpoint"
 
-  Scenario: The OpenTelemetry Collector receives the metrics of Pyroscope's nginx
-    When Pyroscope is related to the OpenTelemetry Collector over "metrics-endpoint"
-    Then the OpenTelemetry Collector has nginx metrics from Pyroscope
-
-  Scenario: The OpenTelemetry Collector gets Pyroscope's alert rules for metrics
-    When Pyroscope is related to the OpenTelemetry Collector over "metrics-endpoint"
-    Then the OpenTelemetry Collector has alert rules from Pyroscope over "metrics-endpoint"
-
-  Scenario: The OpenTelemetry Collector receives the logs of every Pyroscope application
+  Scenario: Pyroscope sends its logs to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "logging"
     Then the OpenTelemetry Collector has logs from every Pyroscope application
+    * the OpenTelemetry Collector has alert rules from Pyroscope over "logging"
 
-  Scenario: The OpenTelemetry Collector gets Pyroscope's alert rules for logs
-    When Pyroscope is related to the OpenTelemetry Collector over "logging"
-    Then the OpenTelemetry Collector has alert rules from Pyroscope over "logging"
-
-  Scenario: The OpenTelemetry Collector receives the charm traces of every Pyroscope application
+  Scenario: Pyroscope sends its charm traces to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "charm-tracing"
     Then the OpenTelemetry Collector has charm traces from every Pyroscope application
 
-  Scenario: The OpenTelemetry Collector receives the workload traces of every Pyroscope worker
+  Scenario: Pyroscope sends its workload traces to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "workload-tracing"
     Then the OpenTelemetry Collector has workload traces from every Pyroscope worker
 
