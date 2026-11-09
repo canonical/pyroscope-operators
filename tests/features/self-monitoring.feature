@@ -15,13 +15,13 @@ Feature: self-monitoring
   Scenario: Pyroscope sends its metrics to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "metrics-endpoint"
     Then the OpenTelemetry Collector has metrics from every Pyroscope application
-    * the OpenTelemetry Collector has nginx metrics from Pyroscope
-    * the OpenTelemetry Collector has alert rules from Pyroscope over "metrics-endpoint"
+    And the OpenTelemetry Collector has nginx metrics from Pyroscope
+    And the OpenTelemetry Collector has alert rules from Pyroscope over "metrics-endpoint"
 
   Scenario: Pyroscope sends its logs to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "logging"
     Then the OpenTelemetry Collector has logs from every Pyroscope application
-    * the OpenTelemetry Collector has alert rules from Pyroscope over "logging"
+    And the OpenTelemetry Collector has alert rules from Pyroscope over "logging"
 
   Scenario: Pyroscope sends its charm traces to the OpenTelemetry Collector
     When Pyroscope is related to the OpenTelemetry Collector over "charm-tracing"
