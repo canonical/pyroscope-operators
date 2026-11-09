@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Steps about the profiles sent to Pyroscope, directly or through an OTel Collector."""
+"""Steps about the profiles sent to Pyroscope, directly or through an OpenTelemetry Collector."""
 
 import time
 
@@ -60,7 +60,7 @@ def emit_profile_to_pyroscope(juju: jubilant.Juju, request: FixtureRequest):
     )
 
 
-@when("a profile is emitted to the OTel Collector")
+@when("a profile is emitted to the OpenTelemetry Collector")
 def emit_profile_to_collector(juju: jubilant.Juju):
     collector_ip = get_unit_ip_address(juju, OTEL_COLLECTOR_APP, 0)
     emit_profile(endpoint=f"{collector_ip}:4317", service_name=COLLECTOR_SERVICE_NAME)
@@ -79,7 +79,7 @@ def profile_is_ingested(juju: jubilant.Juju):
     assert has_profile(juju, PROFILEGEN_SERVICE_NAME), "No profile ingested"
 
 
-@then("Pyroscope has ingested the profile from the OTel Collector")
+@then("Pyroscope has ingested the profile from the OpenTelemetry Collector")
 @_retried
 def profile_from_collector_is_ingested(juju: jubilant.Juju):
     assert has_profile(juju, COLLECTOR_SERVICE_NAME), "No profile ingested"

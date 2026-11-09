@@ -76,7 +76,7 @@ COUNTERPARTS: Dict[str, Counterpart] = {
             "traefik-k8s", app, channel="latest/stable", base="ubuntu@26.04", trust=True
         ),
     ),
-    "the OTel Collector": Counterpart(
+    "the OpenTelemetry Collector": Counterpart(
         OTEL_COLLECTOR_APP,
         from_charmhub(
             "opentelemetry-collector-k8s", CHANNELS["opentelemetry-collector-k8s"]

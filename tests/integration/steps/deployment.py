@@ -59,7 +59,7 @@ def assert_endpoints_answer(juju: jubilant.Juju) -> None:
 def settled_apps(juju: jubilant.Juju) -> list[str]:
     """The applications of the model that become active.
 
-    The OTel Collector is blocked without a backend to send to, however well it receives.
+    The OpenTelemetry Collector is blocked without a backend to send to, however well it receives.
     """
     return [app for app in juju.status().apps if app != OTEL_COLLECTOR_APP]
 
@@ -142,11 +142,6 @@ def option_is_set(juju: jubilant.Juju, option: str, value: str):
     juju.config(PYROSCOPE_APP, {option: value})
     # juju.config returns before the services restart
     wait_for_active(juju, PYROSCOPE_APP, WORKER_APP)
-
-
-@when(parsers.re(r"the coordinator is scaled to (?P<units>\d+) units?"))
-def coordinator_is_scaled(juju: jubilant.Juju, coordinator_charm, units: str):
-    scale(juju, coordinator_charm, int(units))
 
 
 @then("Pyroscope is healthy")

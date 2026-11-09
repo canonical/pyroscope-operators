@@ -1,9 +1,9 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Steps about what Pyroscope sends to an OTel Collector, and provides to Grafana and Catalogue.
+"""Steps about what Pyroscope sends to an OpenTelemetry Collector, and provides to Grafana and Catalogue.
 
-The OTel Collector stands for the COS stack: it has no backend to send to, so it is blocked,
+The OpenTelemetry Collector stands for the COS stack: it has no backend to send to, so it is blocked,
 but its receivers work, and it counts what they accept.
 """
 
@@ -92,7 +92,7 @@ def apps_of(rules_or_jobs: list, key: str) -> set:
     return apps
 
 
-@then("the OTel Collector has metrics from Pyroscope")
+@then("the OpenTelemetry Collector has metrics from Pyroscope")
 @_five_minutes
 def collector_has_metrics(juju: jubilant.Juju):
     data = relation_data(juju, "metrics-endpoint")
@@ -108,7 +108,7 @@ def collector_has_metrics(juju: jubilant.Juju):
     )
 
 
-@then("the OTel Collector has nginx metrics from Pyroscope")
+@then("the OpenTelemetry Collector has nginx metrics from Pyroscope")
 @_five_minutes
 def collector_has_nginx_metrics(juju: jubilant.Juju):
     scrape_jobs = json.loads(relation_data(juju, "metrics-endpoint")["scrape_jobs"])
@@ -124,7 +124,9 @@ def collector_has_nginx_metrics(juju: jubilant.Juju):
 
 
 @then(
-    parsers.parse('the OTel Collector has alert rules from Pyroscope over "{endpoint}"')
+    parsers.parse(
+        'the OpenTelemetry Collector has alert rules from Pyroscope over "{endpoint}"'
+    )
 )
 @_five_minutes
 def collector_has_alert_rules(juju: jubilant.Juju, endpoint: str):
@@ -139,7 +141,7 @@ def collector_has_alert_rules(juju: jubilant.Juju, endpoint: str):
         assert app in labelled, f"No alert rules found for app '{app}'"
 
 
-@then("the OTel Collector has logs from Pyroscope")
+@then("the OpenTelemetry Collector has logs from Pyroscope")
 @_five_minutes
 def collector_has_logs(juju: jubilant.Juju):
     assert accepted(juju, "log_records", "loki/") > 0, (
@@ -147,7 +149,7 @@ def collector_has_logs(juju: jubilant.Juju):
     )
 
 
-@then("the OTel Collector has charm traces from Pyroscope")
+@then("the OpenTelemetry Collector has charm traces from Pyroscope")
 @_ten_minutes
 def collector_has_charm_traces(juju: jubilant.Juju):
     # Pyroscope's charms send their traces over OTLP, and nothing else sends spans
@@ -156,7 +158,7 @@ def collector_has_charm_traces(juju: jubilant.Juju):
     )
 
 
-@then("Pyroscope's workers send their workload traces to the OTel Collector")
+@then("Pyroscope's workers send their workload traces to the OpenTelemetry Collector")
 @_five_minutes
 def workers_send_workload_traces(juju: jubilant.Juju):
     for app in ALL_WORKERS:
