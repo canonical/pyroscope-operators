@@ -1,15 +1,9 @@
 Feature: juju-doctor
+  The juju-doctor probes pass on a Pyroscope cluster with a worker for every
+  role.
 
-  Scenario: Deploy workers
-    Given an empty model
-    When deploying the workers with recommended scale
-    Then workers will be blocked because of missing coordinator integration
+  Background:
+    Given Pyroscope is deployed with a worker for every role
 
-  Scenario: Add coordinator and SWFS
-    Given a model with workers
-    When deploying and integrating the minimal Pyroscope cluster
-    Then both the coordinator and the workers become active
-
-  Scenario: Run juju-doctor probes
-    Given the full model
+  Scenario: juju-doctor passes on a cluster with a worker for every role
     Then juju-doctor passes

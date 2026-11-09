@@ -1,35 +1,44 @@
 Feature: self-monitoring
+  Pyroscope's coordinator and workers send their metrics to the OpenTelemetry
+  Collector over "metrics-endpoint", their logs over "logging" and their traces
+  over "charm-tracing" and "workload-tracing", and the alert rules for the
+  metrics and the logs with them. Pyroscope provides its dashboards and
+  datasource to Grafana over "grafana-dashboard" and "grafana-source", and its
+  item to Catalogue over "catalogue". The OpenTelemetry Collector stands for
+  Prometheus, Loki and Tempo: it is blocked without a backend to send to, but it
+  receives, and tells apart what each application sends.
 
   Background:
-    Given a Pyroscope cluster is deployed with COS
-    When we integrate Pyroscope and COS
+    Given Pyroscope is deployed with a worker for every role
+    And the OpenTelemetry Collector counts the telemetry of every Pyroscope application
 
-  Scenario: Metrics are sent to Prometheus
-    Then metrics are sent to Prometheus
+  Scenario: Pyroscope sends its metrics to the OpenTelemetry Collector
+    When Pyroscope is related to the OpenTelemetry Collector over "metrics-endpoint"
+    Then the OpenTelemetry Collector has metrics from every Pyroscope application
+    And the OpenTelemetry Collector has nginx metrics from Pyroscope
+    And the OpenTelemetry Collector has alert rules from Pyroscope over "metrics-endpoint"
 
-  Scenario: Nginx metrics are sent to Prometheus
-    Then nginx metrics are sent to Prometheus
+  Scenario: Pyroscope sends its logs to the OpenTelemetry Collector
+    When Pyroscope is related to the OpenTelemetry Collector over "logging"
+    Then the OpenTelemetry Collector has logs from every Pyroscope application
+    And the OpenTelemetry Collector has alert rules from Pyroscope over "logging"
 
-  Scenario: Charm traces are sent to Tempo
-    Then charm traces are sent to Tempo
+  Scenario: Pyroscope sends its charm traces to the OpenTelemetry Collector
+    When Pyroscope is related to the OpenTelemetry Collector over "charm-tracing"
+    Then the OpenTelemetry Collector has charm traces from every Pyroscope application
 
-  Scenario: Worker workload traces are sent to Tempo
-    Then worker workload traces are sent to Tempo
+  Scenario: Pyroscope sends its workload traces to the OpenTelemetry Collector
+    When Pyroscope is related to the OpenTelemetry Collector over "workload-tracing"
+    Then the OpenTelemetry Collector has workload traces from every Pyroscope worker
 
-  Scenario: Pyroscope logs are sent to Loki
-    Then Pyroscope logs are sent to Loki
+  Scenario: Grafana gets Pyroscope's dashboards
+    When Pyroscope is related to Grafana over "grafana-dashboard"
+    Then Grafana has dashboards from Pyroscope
 
-  Scenario: Catalogue items are provisioned
-    Then Catalogue items are provisioned
+  Scenario: Grafana gets Pyroscope as a datasource
+    When Pyroscope is related to Grafana over "grafana-source"
+    Then Grafana has a datasource for Pyroscope
 
-  Scenario: Dashboards are provisioned
-    Then dashboards are provisioned
-
-  Scenario: Pyroscope can be queried as a Grafana datasource
-    Then a Pyroscope datasource is provisioned in Grafana
-
-  Scenario: Alert rules are sent to Prometheus
-    Then alert rules are sent to Prometheus
-
-  Scenario: Loki alert rules are sent to Loki
-    Then Loki alert rules are sent to Loki
+  Scenario: Catalogue gets an item for Pyroscope
+    When Pyroscope is related to Catalogue over "catalogue"
+    Then Catalogue has an item for Pyroscope

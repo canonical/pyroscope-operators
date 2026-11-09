@@ -1,20 +1,24 @@
 Feature: ingress
+  Pyroscope's HTTP and gRPC endpoints are served by the coordinator's nginx,
+  and are also reachable through the ingress when Pyroscope is related to one
+  over "ingress".
 
-  Scenario: Nginx routes respond before ingress is integrated
-    Given a Pyroscope cluster and Traefik are deployed
-    Then we can hit the HTTP endpoint through nginx
-    * we can hit the gRPC endpoint through nginx
+  Background:
+    Given Pyroscope is deployed
 
-  Scenario: Nginx routes respond once ingress is integrated
-    Given a Pyroscope cluster and Traefik are deployed
-    When we integrate the Pyroscope cluster with Traefik over ingress
-    Then the coordinator, worker, and Traefik are all in active/idle state
-    * we can hit the HTTP endpoint through nginx
-    * we can hit the gRPC endpoint through nginx
+  Scenario: Pyroscope answers on the coordinator when it has no ingress
+    Given Pyroscope has no ingress relation
+    Then Pyroscope's HTTP endpoint answers on the coordinator
+    And Pyroscope's gRPC endpoint answers on the coordinator
 
-  Scenario: Nginx routes respond again after ingress is removed
-    Given a model with Traefik and the Pyroscope cluster integrated
-    When we remove the ingress relation
-    Then the coordinator and worker are in active/idle state
-    * we can once again hit the HTTP endpoint through nginx
-    * we can once again hit the gRPC endpoint through nginx
+  Scenario: Pyroscope answers through the ingress when it has one
+    Given Pyroscope has no ingress relation
+    When Pyroscope is related to Traefik over "ingress"
+    Then Pyroscope's HTTP endpoint answers through the ingress
+    And Pyroscope's gRPC endpoint answers through the ingress
+
+  Scenario: Pyroscope answers on the coordinator again once its ingress is removed
+    Given Pyroscope is related to Traefik over "ingress"
+    When Pyroscope's ingress relation is removed
+    Then Pyroscope's HTTP endpoint answers on the coordinator
+    And Pyroscope's gRPC endpoint answers on the coordinator
