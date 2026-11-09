@@ -1,20 +1,24 @@
 Feature: scaling-monolithic
+  The Pyroscope coordinator is blocked, however many units it has, until it is
+  related to an s3 backend over "s3" and to a worker over "pyroscope-cluster",
+  and is blocked again when its s3 relation is removed.
 
-  Scenario: Coordinator blocks when deployed alone
-    Given a Pyroscope coordinator is deployed with no other relations
+  Scenario: The coordinator is blocked when it is deployed alone
+    Given the coordinator has 1 unit
     Then the coordinator is blocked
 
-  Scenario: Coordinator stays blocked when scaled up without s3 or workers
-    Given a Pyroscope coordinator is deployed with no other relations
-    When we scale the coordinator to 2 units
+  Scenario: The coordinator stays blocked when it is scaled up
+    Given the coordinator has 1 unit
+    When the coordinator is scaled to 2 units
     Then the coordinator is blocked
 
-  Scenario: Coordinator and worker become active once an s3 backend is integrated
-    Given a Pyroscope coordinator is deployed with no other relations
-    When we integrate the coordinator with an s3 backend and a worker that runs every role
-    Then the coordinator and the worker are active
+  Scenario: Pyroscope is healthy once the coordinator has an s3 backend and a worker
+    Given the coordinator has 1 unit
+    When Pyroscope is related to an s3 backend over "s3"
+    And Pyroscope is related to a worker over "pyroscope-cluster"
+    Then Pyroscope is healthy
 
-  Scenario: Coordinator blocks again if the s3 integration is removed
-    Given the coordinator, s3 backend and worker are all integrated and active
-    When we remove the s3 relation
+  Scenario: The coordinator is blocked again when its s3 relation is removed
+    Given Pyroscope is deployed
+    When Pyroscope's s3 relation is removed
     Then the coordinator is blocked

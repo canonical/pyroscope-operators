@@ -53,10 +53,14 @@ tox                  # runs 'lint' and 'unit' environments
 
 Integration tests are specified in Gherkin feature files in [`tests/features`](tests/features), one file per
 feature, and run with [pytest-bdd] against a Juju model with [jubilant]. Each feature has a
-`tests/integration/test_<feature>.py` module that loads it with `scenarios("<feature>.feature")` and defines the
-steps specific to it; steps shared by several features live in `tests/integration/conftest.py`.
+`tests/integration/test_<feature>.py` module that only loads its scenarios with `scenarios("<feature>.feature")`, so
+that every feature runs in a model of its own.
 
-All the scenarios of a feature share one Juju model, so a scenario's `Given` steps must bring the model to the state
+Step definitions live in [`tests/integration/steps`](tests/integration/steps), one module per topic, registered in
+`tests/integration/conftest.py`. The charms Pyroscope relates to are listed in `COUNTERPARTS` in `steps/relations.py`,
+so that `Pyroscope is related to <name> over "<endpoint>"` works for any of them.
+
+All the scenarios of a feature share their model, so a scenario's `Given` steps must bring the model to the state
 it needs, whatever ran before: deploy or integrate only what is missing, and wait for it to settle. Tag a scenario
 with `@skip`, and say why in the feature's description, when no passing test exists for it yet.
 

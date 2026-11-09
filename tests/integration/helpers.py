@@ -196,14 +196,11 @@ def deploy_distributed_cluster(
     )
 
 
-def deploy_monolithic_cluster(
-    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = True
-):
-    """Deploy a pyroscope-monolithic cluster."""
+def deploy_monolithic_worker(juju: Juju):
+    """Deploy a worker that runs every role."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
         "worker", "WORKER_CHARM_PATH", "WORKER_CHARM_CHANNEL"
     )
-
     juju.deploy(
         worker_charm_url,
         app=WORKER_APP,
@@ -211,6 +208,13 @@ def deploy_monolithic_cluster(
         trust=True,
         resources=resources,
     )
+
+
+def deploy_monolithic_cluster(
+    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = True
+):
+    """Deploy a pyroscope-monolithic cluster."""
+    deploy_monolithic_worker(juju)
     return _deploy_cluster(
         juju,
         [WORKER_APP],
@@ -264,19 +268,20 @@ def _deploy_cluster(
 
 
 def ensure_monolithic_cluster(juju: Juju):
-    """Deploy a monolithic cluster unless there is one, and wait for it to be active/idle.
+    """Deploy and integrate what a monolithic cluster is missing, without waiting for it.
 
     The scenarios of a feature share a model, so a `Given` step brings the model to the
     state it describes, whatever the scenarios before it left behind.
     """
-    if PYROSCOPE_APP not in juju.status().apps:
+    apps = juju.status().apps
+    if PYROSCOPE_APP not in apps:
         deploy_monolithic_cluster(juju, wait_for_idle=False)
-    juju.wait(
-        lambda status: jubilant.all_active(status, PYROSCOPE_APP, WORKER_APP, SWFS_APP),
-        timeout=2000,
-        delay=5,
-        successes=3,
-    )
+    elif WORKER_APP not in apps:
+        deploy_monolithic_cluster(
+            juju, coordinator_deployed_as=PYROSCOPE_APP, wait_for_idle=False
+        )
+    elif SWFS_APP not in related_apps(juju, PYROSCOPE_APP, "s3"):
+        juju.integrate(f"{PYROSCOPE_APP}:s3", SWFS_APP)
 
 
 def get_ingress_proxied_hostname(juju: Juju):

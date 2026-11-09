@@ -1,6 +1,12 @@
 Feature: retention
+  Pyroscope removes the profiles that are older than its "retention_period"
+  option.
 
-  Scenario: Pyroscope removes profiles according to retention policy
-    Given a Pyroscope cluster is deployed
-    When we set retention time to "1m" and emit a profile to Pyroscope using OTLP gRPC
-    Then the profile should be removed after "1m"
+  Background:
+    Given Pyroscope is deployed
+
+  Scenario: Pyroscope removes profiles according to its retention policy
+    Given the "retention_period" option is "1m"
+    When a profile is emitted to Pyroscope
+    Then Pyroscope has ingested the profile
+    And Pyroscope removes the profile after "1m"

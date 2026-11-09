@@ -1,7 +1,11 @@
 Feature: profiling-tls
+  With a certificate from a CA over "certificates", Pyroscope ingests the
+  profiles sent to it over OTLP gRPC with TLS.
 
-  Scenario: Pyroscope is able to ingest profiles via OTLP gRPC with TLS
-    Given a Pyroscope cluster is deployed
-    And a certificates provider charm is deployed and integrated with Pyroscope
-    When we emit a profile to Pyroscope using OTLP gRPC over TLS
-    Then the profile should be ingested by Pyroscope
+  Background:
+    Given Pyroscope is deployed
+    And Pyroscope is related to a CA over "certificates"
+
+  Scenario: Pyroscope ingests profiles over OTLP gRPC with TLS
+    When a profile is emitted to Pyroscope
+    Then Pyroscope has ingested the profile

@@ -1,6 +1,9 @@
 Feature: profiling
+  Pyroscope ingests the profiles sent to it over OTLP gRPC.
 
-  Scenario: Pyroscope is able to ingest profiles via OTLP gRPC
-    Given a Pyroscope cluster is deployed
-    When we emit a profile to Pyroscope using OTLP gRPC
-    Then the profile should be ingested by Pyroscope
+  Background:
+    Given Pyroscope is deployed
+
+  Scenario: Pyroscope ingests profiles over OTLP gRPC
+    When a profile is emitted to Pyroscope
+    Then Pyroscope has ingested the profile
