@@ -4,7 +4,10 @@
 """Steps about what Pyroscope sends to an OpenTelemetry Collector, and provides to Grafana and Catalogue.
 
 The OpenTelemetry Collector stands for the COS stack: it has no backend to send to, so it is blocked,
-but its receivers work, and it counts what they accept.
+but its receivers work. To tell which application each item of telemetry comes from, it is
+configured with a `filter` processor per application and signal, whose conditions match the
+application's `juju_application`. The collector counts what each processor drops on its own
+metrics, and the steps read those counts.
 """
 
 import base64
@@ -15,7 +18,7 @@ import re
 import jubilant
 import pytest
 from observability_clients import Grafana
-from pytest_bdd import parsers, then
+from pytest_bdd import given, parsers, then
 from tenacity import retry, stop_after_delay, wait_fixed
 
 from tests.integration.helpers import (
@@ -27,6 +30,7 @@ from tests.integration.helpers import (
     PYROSCOPE_APP,
     get_unit_ip_address,
 )
+from tests.integration.steps.relations import COUNTERPARTS
 
 PYROSCOPE_APPS = (PYROSCOPE_APP, *ALL_WORKERS)
 
@@ -49,16 +53,63 @@ def grafana(juju: jubilant.Juju) -> Grafana:
     return Grafana(url=f"http://admin:{password}@{address}:3000")
 
 
-def accepted(juju: jubilant.Juju, kind: str, receiver: str) -> float:
-    """How many `kind` the collector's receivers named `receiver...` accepted so far.
+def counting_processors() -> str:
+    """The collector's `processors` config: one `filter` processor per application and signal.
+
+    A `filter` processor drops the items its conditions match, and the collector counts them
+    in `otelcol_processor_filter_*_filtered{filter="filter/<name>/..."}`, so each processor
+    counts the items of its own application only. The applications are distinct, so what one
+    drops is never what another counts. The collector's own metrics are scraped from a
+    receiver of its own, so they are never counted.
+
+    The `juju_application` of a log is an attribute (a Loki label); on the other signals it is
+    a resource attribute, or an attribute of a data point. A charm's traces are the only ones
+    whose resource has a `charm_type`, which tells them from the workload's traces.
+    """
+
+    def processor(signal: str, context: str, condition: str) -> dict:
+        return {"error_mode": "ignore", signal: {context: [condition]}}
+
+    processors = {}
+    for app in PYROSCOPE_APPS:
+        resource = f'resource.attributes["juju_application"] == "{app}"'
+        attribute = f'attributes["juju_application"] == "{app}"'
+        charm = 'resource.attributes["charm_type"] != nil'
+        workload = 'resource.attributes["charm_type"] == nil'
+        processors[f"filter/metrics_{app}"] = processor(
+            "metrics", "datapoint", f"{resource} or {attribute}"
+        )
+        processors[f"filter/logs_{app}"] = processor(
+            "logs", "log_record", f"{resource} or {attribute}"
+        )
+        processors[f"filter/charm_traces_{app}"] = processor(
+            "traces", "span", f"{resource} and {charm}"
+        )
+        if app in ALL_WORKERS:
+            processors[f"filter/workload_traces_{app}"] = processor(
+                "traces", "span", f"{resource} and {workload}"
+            )
+    # JSON is YAML, which is what the charm parses
+    return json.dumps(processors)
+
+
+def dropped(juju: jubilant.Juju, kind: str, processor: str) -> float:
+    """How many `kind` (datapoints, logs or spans) the collector's `processor` has matched so far.
 
     The collector serves its metrics on its loopback only, so they are read from its pod.
+    A processor that has matched nothing may have no counter at all.
     """
     metrics = juju.ssh(
         f"{OTEL_COLLECTOR_APP}/0", "curl -s http://localhost:8888/metrics"
     )
-    pattern = rf'^otelcol_receiver_accepted_{kind}{{[^}}]*receiver="{receiver}[^"]*"[^}}]*}} (\S+)$'
+    pattern = rf'^otelcol_processor_filter_{kind}_filtered{{[^}}]*filter="filter/{re.escape(processor)}/[^"]*"[^}}]*}} (\S+)$'
     return sum(float(value) for value in re.findall(pattern, metrics, re.MULTILINE))
+
+
+def assert_every_app_has(juju: jubilant.Juju, apps, kind: str, signal: str, what: str):
+    """Every one of `apps` has `kind` counted by its `signal` processor."""
+    missing = [app for app in apps if not dropped(juju, kind, f"{signal}_{app}")]
+    assert not missing, f"The collector received no {what} from {', '.join(missing)}"
 
 
 def relation_data(juju: jubilant.Juju, endpoint: str) -> dict:
@@ -92,20 +143,27 @@ def apps_of(rules_or_jobs: list, key: str) -> set:
     return apps
 
 
-@then("the OpenTelemetry Collector has metrics from Pyroscope")
+@given(
+    "the OpenTelemetry Collector counts the telemetry of every Pyroscope application"
+)
+def collector_counts_telemetry(juju: jubilant.Juju):
+    counterpart = COUNTERPARTS["the OpenTelemetry Collector"]
+    if counterpart.app not in juju.status().apps:
+        counterpart.deploy(juju, counterpart.app)
+    juju.config(
+        OTEL_COLLECTOR_APP,
+        {
+            "processors": counting_processors(),
+            # the collector keeps 1% of the workloads' traces by default
+            "tracing_sampling_rate_workload": "100",
+        },
+    )
+
+
+@then("the OpenTelemetry Collector has metrics from every Pyroscope application")
 @_five_minutes
 def collector_has_metrics(juju: jubilant.Juju):
-    data = relation_data(juju, "metrics-endpoint")
-    scrape_jobs = json.loads(data["scrape_jobs"])
-    # the coordinator's own jobs carry no labels: the collector labels them from the metadata
-    scraped = apps_of(scrape_jobs, "juju_application") | {
-        json.loads(data["scrape_metadata"])["application"]
-    }
-    for app in PYROSCOPE_APPS:
-        assert app in scraped, f"The collector doesn't scrape app '{app}'"
-    assert accepted(juju, "metric_points", "prometheus/metrics-endpoint") > 0, (
-        "The collector accepted no metrics from Pyroscope"
-    )
+    assert_every_app_has(juju, PYROSCOPE_APPS, "datapoints", "metrics", "metrics")
 
 
 @then("the OpenTelemetry Collector has nginx metrics from Pyroscope")
@@ -141,37 +199,24 @@ def collector_has_alert_rules(juju: jubilant.Juju, endpoint: str):
         assert app in labelled, f"No alert rules found for app '{app}'"
 
 
-@then("the OpenTelemetry Collector has logs from Pyroscope")
+@then("the OpenTelemetry Collector has logs from every Pyroscope application")
 @_five_minutes
 def collector_has_logs(juju: jubilant.Juju):
-    assert accepted(juju, "log_records", "loki/") > 0, (
-        "The collector accepted no logs from Pyroscope"
-    )
+    assert_every_app_has(juju, PYROSCOPE_APPS, "logs", "logs", "logs")
 
 
-@then("the OpenTelemetry Collector has charm traces from Pyroscope")
+@then("the OpenTelemetry Collector has charm traces from every Pyroscope application")
 @_ten_minutes
 def collector_has_charm_traces(juju: jubilant.Juju):
-    # Pyroscope's charms send their traces over OTLP, and nothing else sends spans
-    assert accepted(juju, "spans", "otlp/") > 0, (
-        "The collector accepted no charm traces from Pyroscope"
+    assert_every_app_has(juju, PYROSCOPE_APPS, "spans", "charm_traces", "charm traces")
+
+
+@then("the OpenTelemetry Collector has workload traces from every Pyroscope worker")
+@_ten_minutes
+def collector_has_workload_traces(juju: jubilant.Juju):
+    assert_every_app_has(
+        juju, ALL_WORKERS, "spans", "workload_traces", "workload traces"
     )
-
-
-@then("Pyroscope's workers send their workload traces to the OpenTelemetry Collector")
-@_five_minutes
-def workers_send_workload_traces(juju: jubilant.Juju):
-    for app in ALL_WORKERS:
-        plan = juju.ssh(
-            f"{app}/0",
-            "PEBBLE_SOCKET=/charm/container/pebble.socket pebble plan",
-            container="pyroscope",
-        )
-        assert re.search(
-            rf"^\s*OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://{OTEL_COLLECTOR_APP}\.",
-            plan,
-            re.M,
-        ), f"'{app}' doesn't send its workload traces to the collector"
 
 
 @then("Catalogue has an item for Pyroscope")
