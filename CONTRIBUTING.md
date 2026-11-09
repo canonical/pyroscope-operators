@@ -51,6 +51,18 @@ tox -e integration   # run the integration testing suite
 tox                  # runs 'lint' and 'unit' environments
 ```
 
+Integration tests are specified in Gherkin feature files in [`tests/features`](tests/features), one file per
+feature, and run with [pytest-bdd] against a Juju model with [jubilant]. Each feature has a
+`tests/integration/test_<feature>.py` module that loads it with `scenarios("<feature>.feature")` and defines the
+steps specific to it; steps shared by several features live in `tests/integration/conftest.py`.
+
+All the scenarios of a feature share one Juju model, so a scenario's `Given` steps must bring the model to the state
+it needs, whatever ran before: deploy or integrate only what is missing, and wait for it to settle. Tag a scenario
+with `@skip`, and say why in the feature's description, when no passing test exists for it yet.
+
+[pytest-bdd]: https://pytest-bdd.readthedocs.io/
+[jubilant]: https://documentation.ubuntu.com/jubilant/
+
 ## Build charm
 
 Build the charm in this git repository using:
