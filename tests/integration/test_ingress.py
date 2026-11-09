@@ -133,13 +133,13 @@ def coordinator_and_worker_are_active(juju: Juju):
     wait_for_active(juju, PYROSCOPE_APP, WORKER_APP)
 
 
-@then("we can hit the HTTP endpoint through nginx")
-def http_endpoint_through_nginx(juju: Juju):
+@then("we can hit the HTTP endpoint directly on the coordinator")
+def http_endpoint_on_coordinator(juju: Juju):
     check_http_endpoint(juju, use_ingress=False)
 
 
-@then("we can hit the gRPC endpoint through nginx")
-def grpc_endpoint_through_nginx(juju: Juju):
+@then("we can hit the gRPC endpoint directly on the coordinator")
+def grpc_endpoint_on_coordinator(juju: Juju):
     check_grpc_endpoint(juju, use_ingress=False)
 
 
