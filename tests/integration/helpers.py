@@ -10,6 +10,7 @@ from typing import Literal, Optional, Sequence
 
 import jubilant
 from jubilant import Juju
+from observability_clients import Pyroscope
 from pytest_jubilant import get_resources, pack
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +26,19 @@ PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
 OTEL_COLLECTOR_APP = "opentelemetry-collector"
 SSC_APP = "ssc"
+CATALOGUE_APP = "catalogue"
+GRAFANA_APP = "grafana"
+
+# Ports of the charms, hardcoded here instead of imported from the charm sources to
+# avoid dependency and PYTHONPATH conflicts: the coordinator's nginx serves the HTTP
+# and gRPC endpoints (coordinator/src/nginx_config.py), and every worker serves its
+# HTTP API, with the /ready endpoint, on its own port (worker/src/pyroscope.py).
+NGINX_HTTP_PORT = 8080
+NGINX_GRPC_PORT = 42424
+WORKER_HTTP_PORT = 4040
+# the nginx-prometheus-exporter sidecar of the coordinator
+NGINX_EXPORTER_PORT = 9113
+
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [
@@ -40,10 +54,6 @@ ALL_ROLES = [
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 CHANNELS = {
     "grafana-k8s": "12.4/stable",
-    "loki-k8s": "3.7/stable",
-    "prometheus-k8s": "3.11/stable",
-    "tempo-coordinator-k8s": "2.10/stable",
-    "tempo-worker-k8s": "2.10/stable",
     "catalogue-k8s": "3.0/stable",
     "opentelemetry-collector-k8s": "0.130/stable",
 }
@@ -85,6 +95,26 @@ def _set_ci_charm_paths_if_unset() -> None:
 def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
     """Return a juju unit's IP address."""
     return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
+
+
+def related_apps(juju: Juju, app_name: str, endpoint: str) -> list[str]:
+    """Return the apps `app_name` is integrated with over `endpoint`."""
+    relations = juju.status().apps[app_name].relations.get(endpoint, [])
+    return [relation.related_app for relation in relations]
+
+
+def coordinator_client(juju: Juju, address: str) -> Pyroscope:
+    """A client for the coordinator's nginx on `address`, over TLS when Pyroscope has a CA.
+
+    The client doesn't verify certificates, so the CA isn't needed to query.
+    """
+    scheme = "https" if related_apps(juju, PYROSCOPE_APP, "certificates") else "http"
+    return Pyroscope(url=f"{scheme}://{address}:{NGINX_HTTP_PORT}")
+
+
+def worker_client(address: str) -> Pyroscope:
+    """A client for the HTTP API of a worker on `address`."""
+    return Pyroscope(url=f"http://{address}:{WORKER_HTTP_PORT}")
 
 
 def charm_and_channel_and_resources(
@@ -176,14 +206,11 @@ def deploy_distributed_cluster(
     )
 
 
-def deploy_monolithic_cluster(
-    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = True
-):
-    """Deploy a pyroscope-monolithic cluster."""
+def deploy_monolithic_worker(juju: Juju):
+    """Deploy a worker that runs every role."""
     worker_charm_url, channel, resources = charm_and_channel_and_resources(
         "worker", "WORKER_CHARM_PATH", "WORKER_CHARM_CHANNEL"
     )
-
     juju.deploy(
         worker_charm_url,
         app=WORKER_APP,
@@ -191,6 +218,13 @@ def deploy_monolithic_cluster(
         trust=True,
         resources=resources,
     )
+
+
+def deploy_monolithic_cluster(
+    juju: Juju, coordinator_deployed_as=None, wait_for_idle: bool = True
+):
+    """Deploy a pyroscope-monolithic cluster."""
+    deploy_monolithic_worker(juju)
     return _deploy_cluster(
         juju,
         [WORKER_APP],
@@ -241,6 +275,23 @@ def _deploy_cluster(
             successes=3,
         )
     return [coordinator_app, *workers, SWFS_APP]
+
+
+def ensure_monolithic_cluster(juju: Juju):
+    """Deploy and integrate what a monolithic cluster is missing, without waiting for it.
+
+    The scenarios of a feature share a model, so a `Given` step brings the model to the
+    state it describes, whatever the scenarios before it left behind.
+    """
+    apps = juju.status().apps
+    if PYROSCOPE_APP not in apps:
+        deploy_monolithic_cluster(juju, wait_for_idle=False)
+    elif WORKER_APP not in apps:
+        deploy_monolithic_cluster(
+            juju, coordinator_deployed_as=PYROSCOPE_APP, wait_for_idle=False
+        )
+    elif SWFS_APP not in related_apps(juju, PYROSCOPE_APP, "s3"):
+        juju.integrate(f"{PYROSCOPE_APP}:s3", SWFS_APP)
 
 
 def get_ingress_proxied_hostname(juju: Juju):

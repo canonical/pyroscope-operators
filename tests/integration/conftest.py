@@ -6,9 +6,21 @@ import tempfile
 
 from pytest import fixture
 
-from tests.integration.helpers import charm_and_channel_and_resources, SSC_APP
+from tests.integration.helpers import (
+    charm_and_channel_and_resources,
+    SSC_APP,
+)
 from jubilant import Juju
 
+# Step definitions shared by the feature files, grouped by topic.
+pytest_plugins = [
+    "tests.integration.steps.deployment",
+    "tests.integration.steps.ingress",
+    "tests.integration.steps.juju_doctor",
+    "tests.integration.steps.profiling",
+    "tests.integration.steps.relations",
+    "tests.integration.steps.telemetry",
+]
 
 logger = logging.getLogger(__name__)
 
