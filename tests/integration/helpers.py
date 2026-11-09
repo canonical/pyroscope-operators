@@ -26,10 +26,6 @@ PYROSCOPE_APP = "pyroscope"
 TRAEFIK_APP = "trfk"
 OTEL_COLLECTOR_APP = "opentelemetry-collector"
 SSC_APP = "ssc"
-PROMETHEUS_APP = "prometheus"
-LOKI_APP = "loki"
-TEMPO_APP = "tempo"
-TEMPO_WORKER_APP = "tempo-worker"
 CATALOGUE_APP = "catalogue"
 GRAFANA_APP = "grafana"
 
@@ -40,15 +36,9 @@ GRAFANA_APP = "grafana"
 NGINX_HTTP_PORT = 8080
 NGINX_GRPC_PORT = 42424
 WORKER_HTTP_PORT = 4040
+# the nginx-prometheus-exporter sidecar of the coordinator
+NGINX_EXPORTER_PORT = 9113
 
-COS_COMPONENTS = (
-    PROMETHEUS_APP,
-    LOKI_APP,
-    TEMPO_WORKER_APP,
-    TEMPO_APP,
-    CATALOGUE_APP,
-    GRAFANA_APP,
-)
 # we don't import this from the coordinator module because that'd mean we need to
 # bring in the whole charm's dependencies just to run the integration tests
 ALL_ROLES = [
@@ -64,10 +54,6 @@ ALL_ROLES = [
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 CHANNELS = {
     "grafana-k8s": "12.4/stable",
-    "loki-k8s": "3.7/stable",
-    "prometheus-k8s": "3.11/stable",
-    "tempo-coordinator-k8s": "2.10/stable",
-    "tempo-worker-k8s": "2.10/stable",
     "catalogue-k8s": "3.0/stable",
     "opentelemetry-collector-k8s": "0.130/stable",
 }

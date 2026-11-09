@@ -15,11 +15,13 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
     ALL_ROLES,
     ALL_WORKERS,
+    OTEL_COLLECTOR_APP,
     PYROSCOPE_APP,
     SWFS_APP,
     WORKER_APP,
     coordinator_client,
     deploy_distributed_cluster,
+    deploy_swfs,
     ensure_monolithic_cluster,
     related_apps,
     worker_client,
@@ -52,6 +54,14 @@ def assert_endpoints_answer(juju: jubilant.Juju) -> None:
     for worker_app in related_apps(juju, PYROSCOPE_APP, "pyroscope-cluster"):
         for name, unit in status.apps[worker_app].units.items():
             assert worker_client(unit.address).is_ready(), f"{name} isn't ready"
+
+
+def settled_apps(juju: jubilant.Juju) -> list[str]:
+    """The applications of the model that become active.
+
+    The OTel Collector is blocked without a backend to send to, however well it receives.
+    """
+    return [app for app in juju.status().apps if app != OTEL_COLLECTOR_APP]
 
 
 def scale(juju: jubilant.Juju, coordinator_charm, units: int) -> None:
@@ -88,6 +98,40 @@ def pyroscope_is_deployed_with_every_role(juju: jubilant.Juju):
     wait_for_active(juju, PYROSCOPE_APP, *ALL_WORKERS, SWFS_APP)
 
 
+@given("a worker is deployed for every role")
+def worker_is_deployed_for_every_role(juju: jubilant.Juju, worker_charm):
+    charm_url, channel, resources = worker_charm
+    for role in ALL_ROLES:
+        if role not in juju.status().apps:
+            juju.deploy(
+                charm_url,
+                role,
+                channel=channel,
+                resources=resources,
+                trust=True,
+                config={"role-all": False, f"role-{role}": True},
+            )
+
+
+@when("the coordinator is deployed with an s3 backend and related to the workers")
+def coordinator_is_deployed_and_related(juju: jubilant.Juju, coordinator_charm):
+    if SWFS_APP not in juju.status().apps:
+        deploy_swfs(juju)
+    if PYROSCOPE_APP not in juju.status().apps:
+        charm_url, channel, resources = coordinator_charm
+        juju.deploy(
+            charm_url, PYROSCOPE_APP, channel=channel, resources=resources, trust=True
+        )
+    if SWFS_APP not in related_apps(juju, PYROSCOPE_APP, "s3"):
+        juju.integrate(PYROSCOPE_APP + ":s3", SWFS_APP)
+    related = related_apps(juju, PYROSCOPE_APP, "pyroscope-cluster")
+    for role in ALL_ROLES:
+        if role not in related:
+            juju.integrate(
+                PYROSCOPE_APP + ":pyroscope-cluster", role + ":pyroscope-cluster"
+            )
+
+
 @given(parsers.re(r"the coordinator has (?P<units>\d+) units?"))
 def coordinator_has_units(juju: jubilant.Juju, coordinator_charm, units: str):
     scale(juju, coordinator_charm, int(units))
@@ -108,8 +152,14 @@ def coordinator_is_scaled(juju: jubilant.Juju, coordinator_charm, units: str):
 @then("Pyroscope is healthy")
 def pyroscope_is_healthy(juju: jubilant.Juju):
     """Every application is active and idle, and Pyroscope answers on every unit."""
-    wait_for_active(juju, *juju.status().apps)
+    wait_for_active(juju, *settled_apps(juju))
     assert_endpoints_answer(juju)
+
+
+@then("the workers are blocked")
+def workers_are_blocked(juju: jubilant.Juju):
+    # the workers are blocked because of the missing coordinator integration
+    juju.wait(lambda status: jubilant.all_blocked(status, *ALL_ROLES), timeout=1000)
 
 
 @then("the coordinator is blocked")

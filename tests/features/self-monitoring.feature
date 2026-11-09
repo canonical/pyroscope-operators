@@ -1,40 +1,42 @@
 Feature: self-monitoring
-  Pyroscope sends its metrics to Prometheus over "metrics-endpoint", its logs
-  to Loki over "logging" and its traces to Tempo over "charm-tracing" and
-  "workload-tracing". It provides its dashboards and datasource to Grafana
-  over "grafana-dashboard" and "grafana-source", and its item to Catalogue
-  over "catalogue".
+  Pyroscope sends its metrics to the OTel Collector over "metrics-endpoint",
+  its logs over "logging" and its traces over "charm-tracing" and
+  "workload-tracing", and the alert rules for the metrics and the logs with
+  them. It provides its dashboards and datasource to Grafana over
+  "grafana-dashboard" and "grafana-source", and its item to Catalogue over
+  "catalogue". The OTel Collector stands for Prometheus, Loki and Tempo: it is
+  blocked without a backend to send to, but its receivers count what they get.
 
   Background:
     Given Pyroscope is deployed with a worker for every role
 
-  Scenario: Prometheus receives Pyroscope's metrics
-    When Pyroscope is related to Prometheus over "metrics-endpoint"
-    Then Prometheus has metrics from Pyroscope
+  Scenario: The OTel Collector receives Pyroscope's metrics
+    When Pyroscope is related to the OTel Collector over "metrics-endpoint"
+    Then the OTel Collector has metrics from Pyroscope
 
-  Scenario: Prometheus receives the metrics of Pyroscope's nginx
-    When Pyroscope is related to Prometheus over "metrics-endpoint"
-    Then Prometheus has nginx metrics from Pyroscope
+  Scenario: The OTel Collector receives the metrics of Pyroscope's nginx
+    When Pyroscope is related to the OTel Collector over "metrics-endpoint"
+    Then the OTel Collector has nginx metrics from Pyroscope
 
-  Scenario: Prometheus gets Pyroscope's alert rules
-    When Pyroscope is related to Prometheus over "metrics-endpoint"
-    Then Prometheus has alert rules from Pyroscope
+  Scenario: The OTel Collector gets Pyroscope's alert rules for metrics
+    When Pyroscope is related to the OTel Collector over "metrics-endpoint"
+    Then the OTel Collector has alert rules from Pyroscope over "metrics-endpoint"
 
-  Scenario: Loki receives Pyroscope's logs
-    When Pyroscope is related to Loki over "logging"
-    Then Loki has logs from Pyroscope
+  Scenario: The OTel Collector receives Pyroscope's logs
+    When Pyroscope is related to the OTel Collector over "logging"
+    Then the OTel Collector has logs from Pyroscope
 
-  Scenario: Loki gets Pyroscope's alert rules
-    When Pyroscope is related to Loki over "logging"
-    Then Loki has alert rules from Pyroscope
+  Scenario: The OTel Collector gets Pyroscope's alert rules for logs
+    When Pyroscope is related to the OTel Collector over "logging"
+    Then the OTel Collector has alert rules from Pyroscope over "logging"
 
-  Scenario: Tempo receives Pyroscope's charm traces
-    When Pyroscope is related to Tempo over "charm-tracing"
-    Then Tempo has charm traces from Pyroscope
+  Scenario: The OTel Collector receives Pyroscope's charm traces
+    When Pyroscope is related to the OTel Collector over "charm-tracing"
+    Then the OTel Collector has charm traces from Pyroscope
 
-  Scenario: Tempo receives Pyroscope's workload traces
-    When Pyroscope is related to Tempo over "workload-tracing"
-    Then Tempo has workload traces from Pyroscope
+  Scenario: Pyroscope's workers send their workload traces to the OTel Collector
+    When Pyroscope is related to the OTel Collector over "workload-tracing"
+    Then Pyroscope's workers send their workload traces to the OTel Collector
 
   Scenario: Grafana gets Pyroscope's dashboards
     When Pyroscope is related to Grafana over "grafana-dashboard"

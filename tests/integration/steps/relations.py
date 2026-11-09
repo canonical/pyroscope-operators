@@ -13,21 +13,21 @@ from tests.integration.helpers import (
     CATALOGUE_APP,
     CHANNELS,
     GRAFANA_APP,
-    LOKI_APP,
     OTEL_COLLECTOR_APP,
-    PROMETHEUS_APP,
     PYROSCOPE_APP,
     SSC_APP,
     SWFS_APP,
-    TEMPO_APP,
-    TEMPO_WORKER_APP,
     TRAEFIK_APP,
     WORKER_APP,
     deploy_monolithic_worker,
     deploy_swfs,
     related_apps,
 )
-from tests.integration.steps.deployment import wait_for_active
+from tests.integration.steps.deployment import (
+    pyroscope_is_deployed,
+    settled_apps,
+    wait_for_active,
+)
 
 
 def from_charmhub(
@@ -37,25 +37,6 @@ def from_charmhub(
         juju.deploy(charm, app, channel=channel, trust=trust)
 
     return deploy
-
-
-def deploy_tempo_stack(juju: jubilant.Juju, _: str) -> None:
-    """Deploy Tempo, which is a coordinator with workers and object storage."""
-    deploy_swfs(juju)
-    juju.deploy(
-        "tempo-coordinator-k8s",
-        app=TEMPO_APP,
-        channel=CHANNELS["tempo-coordinator-k8s"],
-        trust=True,
-    )
-    juju.deploy(
-        "tempo-worker-k8s",
-        app=TEMPO_WORKER_APP,
-        channel=CHANNELS["tempo-worker-k8s"],
-        trust=True,
-    )
-    juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
-    juju.integrate(TEMPO_APP, SWFS_APP)
 
 
 @dataclass(frozen=True)
@@ -89,15 +70,6 @@ COUNTERPARTS: Dict[str, Counterpart] = {
     "Grafana": Counterpart(
         GRAFANA_APP, from_charmhub("grafana-k8s", CHANNELS["grafana-k8s"])
     ),
-    "Loki": Counterpart(
-        LOKI_APP, from_charmhub("loki-k8s", CHANNELS["loki-k8s"]), endpoint="logging"
-    ),
-    "Prometheus": Counterpart(
-        PROMETHEUS_APP,
-        from_charmhub("prometheus-k8s", CHANNELS["prometheus-k8s"]),
-        endpoint="metrics-endpoint",
-    ),
-    "Tempo": Counterpart(TEMPO_APP, deploy_tempo_stack, endpoint="tracing"),
     "Traefik": Counterpart(
         TRAEFIK_APP,
         lambda juju, app: juju.deploy(
@@ -138,7 +110,7 @@ def relate_to(juju: jubilant.Juju, subject: str, name: str, endpoint: str) -> No
         juju.integrate(f"{app}:{endpoint}", counterpart.target)
     if counterpart.settles:
         # Every application in the model settles, including the rest of a deployed stack.
-        wait_for_active(juju, *juju.status().apps, timeout=counterpart.timeout)
+        wait_for_active(juju, *settled_apps(juju), timeout=counterpart.timeout)
 
 
 def remove_relations(juju: jubilant.Juju, endpoint: str) -> None:
@@ -157,6 +129,17 @@ def remove_relations(juju: jubilant.Juju, endpoint: str) -> None:
 @when(parsers.parse('{subject} is related to {name} over "{endpoint}"'))
 def is_related(juju: jubilant.Juju, subject: str, name: str, endpoint: str):
     relate_to(juju, subject, name, endpoint)
+
+
+@given(parsers.parse("Pyroscope serves over {scheme}"))
+def pyroscope_serves_over(juju: jubilant.Juju, scheme: str):
+    """Pyroscope serves over HTTPS when it is related to a CA, and over HTTP otherwise."""
+    pyroscope_is_deployed(juju)
+    if scheme == "HTTPS":
+        relate_to(juju, "Pyroscope", "a CA", "certificates")
+    else:
+        remove_relations(juju, "certificates")
+        wait_for_active(juju, PYROSCOPE_APP, WORKER_APP, SWFS_APP)
 
 
 @given(parsers.parse("Pyroscope has no {endpoint} relation"))
