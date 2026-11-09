@@ -5,4 +5,4 @@ Feature: juju-doctor
     Then the workers are blocked because of the missing coordinator integration
     When the Pyroscope coordinator and SWFS are deployed and integrated with the workers
     Then both the coordinator and the workers become active
-    * juju-doctor passes
+    And juju-doctor passes
